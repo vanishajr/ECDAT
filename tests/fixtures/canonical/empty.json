@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "scan_id": "scan-empty-001",
+  "target": "samples/clean.py",
+  "started_at": "2026-09-10T12:00:00Z",
+  "finished_at": "2026-09-10T12:00:01Z",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  },
+  "findings": [],
+  "stats": {
+    "files_scanned": 1,
+    "findings_count": 0
+  }
+}

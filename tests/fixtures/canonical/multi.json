@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "scan_id": "scan-multi-001",
+  "target": "samples/app/",
+  "started_at": "2026-09-10T11:00:00Z",
+  "finished_at": "2026-09-10T11:00:05Z",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  },
+  "findings": [
+    {
+      "rule_id": "RSA-1024",
+      "title": "Weak RSA key size (1024-bit)",
+      "severity": "high",
+      "file": "samples/app/auth.py",
+      "line": 42,
+      "snippet": "rsa.generate_private_key(key_size=1024)",
+      "confidence": 0.95
+    },
+    {
+      "rule_id": "MD5-USAGE",
+      "title": "Weak hash MD5 in use",
+      "severity": "medium",
+      "file": "samples/app/auth.py",
+      "line": 88,
+      "snippet": "hashlib.md5(password.encode())",
+      "confidence": 0.9,
+      "metadata": {
+        "cwe": "CWE-327"
+      }
+    },
+    {
+      "rule_id": "AES-ECB",
+      "title": "AES in ECB mode leaks structure",
+      "severity": "critical",
+      "file": "samples/app/crypto.py",
+      "line": 15,
+      "snippet": "AES.new(key, AES.MODE_ECB)",
+      "confidence": 0.99
+    },
+    {
+      "rule_id": "TLS-1.0",
+      "title": "Deprecated TLS version allowed",
+      "severity": "low",
+      "file": "samples/app/server.py",
+      "line": 7,
+      "snippet": "PROTOCOL_TLSv1",
+      "confidence": 0.8
+    }
+  ],
+  "stats": {
+    "files_scanned": 3,
+    "findings_count": 4
+  }
+}
