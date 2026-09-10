@@ -13,8 +13,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ecdat.commands import list_cmd, recommend_cmd, risk_cmd, scan_binary_cmd
-from ecdat.commands import scan_cloud_cmd, scan_cmd, scan_container_cmd, show_cmd
+from ecdat.commands import export_cmd, list_cmd, recommend_cmd, risk_cmd
+from ecdat.commands import scan_binary_cmd, scan_cloud_cmd, scan_cmd
+from ecdat.commands import scan_container_cmd, show_cmd
 
 DEFAULT_DB = str(Path.home() / ".ecdat" / "ecdat.db")
 
@@ -86,6 +87,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_rec.add_argument("--json", action="store_true", help="machine-readable output")
     p_rec.add_argument("--severity", choices=["info", "low", "medium", "high", "critical"], default=None, help="filter recommendations by severity")
     p_rec.set_defaults(func=recommend_cmd.run)
+
+    p_exp = sub.add_parser("export", help="export a stored scan to json/csv/cbom/sarif")
+    p_exp.add_argument("scan_id", help="scan id to export")
+    p_exp.add_argument("--format", choices=["json", "csv", "cbom-json", "cbom-xml", "sarif"], default="json", help="export format")
+    p_exp.add_argument("--output", default=None, help="write export to this file (default: stdout)")
+    p_exp.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
+    p_exp.set_defaults(func=export_cmd.run)
 
     return parser
 

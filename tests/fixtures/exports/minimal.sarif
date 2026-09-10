@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/rsa_small.py"
+                },
+                "region": {
+                  "snippet": {
+                    "text": "rsa.generate_private_key(key_size=1024)"
+                  },
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Weak RSA key size (1024-bit)"
+          },
+          "ruleId": "RSA-1024"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://ecdat.local",
+          "name": "ecdat",
+          "rules": [
+            {
+              "id": "RSA-1024",
+              "name": "RSA-1024",
+              "shortDescription": {
+                "text": "Weak RSA key size (1024-bit)"
+              }
+            }
+          ],
+          "version": "0.1.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

@@ -1,0 +1,61 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "RSA-1024:samples/rsa_small.py:12#0",
+      "cryptoProperties": {
+        "assetType": "algorithm"
+      },
+      "description": "Weak RSA key size (1024-bit)",
+      "evidence": {
+        "occurrences": [
+          {
+            "additionalContext": "rsa.generate_private_key(key_size=1024)",
+            "location": "samples/rsa_small.py:12"
+          }
+        ]
+      },
+      "name": "RSA-1024",
+      "type": "cryptographic-asset"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "scan-minimal-001",
+      "name": "samples/rsa_small.py",
+      "type": "application",
+      "version": "scan-minimal-001"
+    },
+    "description": "Minimal/mock CBOM representation derived from ECDAT canonical v1 findings; pending richer CIR from Person 1.",
+    "timestamp": "2026-09-10T10:00:02Z",
+    "tools": [
+      {
+        "name": "ecdat",
+        "version": "0.1.0"
+      }
+    ]
+  },
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": [
+    {
+      "affects": [
+        {
+          "ref": "RSA-1024:samples/rsa_small.py:12#0"
+        }
+      ],
+      "bom-ref": "RSA-1024:samples/rsa_small.py:12#0",
+      "description": "Weak RSA key size (1024-bit)",
+      "id": "RSA-1024",
+      "ratings": [
+        {
+          "method": "other",
+          "severity": "high"
+        }
+      ],
+      "source": {
+        "name": "ecdat"
+      }
+    }
+  ]
+}

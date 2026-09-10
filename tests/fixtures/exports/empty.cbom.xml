@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1" serialNumber="urn:ecdat:scan-empty-001">
+  <metadata>
+    <description>Minimal/mock CBOM representation derived from ECDAT canonical v1 findings; pending richer CIR from Person 1.</description>
+    <timestamp>2026-09-10T12:00:01Z</timestamp>
+    <tools>
+      <tool>
+        <name>ecdat</name>
+        <version>0.1.0</version>
+      </tool>
+    </tools>
+    <component bom-ref="scan-empty-001" type="application">
+      <name>samples/clean.py</name>
+      <version>scan-empty-001</version>
+    </component>
+  </metadata>
+  <components />
+  <vulnerabilities />
+</bom>
