@@ -155,6 +155,14 @@ Staged for UI purposes only &mdash; the mock scan itself is instantaneous.</div>
 <div id="detail"><p class="note">Select a finding row in the inventory to see its evidence, confidence, and provenance.</p></div>
 </div>
 
+<div class="card">
+<h2>7. Crypto asset inventory + finding grouping</h2>
+<div class="note">Flat asset inventory &mdash; relationships not available yet.
+Co-occurrence grouping &mdash; not a dependency graph.</div>
+<div id="assets"><p class="note">No completed scan yet.</p></div>
+<div class="preview" id="graphState">Dependency edges: awaiting Person 1 edge data.</div>
+</div>
+
 <script>
 "use strict";
 function $(id){return document.getElementById(id);}
@@ -208,6 +216,7 @@ async function poll(jobId){
       filterRule = null;
       loadInventory(j.scan_id);
       loadRisk(j.scan_id);
+      loadAssets(j.scan_id);
     }else if(j.status === "failed"){
       if(timer){ clearInterval(timer); timer = null; }
       showError(j.error || "scan failed");
@@ -396,6 +405,76 @@ async function loadFinding(scanId, idx){
     host.scrollIntoView();
   }catch(e){ showError(String(e.message || e)); }
 }
+async function loadAssets(scanId){
+  try{
+    const a = await api("/api/assets?scan_id=" + encodeURIComponent(scanId));
+    const host = $("assets");
+    while(host.firstChild){ host.removeChild(host.firstChild); }
+    const lab = document.createElement("p");
+    lab.className = "note";
+    lab.textContent = a.asset_label + " Assets: " + a.asset_count + ".";
+    host.appendChild(lab);
+    if(a.assets.length){
+      const table = document.createElement("table");
+      const head = document.createElement("tr");
+      ["Asset (bom-ref)","Name","Type","Evidence location"].forEach(function(h){
+        const th = document.createElement("th");
+        th.textContent = h;
+        head.appendChild(th);
+      });
+      table.appendChild(head);
+      a.assets.forEach(function(c){
+        const tr = document.createElement("tr");
+        const ref = document.createElement("td");
+        ref.textContent = String(c["bom-ref"]);
+        tr.appendChild(ref);
+        const nm = document.createElement("td");
+        nm.textContent = String(c.name) + " (" + String(c.cryptoProperties.assetType) + ")";
+        tr.appendChild(nm);
+        const ty = document.createElement("td");
+        ty.textContent = String(c.type);
+        tr.appendChild(ty);
+        const loc = document.createElement("td");
+        loc.textContent = String(c.evidence.occurrences[0].location);
+        tr.appendChild(loc);
+        table.appendChild(tr);
+      });
+      host.appendChild(table);
+    }else{
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = "No crypto assets in this scan.";
+      host.appendChild(p);
+    }
+    const glab = document.createElement("p");
+    glab.className = "note";
+    glab.textContent = a.groupings.label;
+    host.appendChild(glab);
+    a.groupings.by_file.forEach(function(g){
+      const h = document.createElement("h4");
+      h.textContent = g.file + " x" + g.count;
+      host.appendChild(h);
+      const ul = document.createElement("ul");
+      g.findings.forEach(function(f){
+        const li = document.createElement("li");
+        li.textContent = "[" + f.severity + "] " + f.rule_id + " line " + f.line + ": " + f.title;
+        ul.appendChild(li);
+      });
+      host.appendChild(ul);
+    });
+    const rl = document.createElement("h4");
+    rl.textContent = "Rules across files";
+    host.appendChild(rl);
+    const rul = document.createElement("ul");
+    a.groupings.by_rule.forEach(function(r){
+      const li = document.createElement("li");
+      li.textContent = r.rule_id + " [" + r.severity + "] x" + r.count + ": " + r.files.join(", ");
+      rul.appendChild(li);
+    });
+    host.appendChild(rul);
+    $("graphState").textContent = a.graph.message + " " + a.graph.detail;
+  }catch(e){ showError(String(e.message || e)); }
+}
 $("clearFilters").addEventListener("click", function(){
   filterSev = null;
   filterRule = null;
@@ -496,6 +575,12 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(404, {"error": "finding not found"})
             else:
                 self._json(200, detail)
+        elif parsed.path == "/api/assets":
+            assets = self.service.assets(query.get("scan_id", [""])[0])
+            if assets is None:
+                self._json(404, {"error": "scan not found"})
+            else:
+                self._json(200, assets)
         else:
             self._json(404, {"error": "not found"})
 

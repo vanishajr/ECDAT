@@ -491,3 +491,131 @@ def test_index_page_has_risk_and_detail_cards():
                     "clearFilters", "mock/placeholder"):
         assert section in out
     assert "innerHTML" not in out
+
+
+# --- Task 11: crypto asset inventory + finding grouping ------------------------------
+
+
+def _assets(tmp_path, target="samples/rsa_small.py"):
+    svc = _svc(tmp_path)
+    done = _complete(svc, target)
+    payload = svc.assets(done["scan_id"])
+    assert payload is not None
+    return svc, payload
+
+
+def _all_keys(obj, acc):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            acc.add(k)
+            _all_keys(v, acc)
+    elif isinstance(obj, list):
+        for v in obj:
+            _all_keys(v, acc)
+    return acc
+
+
+def test_assets_minimal_values(tmp_path):
+    _, payload = _assets(tmp_path)
+    assert payload["asset_count"] == 1
+    assert payload["mock"] is True
+    assert "relationships not available" in payload["asset_label"]
+    (asset,) = payload["assets"]
+    assert asset["bom-ref"] == "RSA-1024:samples/rsa_small.py:12#0"
+    assert asset["name"] == "RSA-1024"
+    assert asset["type"] == "cryptographic-asset"
+    assert asset["cryptoProperties"] == {"assetType": "algorithm"}
+    (occ,) = asset["evidence"]["occurrences"]
+    assert occ["location"] == "samples/rsa_small.py:12"
+    assert "rsa.generate_private_key" in occ["additionalContext"]
+
+
+def test_assets_count_matches_findings(tmp_path):
+    target_dir = tmp_path / "multi_assets"
+    target_dir.mkdir()
+    _, payload = _assets(tmp_path, str(target_dir))
+    assert payload["asset_count"] == 4
+    assert len(payload["assets"]) == 4
+
+
+def test_assets_empty_scan(tmp_path):
+    svc = _svc(tmp_path)
+    done = _complete(svc, "empty_demo.py")
+    payload = svc.assets(done["scan_id"])
+    assert payload is not None
+    assert payload["asset_count"] == 0 and payload["assets"] == []
+    assert payload["groupings"]["by_file"] == []
+    assert payload["groupings"]["by_rule"] == []
+
+
+def test_grouping_file_to_findings(tmp_path):
+    target_dir = tmp_path / "multi_group"
+    target_dir.mkdir()
+    _, payload = _assets(tmp_path, str(target_dir))
+    by_file = payload["groupings"]["by_file"]
+    assert [(g["file"], g["count"]) for g in by_file] == [
+        ("samples/app/auth.py", 2),
+        ("samples/app/crypto.py", 1),
+        ("samples/app/server.py", 1),
+    ]
+    assert "not a dependency graph" in payload["groupings"]["label"]
+    auth = by_file[0]["findings"]
+    assert [(f["index"], f["rule_id"]) for f in auth] == [
+        (0, "RSA-1024"), (1, "MD5-USAGE")]
+
+
+def test_grouping_rule_to_files(tmp_path):
+    target_dir = tmp_path / "multi_rules"
+    target_dir.mkdir()
+    _, payload = _assets(tmp_path, str(target_dir))
+    by_rule = {r["rule_id"]: r for r in payload["groupings"]["by_rule"]}
+    assert by_rule["AES-ECB"]["files"] == ["samples/app/crypto.py"]
+    assert by_rule["RSA-1024"]["files"] == ["samples/app/auth.py"]
+    assert by_rule["MD5-USAGE"]["count"] == 1
+
+
+def test_assets_fabricates_no_graph_keys(tmp_path):
+    _, payload = _assets(tmp_path)
+    keys = _all_keys(payload, set())
+    assert "edges" not in keys
+    assert "dependencies" not in keys
+    assert "nodes" not in keys
+    assert "relationships" not in keys
+    assert payload["graph"]["available"] is False
+    assert payload["graph"]["message"] == \
+        "Dependency edges: awaiting Person 1 edge data."
+    assert "canonical v1" in payload["graph"]["detail"]
+
+
+def test_assets_unknown_scan_is_none(tmp_path):
+    assert _svc(tmp_path).assets("bogus-id") is None
+
+
+def test_http_assets_endpoint(tmp_path):
+    with _Live(tmp_path) as live:
+        _, job = _post(live.base, "/api/scans", {"target": "x.py"})
+        scan_id = None
+        for _ in range(5):
+            code, raw = _get(live.base, "/api/jobs?id=" + job["job_id"])
+            snap = json.loads(raw)
+            if snap["status"] == "completed":
+                scan_id = snap["scan_id"]
+                break
+        assert scan_id is not None
+        code, raw = _get(live.base, "/api/assets?scan_id=" + scan_id)
+        assert code == 200
+        payload = json.loads(raw)
+        assert payload["asset_count"] == 1
+        assert payload["graph"]["available"] is False
+        assert _all_keys(payload, set()).isdisjoint({"edges", "dependencies", "nodes"})
+        code, _ = _get(live.base, "/api/assets?scan_id=nope")
+        assert code == 404
+
+
+def test_index_page_has_asset_card_and_empty_graph_state():
+    out = index_page()
+    for section in ("Crypto asset inventory", "loadAssets", "/api/assets",
+                    "Dependency edges: awaiting Person 1 edge data.",
+                    "not a dependency graph"):
+        assert section in out
+    assert "innerHTML" not in out

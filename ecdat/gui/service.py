@@ -19,12 +19,14 @@ present this as real scanner progress.
 from __future__ import annotations
 
 import itertools
+import json
 import sqlite3
 import threading
 from pathlib import Path
 
 from ecdat.core.client import CoreClient, get_client
 from ecdat.core.validate import validate
+from ecdat.exports import cbom as cbom_mod
 from ecdat.reports.aggregate import build_report
 from ecdat.store import db
 from ecdat.store import findings as fstore
@@ -88,6 +90,13 @@ SCAN_PROVENANCE_LABEL = (
     "records only scan-level started_at/finished_at. A per-finding "
     "evidence timeline needs Person 1 fields and is not drawn."
 )
+
+ASSET_LABEL = "Flat asset inventory — relationships not available yet."
+
+GROUPING_LABEL = "Co-occurrence grouping — not a dependency graph."
+
+GRAPH_EMPTY_MESSAGE = "Dependency edges: awaiting Person 1 edge data."
+GRAPH_EMPTY_DETAIL = "No dependency relationships are available in canonical v1."
 
 
 class GuiService:
@@ -347,4 +356,72 @@ class GuiService:
             "model": RISK_MODEL_NOTE,
             "mock": True,
             "source": "build_report over get_scan_doc (Task 6 mock scoring)",
+        }
+
+    # -- asset inventory + finding groupings ------------------------------------------
+    #
+    # Honest Task 11 scope: canonical v1 contains no nodes, edges,
+    # relationships, operations, assets, or dependency data, so no
+    # dependency graph is drawn. This method only re-presents existing
+    # derivations: the flat CBOM component list (one entry per finding)
+    # and co-occurrence groupings of findings by file/rule. Groupings
+    # must never be called dependencies and no edges are inferred.
+
+    def assets(self, scan_id: str) -> dict | None:
+        """Flat asset inventory + groupings. None if unknown.
+
+        Assets reuse the single CBOM component derivation
+        (cbom.to_cbom_json) — no second crypto-asset model. Groupings
+        reuse build_report() counts enriched with file lists.
+        """
+        doc = self._load_doc(scan_id)
+        if doc is None:
+            return None
+        # Single-model reuse: parse the CBOM renderer's own output so the
+        # GUI can never drift into a second asset derivation.
+        bom = json.loads(cbom_mod.to_cbom_json(doc))
+        canonical = self._project_findings(doc)
+        file_map: dict[str, list[dict]] = {}
+        for i, f in enumerate(canonical):
+            file_map.setdefault(str(f["file"]), []).append(
+                {
+                    "index": i,
+                    "rule_id": str(f["rule_id"]),
+                    "severity": str(f["severity"]),
+                    "title": str(f["title"]),
+                    "line": f["line"],
+                }
+            )
+        by_file = [
+            {"file": name, "count": len(rows), "findings": rows}
+            for name, rows in sorted(
+                file_map.items(), key=lambda kv: (-len(kv[1]), kv[0])
+            )
+        ]
+        rep = build_report(doc)
+        files_for_rule: dict[str, set[str]] = {}
+        for f in canonical:
+            files_for_rule.setdefault(str(f["rule_id"]), set()).add(str(f["file"]))
+        by_rule = [
+            {**row, "files": sorted(files_for_rule[row["rule_id"]])}
+            for row in rep["by_rule"]
+        ]
+        return {
+            "scan_id": doc["scan_id"],
+            "target": doc["target"],
+            "asset_count": len(bom["components"]),
+            "assets": bom["components"],
+            "asset_label": ASSET_LABEL,
+            "groupings": {
+                "by_file": by_file,
+                "by_rule": by_rule,
+                "label": GROUPING_LABEL,
+            },
+            "graph": {
+                "available": False,
+                "message": GRAPH_EMPTY_MESSAGE,
+                "detail": GRAPH_EMPTY_DETAIL,
+            },
+            "mock": True,
+            "source": "CBOM derivation + build_report over get_scan_doc",
         }
