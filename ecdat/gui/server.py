@@ -88,6 +88,16 @@ code{font-size:.85em;background:#f4f4f4;padding:.1em .3em;border-radius:.3em}
 #error{color:#7a1f26;font-weight:600}
 .chips{display:flex;gap:.5em;flex-wrap:wrap;margin:.4em 0}
 .chip{background:#eef2f9;border:1px solid #c4d2e8;border-radius:999px;padding:.15em .7em;font-size:.85em}
+.tiles{display:flex;gap:.5em;flex-wrap:wrap;margin:.5em 0}
+.tile{border:1px solid #bbb;background:#fff;border-radius:.5em;padding:.4em .8em;cursor:pointer;font-size:.9em;color:#1a1a1a}
+.tile b{display:block;font-size:1.2em}
+.tile.active{outline:2px solid #2456a6;background:#eef2f9}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:#f0f5ff}
+.kv{display:grid;grid-template-columns:11em 1fr;gap:.2em .8em;font-size:.9em;margin:.4em 0}
+.kv dt{font-weight:600;color:#444}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.avail{font-size:.85em;color:#555}
 </style>
 </head>
 <body>
@@ -123,9 +133,26 @@ Staged for UI purposes only &mdash; the mock scan itself is instantaneous.</div>
 
 <div class="card">
 <h2>4. Crypto inventory / results</h2>
+<div class="note">Click a finding row to open its detail below. Click risk tiles or rule buttons to drill down.</div>
 <div class="chips" id="chips"></div>
+<div class="row" id="filterRow" style="display:none">
+<button id="clearFilters" class="secondary" type="button">Clear filters</button>
+</div>
 <div id="inventory"><p class="note">No completed scan yet.</p></div>
 <div id="error" role="alert"></div>
+</div>
+
+<div class="card">
+<h2>5. Risk dashboard (mock/placeholder)</h2>
+<div class="note">Mock scoring — see model note below. Click a severity tile or rule to drill down to findings.</div>
+<div class="tiles" id="riskTiles"></div>
+<div class="preview" id="risk">No completed scan yet.</div>
+<div id="riskRules"></div>
+</div>
+
+<div class="card">
+<h2>6. Finding detail</h2>
+<div id="detail"><p class="note">Select a finding row in the inventory to see its evidence, confidence, and provenance.</p></div>
 </div>
 
 <script>
@@ -151,6 +178,9 @@ $("previewBtn").addEventListener("click", async function(){
   }catch(e){ showError(String(e.message || e)); }
 });
 let timer = null;
+let currentScanId = null;
+let filterSev = null;
+let filterRule = null;
 $("scanBtn").addEventListener("click", async function(){
   showError("");
   const t = $("target").value.trim();
@@ -173,7 +203,11 @@ async function poll(jobId){
       (j.scan_id ? "\nscan_id: " + j.scan_id : "") + (j.error ? "\nerror: " + j.error : "");
     if(j.status === "completed"){
       if(timer){ clearInterval(timer); timer = null; }
+      currentScanId = j.scan_id;
+      filterSev = null;
+      filterRule = null;
       loadInventory(j.scan_id);
+      loadRisk(j.scan_id);
     }else if(j.status === "failed"){
       if(timer){ clearInterval(timer); timer = null; }
       showError(j.error || "scan failed");
@@ -181,11 +215,18 @@ async function poll(jobId){
   }catch(e){ if(timer){ clearInterval(timer); timer = null; } showError(String(e.message || e)); }
 }
 async function loadInventory(scanId){
-  const inv = await api("/api/inventory?scan_id=" + encodeURIComponent(scanId));
+  let path = "/api/inventory?scan_id=" + encodeURIComponent(scanId);
+  if(filterSev){ path += "&severity=" + encodeURIComponent(filterSev); }
+  if(filterRule){ path += "&rule=" + encodeURIComponent(filterRule); }
+  const inv = await api(path);
   const chips = $("chips");
   while(chips.firstChild){ chips.removeChild(chips.firstChild); }
+  let countLabel = String(inv.finding_count);
+  if(inv.filters && (inv.filters.severity || inv.filters.rule)){
+    countLabel += " of " + inv.total_findings + " (filtered)";
+  }
   [["scan", inv.scan_id], ["target", inv.target],
-   ["findings", String(inv.finding_count)],
+   ["findings", countLabel],
    ["files scanned", String(inv.files_scanned)]].forEach(function(pair){
     const s = document.createElement("span");
     s.className = "chip";
@@ -198,6 +239,8 @@ async function loadInventory(scanId){
     s.textContent = sev + ": " + inv.severity_counts[sev];
     chips.appendChild(s);
   });
+  $("filterRow").style.display =
+    (inv.filters && (inv.filters.severity || inv.filters.rule)) ? "flex" : "none";
   const host = $("inventory");
   while(host.firstChild){ host.removeChild(host.firstChild); }
   if(!inv.findings.length){
@@ -217,6 +260,8 @@ async function loadInventory(scanId){
   table.appendChild(head);
   inv.findings.forEach(function(f){
     const tr = document.createElement("tr");
+    tr.className = "clickable";
+    tr.addEventListener("click", function(){ loadFinding(currentScanId, f.index); });
     const sev = document.createElement("td");
     const badge = document.createElement("span");
     badge.className = "sev sev-" + String(f.severity);
@@ -251,6 +296,111 @@ async function loadInventory(scanId){
   });
   host.appendChild(table);
 }
+async function loadRisk(scanId){
+  const r = await api("/api/risk?scan_id=" + encodeURIComponent(scanId));
+  const tiles = $("riskTiles");
+  while(tiles.firstChild){ tiles.removeChild(tiles.firstChild); }
+  Object.keys(r.severity_counts).forEach(function(sev){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile" + ((filterSev === sev) ? " active" : "");
+    const n = document.createElement("b");
+    n.textContent = String(r.severity_counts[sev]);
+    const l = document.createElement("span");
+    l.textContent = sev;
+    b.appendChild(n);
+    b.appendChild(l);
+    b.addEventListener("click", function(){
+      filterSev = (filterSev === sev) ? null : sev;
+      loadInventory(scanId);
+      loadRisk(scanId);
+      document.getElementById("inventory").scrollIntoView();
+    });
+    tiles.appendChild(b);
+  });
+  $("risk").textContent =
+    "score: " + r.score + " / level: " + r.level + " (mock/placeholder)\n" +
+    "findings: " + r.finding_count + "\nbreakdown: " +
+    Object.keys(r.breakdown).sort().map(function(k){return k + "=" + r.breakdown[k];}).join(" ") +
+    "\nmodel: " + r.model;
+  const rules = $("riskRules");
+  while(rules.firstChild){ rules.removeChild(rules.firstChild); }
+  if(!r.by_rule.length){ return; }
+  const note = document.createElement("p");
+  note.className = "note";
+  note.textContent = "Rules (click to drill down):";
+  rules.appendChild(note);
+  const wrap = document.createElement("div");
+  wrap.className = "chips";
+  r.by_rule.forEach(function(row){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile" + ((filterRule === row.rule_id) ? " active" : "");
+    b.textContent = row.rule_id + " [" + row.severity + "] x" + row.count;
+    b.addEventListener("click", function(){
+      filterRule = (filterRule === row.rule_id) ? null : row.rule_id;
+      loadInventory(scanId);
+      loadRisk(scanId);
+      document.getElementById("inventory").scrollIntoView();
+    });
+    wrap.appendChild(b);
+  });
+  rules.appendChild(wrap);
+}
+async function loadFinding(scanId, idx){
+  showError("");
+  try{
+    const d = await api("/api/finding?scan_id=" + encodeURIComponent(scanId) +
+      "&index=" + encodeURIComponent(String(idx)));
+    const host = $("detail");
+    while(host.firstChild){ host.removeChild(host.firstChild); }
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = d.provenance.status;
+    host.appendChild(badge);
+    const title = document.createElement("h3");
+    title.textContent = d.finding.rule_id + ": " + d.finding.title;
+    host.appendChild(title);
+    const dl = document.createElement("dl");
+    dl.className = "kv";
+    [["Severity", String(d.finding.severity)],
+     ["File", String(d.finding.file)],
+     ["Line", String(d.finding.line)],
+     ["Confidence", (d.finding.confidence === undefined || d.finding.confidence === null)
+       ? "not provided (v1 optional)" : String(d.finding.confidence)],
+     ["Snippet", (d.finding.snippet === undefined || d.finding.snippet === null)
+       ? "not provided (v1 optional)" : String(d.finding.snippet)],
+     ["Metadata", d.metadata_keys.length ? d.metadata_keys.join(", ") : "none in v1 doc"],
+     ["Evidence available",
+       Object.keys(d.evidence_available).map(function(k){return k + ": " + (d.evidence_available[k] ? "yes" : "no");}).join("; ")],
+     ["Missing evidence", d.missing_evidence.length ? d.missing_evidence.join(", ") : "none"],
+     ["Redaction", "applied: no. " + d.redaction.reason + " " + d.redaction.capability]
+    ].forEach(function(pair){
+      const dt = document.createElement("dt");
+      dt.textContent = pair[0];
+      const dd = document.createElement("dd");
+      dd.textContent = pair[1];
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    });
+    host.appendChild(dl);
+    const prov = document.createElement("p");
+    prov.className = "note";
+    prov.textContent = "Provenance: " + d.provenance.note;
+    host.appendChild(prov);
+    const strip = document.createElement("p");
+    strip.className = "note";
+    strip.textContent = d.scan_provenance.started_at + " -> " +
+      d.scan_provenance.finished_at + ". " + d.scan_provenance.label;
+    host.appendChild(strip);
+    host.scrollIntoView();
+  }catch(e){ showError(String(e.message || e)); }
+}
+$("clearFilters").addEventListener("click", function(){
+  filterSev = null;
+  filterRule = null;
+  if(currentScanId){ loadInventory(currentScanId); loadRisk(currentScanId); }
+});
 </script>
 </body>
 </html>
@@ -320,11 +470,32 @@ class _Handler(BaseHTTPRequestHandler):
             else:
                 self._json(200, snap)
         elif parsed.path == "/api/inventory":
-            inv = self.service.inventory(query.get("scan_id", [""])[0])
+            inv = self.service.inventory(
+                query.get("scan_id", [""])[0],
+                severity=query.get("severity", [None])[0] or None,
+                rule=query.get("rule", [None])[0] or None,
+            )
             if inv is None:
                 self._json(404, {"error": "scan not found"})
             else:
                 self._json(200, inv)
+        elif parsed.path == "/api/risk":
+            risk = self.service.risk_summary(query.get("scan_id", [""])[0])
+            if risk is None:
+                self._json(404, {"error": "scan not found"})
+            else:
+                self._json(200, risk)
+        elif parsed.path == "/api/finding":
+            try:
+                index = int(query.get("index", [""])[0])
+            except (ValueError, TypeError):
+                self._json(400, {"error": "index must be an integer"})
+                return
+            detail = self.service.finding_detail(query.get("scan_id", [""])[0], index)
+            if detail is None:
+                self._json(404, {"error": "finding not found"})
+            else:
+                self._json(200, detail)
         else:
             self._json(404, {"error": "not found"})
 

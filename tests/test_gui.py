@@ -1,9 +1,10 @@
-"""Tests for Task 9 localhost GUI (mock-first, stdlib only).
+"""Tests for Task 9 localhost GUI + Task 10 detail/risk (mock-first, stdlib only).
 
-Covers GuiService (submit/poll/complete/store/inventory), the HTTP
-layer on an ephemeral localhost port, HTML escaping, CLI parser +
-gui command behavior, and regression of existing commands. No
-browser, Node, or network beyond 127.0.0.1.
+Covers GuiService (submit/poll/complete/store/inventory), finding
+detail, risk dashboard, drill-down filters, the HTTP layer on an
+ephemeral localhost port, HTML escaping, CLI parser + gui command
+behavior, and regression of existing commands. No browser, Node, or
+network beyond 127.0.0.1.
 """
 
 from __future__ import annotations
@@ -317,3 +318,176 @@ def test_existing_commands_still_dispatch():
     assert parser.parse_args(["report", "x"]).func.__module__ == "ecdat.commands.report_cmd"
     assert parser.parse_args(["export", "x"]).func.__module__ == "ecdat.commands.export_cmd"
     assert parser.parse_args(["gui", "--port", "0"]).port == 0
+
+
+# --- Task 10: risk dashboard ----------------------------------------------------
+
+
+def _risk(tmp_path, target="samples/rsa_small.py"):
+    svc = _svc(tmp_path)
+    done = _complete(svc, target)
+    risk = svc.risk_summary(done["scan_id"])
+    assert risk is not None
+    return svc, risk
+
+
+def test_risk_summary_minimal_matches_task6(tmp_path):
+    _, risk = _risk(tmp_path)
+    assert risk["score"] == 5 and risk["level"] == "medium"
+    assert risk["breakdown"] == {"high": 1}
+    assert risk["finding_count"] == 1
+    assert risk["mock"] is True
+    assert "mock" in risk["model"].lower() and "placeholder" in risk["model"].lower()
+
+
+def test_risk_summary_zero_fills_all_severities(tmp_path):
+    _, risk = _risk(tmp_path)
+    assert risk["severity_counts"] == {
+        "critical": 0, "high": 1, "medium": 0, "low": 0, "info": 0,
+    }
+    _, multi = _risk(tmp_path, "multi_proj_x")
+    assert multi["score"] == 19 and multi["level"] == "high"
+    assert multi["severity_counts"] == {
+        "critical": 1, "high": 1, "medium": 1, "low": 1, "info": 0,
+    }
+
+
+def test_risk_summary_empty_scan(tmp_path):
+    svc = _svc(tmp_path)
+    done = _complete(svc, "empty_demo.py")
+    risk = svc.risk_summary(done["scan_id"])
+    assert risk is not None
+    assert risk["score"] == 0 and risk["level"] == "none"
+    assert risk["by_rule"] == []
+
+
+def test_risk_summary_unknown_scan_is_none(tmp_path):
+    assert _svc(tmp_path).risk_summary("bogus-id") is None
+
+
+# --- Task 10: finding detail ------------------------------------------------------
+
+
+def test_finding_detail_minimal_fields(tmp_path):
+    svc = _svc(tmp_path)
+    done = _complete(svc, "samples/rsa_small.py")
+    det = svc.finding_detail(done["scan_id"], 0)
+    assert det is not None
+    assert det["index"] == 0 and det["finding_count"] == 1
+    f = det["finding"]
+    assert (f["rule_id"], f["severity"], f["file"], f["line"]) == (
+        "RSA-1024", "high", "samples/rsa_small.py", 12)
+    assert f["confidence"] == 0.95
+    assert "rsa.generate_private_key" in f["snippet"]
+    assert det["evidence_available"] == {
+        "snippet": True, "confidence": True, "metadata": False}
+    assert det["missing_evidence"] == ["metadata"]
+    assert det["redaction"]["applied"] is False
+    assert "Person 1" in det["redaction"]["capability"]
+    assert det["provenance"]["status"] == "ProvidedOnly (mock)"
+    assert det["scan_provenance"]["started_at"] < det["scan_provenance"]["finished_at"]
+    assert "timeline" in det["scan_provenance"]["label"].lower()
+
+
+def test_finding_detail_reports_metadata_when_present(tmp_path):
+    svc = _svc(tmp_path)
+    target_dir = tmp_path / "multi_meta"
+    target_dir.mkdir()
+    done = _complete(svc, str(target_dir))
+    det = svc.finding_detail(done["scan_id"], 1)
+    assert det is not None
+    assert det["finding"]["rule_id"] == "MD5-USAGE"
+    assert det["evidence_available"]["metadata"] is True
+    assert det["metadata_keys"] == ["cwe"]
+    assert det["missing_evidence"] == []
+
+
+def test_finding_detail_invents_no_cir_fields(tmp_path):
+    svc = _svc(tmp_path)
+    done = _complete(svc, "samples/rsa_small.py")
+    det = svc.finding_detail(done["scan_id"], 0)
+    assert det is not None
+    allowed = {"rule_id", "title", "severity", "file", "line",
+               "snippet", "confidence", "metadata"}
+    assert set(det["finding"].keys()) <= allowed
+
+
+def test_finding_detail_bad_index_and_scan(tmp_path):
+    svc = _svc(tmp_path)
+    done = _complete(svc, "samples/rsa_small.py")
+    assert svc.finding_detail(done["scan_id"], 1) is None
+    assert svc.finding_detail(done["scan_id"], -1) is None
+    assert svc.finding_detail("bogus-id", 0) is None
+
+
+# --- Task 10: drill-down filters -----------------------------------------------------
+
+
+def test_inventory_severity_filter(tmp_path):
+    svc = _svc(tmp_path)
+    target_dir = tmp_path / "multi_filt"
+    target_dir.mkdir()
+    done = _complete(svc, str(target_dir))
+    high = svc.inventory(done["scan_id"], severity="high")
+    assert high is not None and high["finding_count"] == 1
+    assert high["total_findings"] == 4
+    assert high["filters"] == {"severity": "high", "rule": None}
+    assert [f["index"] for f in high["findings"]] == [0]
+    info = svc.inventory(done["scan_id"], severity="info")
+    assert info is not None and info["finding_count"] == 0
+
+
+def test_inventory_rule_filter(tmp_path):
+    svc = _svc(tmp_path)
+    target_dir = tmp_path / "multi_rule"
+    target_dir.mkdir()
+    done = _complete(svc, str(target_dir))
+    aes = svc.inventory(done["scan_id"], rule="AES-ECB")
+    assert aes is not None and aes["finding_count"] == 1
+    assert aes["findings"][0]["severity"] == "critical"
+    assert aes["findings"][0]["index"] == 2
+
+
+# --- Task 10: HTTP endpoints --------------------------------------------------------------
+
+
+def test_http_risk_and_finding_endpoints(tmp_path):
+    with _Live(tmp_path) as live:
+        _, job = _post(live.base, "/api/scans", {"target": "x.py"})
+        scan_id = None
+        for _ in range(5):
+            code, raw = _get(live.base, "/api/jobs?id=" + job["job_id"])
+            snap = json.loads(raw)
+            if snap["status"] == "completed":
+                scan_id = snap["scan_id"]
+                break
+        assert scan_id is not None
+        code, raw = _get(live.base, "/api/risk?scan_id=" + scan_id)
+        assert code == 200
+        risk = json.loads(raw)
+        assert risk["mock"] is True and "mock" in risk["model"].lower()
+        assert set(risk["severity_counts"]) == {
+            "critical", "high", "medium", "low", "info"}
+        code, raw = _get(live.base, "/api/finding?scan_id=" + scan_id + "&index=0")
+        assert code == 200
+        det = json.loads(raw)
+        assert det["provenance"]["status"] == "ProvidedOnly (mock)"
+        assert det["redaction"]["applied"] is False
+        code, _ = _get(live.base, "/api/risk?scan_id=nope")
+        assert code == 404
+        code, _ = _get(live.base, "/api/finding?scan_id=" + scan_id + "&index=99")
+        assert code == 404
+        code, _ = _get(live.base, "/api/finding?scan_id=" + scan_id + "&index=bogus")
+        assert code == 400
+        code, raw = _get(
+            live.base, "/api/inventory?scan_id=" + scan_id + "&severity=high")
+        assert code == 200
+        assert json.loads(raw)["filters"] == {"severity": "high", "rule": None}
+
+
+def test_index_page_has_risk_and_detail_cards():
+    out = index_page()
+    for section in ("Risk dashboard", "Finding detail", "riskTiles", "detail",
+                    "clearFilters", "mock/placeholder"):
+        assert section in out
+    assert "innerHTML" not in out
