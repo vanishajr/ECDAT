@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "scan_id": "scan-container-001",
+  "target": "samples/nginx:1.25",
+  "started_at": "2026-09-10T14:00:00Z",
+  "finished_at": "2026-09-10T14:00:04Z",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  },
+  "findings": [
+    {
+      "rule_id": "TLS-1.0",
+      "title": "Deprecated TLS version allowed in image layer (mock)",
+      "severity": "low",
+      "file": "image/layer:server.py",
+      "line": 7,
+      "snippet": "PROTOCOL_TLSv1",
+      "confidence": 0.8
+    },
+    {
+      "rule_id": "MD5-USAGE",
+      "title": "Weak hash MD5 in image layer (mock)",
+      "severity": "medium",
+      "file": "image/layer:auth.py",
+      "line": 88,
+      "snippet": "hashlib.md5(password.encode())",
+      "confidence": 0.9
+    }
+  ],
+  "stats": {
+    "files_scanned": 2,
+    "findings_count": 2
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "scan_id": "scan-binary-001",
+  "target": "samples/app.bin",
+  "started_at": "2026-09-10T13:00:00Z",
+  "finished_at": "2026-09-10T13:00:03Z",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  },
+  "findings": [
+    {
+      "rule_id": "RSA-1024",
+      "title": "Weak RSA key size (1024-bit) in binary strings (mock)",
+      "severity": "high",
+      "file": "samples/app.bin",
+      "line": 0,
+      "snippet": "strings: rsa.generate_private_key(key_size=1024)",
+      "confidence": 0.9
+    },
+    {
+      "rule_id": "MD5-USAGE",
+      "title": "Weak hash MD5 referenced in binary (mock)",
+      "severity": "medium",
+      "file": "samples/app.bin",
+      "line": 0,
+      "snippet": "strings: hashlib.md5(",
+      "confidence": 0.85
+    }
+  ],
+  "stats": {
+    "files_scanned": 1,
+    "findings_count": 2
+  }
+}

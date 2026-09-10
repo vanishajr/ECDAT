@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "scan_id": "scan-cloud-aws-001",
+  "target": "aws:default:services=kms,acm,elb",
+  "started_at": "2026-09-10T15:00:00Z",
+  "finished_at": "2026-09-10T15:00:06Z",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  },
+  "findings": [
+    {
+      "rule_id": "KMS-NO-ROTATION",
+      "title": "KMS key rotation disabled (mock)",
+      "severity": "medium",
+      "file": "aws:kms:key/1234",
+      "line": 0,
+      "snippet": "EnableRotation: false",
+      "confidence": 0.9
+    },
+    {
+      "rule_id": "ACM-EXPIRY",
+      "title": "ACM certificate near expiry (mock)",
+      "severity": "high",
+      "file": "aws:acm:cert/abc",
+      "line": 0,
+      "snippet": "NotAfter: 2026-10-01",
+      "confidence": 0.88
+    },
+    {
+      "rule_id": "ELB-TLS-OLD",
+      "title": "ELB listener allows old TLS policy (mock)",
+      "severity": "low",
+      "file": "aws:elb:lb/app",
+      "line": 0,
+      "snippet": "SslPolicy: ELBSecurityPolicy-2016-08",
+      "confidence": 0.8
+    }
+  ],
+  "stats": {
+    "files_scanned": 3,
+    "findings_count": 3
+  }
+}
