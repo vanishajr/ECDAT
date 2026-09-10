@@ -14,7 +14,7 @@ import argparse
 from pathlib import Path
 
 from ecdat.commands import export_cmd, list_cmd, recommend_cmd, report_cmd
-from ecdat.commands import risk_cmd, scan_binary_cmd, scan_cloud_cmd, scan_cmd
+from ecdat.commands import gui_cmd, risk_cmd, scan_binary_cmd, scan_cloud_cmd, scan_cmd
 from ecdat.commands import scan_container_cmd, show_cmd
 
 DEFAULT_DB = str(Path.home() / ".ecdat" / "ecdat.db")
@@ -101,6 +101,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_rep.add_argument("--output", default=None, help="write report to this file (default: stdout; required for pdf)")
     p_rep.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_rep.set_defaults(func=report_cmd.run)
+
+    p_gui = sub.add_parser("gui", help="launch local mock GUI dashboard (127.0.0.1 only)")
+    p_gui.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
+    p_gui.add_argument("--host", default="127.0.0.1", help="loopback host to bind (default: 127.0.0.1)")
+    p_gui.add_argument("--port", type=int, default=8734, help="port to bind (0 = OS selects)")
+    p_gui.set_defaults(func=gui_cmd.run)
 
     return parser
 
