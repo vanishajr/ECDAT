@@ -13,8 +13,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ecdat.commands import list_cmd, scan_binary_cmd, scan_cloud_cmd
-from ecdat.commands import scan_cmd, scan_container_cmd, show_cmd
+from ecdat.commands import list_cmd, recommend_cmd, risk_cmd, scan_binary_cmd
+from ecdat.commands import scan_cloud_cmd, scan_cmd, scan_container_cmd, show_cmd
 
 DEFAULT_DB = str(Path.home() / ".ecdat" / "ecdat.db")
 
@@ -73,6 +73,19 @@ def build_parser() -> argparse.ArgumentParser:
     mode_cld.add_argument("--mock", action="store_true", help="use mock fixture (default)")
     mode_cld.add_argument("--real", action="store_true", help="use RealCoreClient")
     p_cld.set_defaults(func=scan_cloud_cmd.run)
+
+    p_risk = sub.add_parser("risk", help="show mock risk summary for a stored scan")
+    p_risk.add_argument("scan_id", help="scan id to assess")
+    p_risk.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
+    p_risk.add_argument("--json", action="store_true", help="machine-readable output")
+    p_risk.set_defaults(func=risk_cmd.run)
+
+    p_rec = sub.add_parser("recommend", help="show mock placeholder recommendations for a stored scan")
+    p_rec.add_argument("scan_id", help="scan id to recommend for")
+    p_rec.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
+    p_rec.add_argument("--json", action="store_true", help="machine-readable output")
+    p_rec.add_argument("--severity", choices=["info", "low", "medium", "high", "critical"], default=None, help="filter recommendations by severity")
+    p_rec.set_defaults(func=recommend_cmd.run)
 
     return parser
 
