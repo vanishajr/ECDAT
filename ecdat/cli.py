@@ -13,8 +13,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ecdat.commands import export_cmd, list_cmd, recommend_cmd, risk_cmd
-from ecdat.commands import scan_binary_cmd, scan_cloud_cmd, scan_cmd
+from ecdat.commands import export_cmd, list_cmd, recommend_cmd, report_cmd
+from ecdat.commands import risk_cmd, scan_binary_cmd, scan_cloud_cmd, scan_cmd
 from ecdat.commands import scan_container_cmd, show_cmd
 
 DEFAULT_DB = str(Path.home() / ".ecdat" / "ecdat.db")
@@ -94,6 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_exp.add_argument("--output", default=None, help="write export to this file (default: stdout)")
     p_exp.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_exp.set_defaults(func=export_cmd.run)
+
+    p_rep = sub.add_parser("report", help="render a report for a stored scan")
+    p_rep.add_argument("scan_id", help="scan id to report on")
+    p_rep.add_argument("--format", choices=["markdown", "console", "html", "pdf"], default="markdown", help="report format")
+    p_rep.add_argument("--output", default=None, help="write report to this file (default: stdout; required for pdf)")
+    p_rep.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
+    p_rep.set_defaults(func=report_cmd.run)
 
     return parser
 
