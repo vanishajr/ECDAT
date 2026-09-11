@@ -40,11 +40,12 @@ def esc(value: object) -> str:
 
 
 def index_page(prefill_target: str = "") -> str:
-    """Self-contained dashboard page. No CDN, no JS framework.
+    """Self-contained dashboard page. No external assets, no framework.
 
     Dynamic scan data is rendered client-side with textContent (never
-    innerHTML), so canonical text cannot break out of the page. Only
-    the optional prefill value is server-injected, via esc().
+    with direct markup sinks), so canonical text cannot break out of
+    the page. Only the optional prefill value is server-injected,
+    via esc().
 
     NOTE: this is a raw string so JS "\\n" escapes survive intact.
     """
@@ -56,173 +57,351 @@ def index_page(prefill_target: str = "") -> str:
 <link rel="icon" href="data:,">
 <title>ECDAT Local GUI (mock)</title>
 <style>
-:root{color-scheme:light}
-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;max-width:62em;margin:0 auto;padding:1.5em 1em 3em;color:#1a1a1a}
-header{display:flex;align-items:center;gap:.6em;flex-wrap:wrap}
-.badge{display:inline-block;font-size:.75em;font-weight:700;padding:.2em .6em;border-radius:999px;background:#fff3cd;border:1px solid #d9a900;color:#6b4e00}
-.card{border:1px solid #d7d7d7;border-radius:.6em;padding:1em 1.2em;margin:1em 0;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-h1{font-size:1.4em;margin:.2em 0}
-h2{font-size:1.05em;margin:.2em 0 .6em}
-label{font-weight:600;display:block;margin-bottom:.3em}
-input[type=text]{width:100%;max-width:34em;padding:.5em .6em;border:1px solid #999;border-radius:.4em;font-size:1em}
-.row{display:flex;gap:.6em;margin-top:.7em;flex-wrap:wrap}
-button{padding:.5em 1em;border-radius:.4em;border:1px solid #2456a6;background:#2456a6;color:#fff;font-size:.95em;cursor:pointer}
-button.secondary{background:#fff;color:#2456a6}
+:root{
+color-scheme:dark;
+--bg:#0B0E14; --surface:#11161F; --raised:#161D29; --border:#1E293B;
+--text:#E2E8F0; --muted:#94A3B8; --faint:#64748B;
+--cyan:rgb(34,211,238); --blue:#60A5FA; --violet:#A78BFA;
+--crit:#F87171; --high:#FB923C; --med:#FACC15; --low:rgb(52,211,153); --info:#94A3B8;
+--r-lg:10px; --r-md:8px; --r-pill:999px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px;line-height:1.5;overflow-x:hidden}
+a{color:var(--blue)}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:4px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--cyan);color:#06202a;padding:.5em 1em;font-weight:700;z-index:99}
+.skip:focus{left:0}
+.app{display:flex;min-height:100vh}
+/* ---- sidebar ---- */
+.side{width:240px;flex:0 0 240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
+.brandmark{display:flex;align-items:center;gap:.6em;font-weight:800;font-size:15px;letter-spacing:.02em}
+.brandmark .gem{width:26px;height:26px;border-radius:8px;background:var(--raised);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--cyan);font-size:14px}
+.brandsub{font-size:11px;color:var(--muted);margin-top:6px}
+.nav{display:flex;flex-direction:column;gap:2px;padding:12px 8px}
+.nav a{display:flex;align-items:center;gap:.7em;padding:.55em .8em;border-radius:8px;color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent;min-height:44px}
+.nav a .ic{width:18px;text-align:center;flex:0 0 18px}
+.nav a:hover{background:var(--raised);color:var(--text)}
+.nav a.active{background:var(--raised);color:var(--text);border-left-color:var(--cyan)}
+.sidefoot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+.dotlive{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--low);margin-right:.5em}
+.mockline{color:#FACC15;font-size:11px;margin-top:2px}
+/* ---- main column ---- */
+.maincol{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border)}
+.top input[type=text]{flex:1;max-width:34em;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.55em .9em;font-size:13px}
+.top input::placeholder{color:var(--faint)}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:.25em .7em;border-radius:999px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.45);color:#FACC15;white-space:nowrap}
+.badge.blue{background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.45);color:var(--blue)}
+.badge.violet{background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.45);color:var(--violet)}
+.topsp{flex:1}
+.iconbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:14px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--raised);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:24px;max-width:1400px;width:100%;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;min-width:0}
+.card h2{font-size:14px;margin:0 0 4px;letter-spacing:.01em}
+.card h3{font-size:13px;margin:14px 0 6px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin:0 0 8px}
+.note{font-size:12px;color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.span12{grid-column:span 12}.span8{grid-column:span 8}.span6{grid-column:span 6}.span4{grid-column:span 4}.span3{grid-column:span 3}
+/* ---- scan bar ---- */
+.scanbar{grid-column:span 12;background:var(--raised)}
+.scanrow{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
+.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:700}
+.field input[type=text],.field select{background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.6em .8em;font-size:13px;width:100%}
+.btnrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font-size:13px;border-radius:8px;cursor:pointer;padding:.6em 1.1em}
+button.primary{background:var(--cyan);border:1px solid var(--cyan);color:#06202a;font-weight:700}
+button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+button.ghost:hover{border-color:var(--cyan);color:var(--cyan)}
 button:disabled{opacity:.55;cursor:default}
-.note{font-size:.85em;color:#555}
-.preview{background:#f7f7f7;border-radius:.4em;padding:.7em .9em;white-space:pre-wrap;font-size:.9em}
-.progress{height:1.1em;background:#eee;border-radius:999px;overflow:hidden;margin:.5em 0}
-.progress>div{height:100%;width:0%;background:#2456a6;transition:width .25s}
-table{border-collapse:collapse;width:100%;font-size:.9em}
-th,td{border:1px solid #bbb;padding:.35em .55em;text-align:left;vertical-align:top}
-th{background:#f0f3f8}
-.sev{display:inline-block;min-width:4.2em;text-align:center;font-weight:700;font-size:.8em;border-radius:.35em;padding:.1em .5em}
-.sev-critical{background:#f8d7da;color:#7a1f26}
-.sev-high{background:#ffe0cc;color:#8a3d00}
-.sev-medium{background:#fff3cd;color:#6b4e00}
-.sev-low{background:#d9ecff;color:#14467c}
-.sev-info{background:#e2e3e5;color:#383d41}
-details{margin-top:.3em}
-summary{cursor:pointer;color:#2456a6;font-size:.85em}
-code{font-size:.85em;background:#f4f4f4;padding:.1em .3em;border-radius:.3em}
-#error{color:#7a1f26;font-weight:600}
-.chips{display:flex;gap:.5em;flex-wrap:wrap;margin:.4em 0}
-.chip{background:#eef2f9;border:1px solid #c4d2e8;border-radius:999px;padding:.15em .7em;font-size:.85em}
-#graph{display:block;cursor:grab;touch-action:none}
-#graph text{font-family:inherit;pointer-events:none}
-.gnode{cursor:pointer}
-.gnode rect{stroke:#5b6478;stroke-width:1.5}
-.gnode.risky rect{stroke:#c00;stroke-width:2.5}
-.gnode.selected rect{stroke:#2456a6;stroke-width:3}
-.gnode.dim,.gedge.dim,.glabel.dim{opacity:.1}
-.gedge{stroke:#8a93a6;stroke-width:1.5;cursor:pointer}
-.gedge.risky{stroke:#c00}
-.gedge.trace{stroke:#2456a6;stroke-width:3}
-.gedge.selected{stroke:#2456a6;stroke-width:3}
-.gedge-hit{stroke:rgba(0,0,0,0);stroke-width:12;cursor:pointer}
-.glabel{font-size:9px;fill:#555}
-.gtrace-on{outline:2px solid #2456a6}
-.tiles{display:flex;gap:.5em;flex-wrap:wrap;margin:.5em 0}
-.tile{border:1px solid #bbb;background:#fff;border-radius:.5em;padding:.4em .8em;cursor:pointer;font-size:.9em;color:#1a1a1a}
-.tile b{display:block;font-size:1.2em}
-.tile.active{outline:2px solid #2456a6;background:#eef2f9}
+button.small{padding:.35em .8em;font-size:12px}
+.monitor{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+.ptrack{height:8px;background:var(--bg);border:1px solid var(--border);border-radius:999px;overflow:hidden;margin:.5em 0}
+.pfill{height:100%;background:var(--cyan);border-radius:999px;transform:scaleX(0);transform-origin:left center;transition:transform .25s ease}
+.preview{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.7em .9em;white-space:pre-wrap;font-size:12px;color:var(--muted)}
+details.disc{margin-top:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+details.disc>summary{cursor:pointer;padding:.6em .9em;color:var(--blue);font-size:12px;list-style:none}
+details.disc>summary::-webkit-details-marker{display:none}
+details.disc>summary:before{content:"+ ";color:var(--faint)}
+details.disc[open]>summary:before{content:"- "}
+details.disc .discbody{padding:0 12px 12px}
+/* ---- KPIs ---- */
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;min-width:0}
+.kpi .kl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.kpi .kv2{font-size:28px;font-weight:800;margin:2px 0 4px}
+.kpi .ksub{font-size:11px;color:var(--muted)}
+.kpi svg{display:block;margin-top:6px}
+/* ---- risk ---- */
+.riskwrap{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
+.donutcenter{font-size:22px;font-weight:800;fill:var(--text)}
+.donutsub{font-size:11px;fill:var(--muted)}
+.risklegend{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.risklegend button{display:flex;align-items:center;gap:.6em;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.45em .7em;font-size:12px;text-align:left}
+.risklegend button.active{border-color:var(--cyan)}
+.rdot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+/* ---- tables ---- */
+.tblwrap{overflow-x:auto;margin:8px -4px;padding:0 4px}
+table.tbl{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}
+table.tbl th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:700;text-align:left;padding:.5em .6em;border-bottom:1px solid var(--border)}
+table.tbl td{padding:.5em .6em;border-bottom:1px solid var(--border);vertical-align:middle;height:32px}
+table.tbl tr:last-child td{border-bottom:none}
 tr.clickable{cursor:pointer}
-tr.clickable:hover td{background:#f0f5ff}
-.kv{display:grid;grid-template-columns:11em 1fr;gap:.2em .8em;font-size:.9em;margin:.4em 0}
-.kv dt{font-weight:600;color:#444}
+tr.clickable:hover td{background:var(--raised)}
+tr.clickable:focus-visible{outline:2px solid var(--cyan)}
+.sev{display:inline-flex;align-items:center;gap:.45em;font-weight:700;font-size:12px;border-radius:999px;padding:.15em .7em;white-space:nowrap}
+.sev:before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.sev-critical{background:rgba(248,113,113,.13);color:var(--crit)}
+.sev-high{background:rgba(251,146,60,.13);color:var(--high)}
+.sev-medium{background:rgba(250,204,21,.13);color:var(--med)}
+.sev-low{background:rgba(52,211,153,.13);color:var(--low)}
+.sev-info,.sev-none{background:rgba(148,163,184,.13);color:var(--info)}
+.conf{display:inline-flex;align-items:center;gap:.5em}
+.confbar{width:40px;height:5px;border-radius:999px;background:var(--bg);border:1px solid var(--border);overflow:hidden;flex:0 0 40px}
+.confbar>i{display:block;height:100%;background:var(--blue);transform-origin:left center}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:.5em 0}
+.chip{background:var(--raised);border:1px solid var(--border);border-radius:999px;padding:.2em .8em;font-size:12px;color:var(--muted)}
+.tiles{display:flex;gap:8px;flex-wrap:wrap;margin:.5em 0}
+.tile{border:1px solid var(--border);background:var(--raised);border-radius:8px;padding:.45em .9em;cursor:pointer;font-size:12px;color:var(--text)}
+.tile b{display:block;font-size:16px}
+.tile.active{outline:2px solid var(--cyan)}
+.row{display:flex;gap:.6em;margin-top:.7em;flex-wrap:wrap;align-items:center}
+#error{color:var(--crit);font-weight:600}
+.kv{display:grid;grid-template-columns:11em 1fr;gap:.25em .8em;font-size:12px;margin:.5em 0}
+.kv dt{font-weight:600;color:var(--muted)}
 .kv dd{margin:0;overflow-wrap:anywhere}
-.avail{font-size:.85em;color:#555}
+.avail{font-size:12px;color:var(--muted)}
+.empty{border:1px dashed var(--border);border-radius:8px;padding:18px;text-align:center;color:var(--muted);font-size:12px}
+.empty .cta{margin-top:8px}
+.skel{border-radius:8px;background:var(--raised);border:1px solid var(--border);padding:14px;animation:skpulse 1.4s ease-in-out infinite}
+@keyframes skpulse{0%,100%{opacity:.55}50%{opacity:1}}
+code{font-size:12px;background:var(--raised);border:1px solid var(--border);padding:.1em .35em;border-radius:4px}
+/* ---- graph ---- */
+#gwrap{position:relative;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:radial-gradient(ellipse at 50% 32%,#11161F 0%,#0F1420 55%,#0B0E14 100%)}
+#graph{display:block;cursor:grab;touch-action:none;width:100%;height:520px}
+#graph text{font-family:inherit;pointer-events:none}
+.govlay{position:absolute;left:10px;bottom:8px;font-size:11px;color:var(--faint);background:rgba(11,14,20,.72);border:1px solid var(--border);border-radius:999px;padding:.15em .7em;pointer-events:none}
+.gnode{cursor:pointer}
+.gnode circle.core{fill:var(--raised);stroke-width:2}
+.gnode circle.selring{fill:none;stroke:var(--violet);stroke-width:2}
+.gnode circle.tracering{fill:none;stroke:var(--cyan);stroke-width:1.5}
+.gnode text.nlabel{font-size:12px;fill:#E2E8F0;paint-order:stroke;stroke:#0B0E14;stroke-width:3px;font-weight:600}
+.gnode:focus{outline:none}
+.gnode:focus-visible circle.core{stroke:var(--cyan);stroke-width:2.5}
+.gnode.dim,.gedge.dim,.glabel.dim{opacity:.1}
+.gedge{stroke:#2A3342;stroke-width:1.25;opacity:.8;cursor:pointer}
+.gedge.risky{stroke:var(--crit);stroke-width:1.75;opacity:.95}
+.gedge.trace{stroke:var(--cyan);stroke-width:2.75;opacity:1;filter:drop-shadow(0 0 4px rgba(34,211,238,.55))}
+.gedge.selected{stroke:var(--cyan);stroke-width:2.5}
+.gedge.dim{stroke:#2A3342;stroke-width:1.25;opacity:.45}
+.gedge-hit{stroke:rgba(0,0,0,0);stroke-width:14;cursor:pointer}
+.glabel{font-size:10px;fill:#94A3B8}
+#graph[data-z="out"] .eldetail{display:none}
+.glegend{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--muted)}
+.glegend .cap{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.glegend .li{display:flex;align-items:center;gap:.55em}
+.glegend .sw{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
+.glegend .ln{width:16px;height:0;border-top:2px solid var(--cyan);flex:0 0 16px}
+.glegend .rg{width:10px;height:10px;border-radius:50%;border:2px solid var(--violet);flex:0 0 10px;background:transparent}
+.gcontrols{display:flex;gap:6px;flex-wrap:wrap}
+label.chk{display:inline-flex;align-items:center;gap:.45em;font-size:12px;color:var(--muted);font-weight:400}
+input[type=checkbox]{accent-color:var(--cyan)}
+/* cross-link buttons */
+button.xlink{background:transparent;border:1px solid var(--violet);color:var(--violet)}
+details.graphdisc{margin-top:0}
+/* ---- footer note ---- */
+.foot{grid-column:span 12;color:var(--faint);font-size:11px;padding:4px 2px 12px}
+@media (max-width:1100px){.span8,.span4{grid-column:span 12}.riskwrap{grid-template-columns:1fr}.span3{grid-column:span 6}}
+@media (max-width:900px){
+.side{width:64px;flex-basis:64px}
+.brandsub,.nav a span.lbl,.sidefoot .txt{display:none}
+.nav a{justify-content:center;border-left:none}
+.brandmark span.t{display:none}
+.grid{padding:16px}
+.span3,.span6{grid-column:span 12}
+.top{padding:10px 12px}
+}
 </style>
 </head>
-<body>
-<header>
-<h1>ECDAT Local GUI</h1>
+<body id="top">
+<a class="skip" href="#main">Skip to main content</a>
+<div class="app">
+<aside class="side" aria-label="Primary">
+<div class="brand">
+<div class="brandmark"><span class="gem">⬢</span><span class="t">ECDAT</span></div>
+<div class="brandsub">ECDAT Local GUI<br>Enterprise Cryptographic Discovery &amp; Analysis Tool</div>
+</div>
+<nav class="nav" id="mainnav">
+<a href="#top" class="active"><span class="ic">⌂</span><span class="lbl">Overview</span></a>
+<a href="#sec-scan"><span class="ic">◎</span><span class="lbl">Scan</span></a>
+<a href="#sec-inventory"><span class="ic">▤</span><span class="lbl">Inventory</span></a>
+<a href="#sec-risk"><span class="ic">△</span><span class="lbl">Risk</span></a>
+<a href="#sec-graph"><span class="ic">⁂</span><span class="lbl">Graph</span></a>
+<a href="#sec-migration"><span class="ic">▣</span><span class="lbl">Migration</span></a>
+<a href="#sec-reports"><span class="ic">⎙</span><span class="lbl">Reports</span></a>
+</nav>
+<div class="sidefoot"><span class="dotlive"></span><span class="txt">Local Mode<br></span><span class="mockline">Mock Data</span></div>
+</aside>
+<div class="maincol">
+<header class="top">
+<input type="text" id="globalSearch" placeholder="Search targets, findings, assets..." aria-label="Search targets, findings, assets">
 <span class="badge">MOCK / SIMULATED</span>
+<span class="topsp"></span>
+<button class="iconbtn" type="button" aria-label="Notifications" title="Notifications">♢</button>
+<span class="avatar" title="Operator">OP</span>
 </header>
-<p class="note">Mock-first vertical slice: target selection &rarr; scan-plan preview &rarr;
-simulated progress &rarr; basic inventory. No real detection. Localhost only.</p>
-
-<div class="card">
-<h2>1. Select target</h2>
-<label for="target">Target path or label</label>
-<input type="text" id="target" value="__PREFILL__" placeholder="e.g. samples/rsa_small.py">
-<div class="row">
-<button id="previewBtn" class="secondary" type="button">Show scan-plan preview</button>
-<button id="scanBtn" type="button">Start mock scan</button>
+<main class="grid" id="main">
+<section class="card scanbar" id="sec-scan" aria-label="Scan">
+<p class="eyebrow">Scanning · primary workflow · mock-first</p>
+<h2>Start a scan</h2>
+<p class="note">Mock-first slice: Select target &rarr; scan-plan preview &rarr; simulated progress &rarr; inventory. No real detection. Localhost only.</p>
+<div class="scanrow">
+<div class="field" style="flex:2">
+<label for="target">Select target</label>
+<input type="text" id="target" value="__PREFILL__" placeholder="e.g. samples/rsa_small.py" class="mono">
+</div>
+<div class="field" style="flex:0 0 150px;min-width:140px">
+<label for="scanProfile">Scan Profile</label>
+<select id="scanProfile"><option>Standard</option><option>Deep</option><option>Quick</option></select>
+</div>
+<div class="field" style="flex:0 0 150px;min-width:140px">
+<label for="scanDepth">Scan Depth</label>
+<select id="scanDepth"><option>Normal</option><option>Shallow</option><option>Full</option></select>
+</div>
+<div class="btnrow">
+<button id="previewBtn" class="primary" type="button">Generate Scan Plan →</button>
+<button id="scanBtn" class="ghost" type="button">Start mock scan</button>
 </div>
 </div>
-
-<div class="card">
-<h2>2. Scan-plan preview (read-only, mock)</h2>
-<div class="preview" id="preview">No preview yet. Enter a target and choose preview.</div>
-</div>
-
-<div class="card">
-<h2>3. Live scan monitor (simulated)</h2>
-<div class="note">Simulated progress (mock): queued &rarr; scanning &rarr; completed.
-Staged for UI purposes only &mdash; the mock scan itself is instantaneous.</div>
-<div class="progress"><div id="bar"></div></div>
+<div class="monitor">
+<p class="eyebrow">Live scan monitor (simulated)</p>
+<p class="note">Simulated progress (mock): queued &rarr; scanning &rarr; completed. Staged for UI purposes only &mdash; the mock scan itself is instantaneous.</p>
+<div class="ptrack" role="progressbar" aria-label="Scan progress"><div class="pfill" id="bar"></div></div>
 <div class="preview" id="job">No job yet.</div>
+<details class="disc"><summary>Scan-plan preview (read-only, mock)</summary><div class="discbody"><div class="preview" id="preview">No preview yet. Enter a target and choose preview.</div></div></details>
 </div>
-
-<div class="card">
-<h2>4. Crypto inventory / results</h2>
-<div class="note">Click a finding row to open its detail below. Click risk tiles or rule buttons to drill down.</div>
-<div class="chips" id="chips"></div>
-<div class="row" id="filterRow" style="display:none">
-<button id="clearFilters" class="secondary" type="button">Clear filters</button>
+</section>
+<section class="kpi span3"><p class="kl">Crypto Assets</p><div class="kv2" id="kpi-assets">—</div><div class="ksub" id="kpi-assets-sub">Run a mock scan to populate</div><svg id="spark-assets" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="kpi span3"><p class="kl">Findings</p><div class="kv2" id="kpi-findings">—</div><div class="ksub" id="kpi-findings-sub">Run a mock scan to populate</div><svg id="spark-findings" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="kpi span3"><p class="kl">High Risk</p><div class="kv2" id="kpi-high">—</div><div class="ksub" id="kpi-high-sub">critical + high (mock)</div><svg id="spark-high" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="kpi span3"><p class="kl">Legacy Algorithms</p><div class="kv2" id="kpi-legacy">—</div><div class="ksub" id="kpi-legacy-sub">distinct rules (mock)</div><svg id="spark-legacy" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="card span4" id="sec-risk" aria-label="Risk">
+<p class="eyebrow">Triage · mock scoring</p>
+<h2>Risk dashboard <span class="badge">MOCK SCORING MODEL</span></h2>
+<p class="note">Mock scoring — see model note below. Click a severity tile or rule to drill down to findings.</p>
+<div class="riskwrap">
+<div>
+<svg id="riskDonut" width="200" height="170" role="img" aria-label="Risk distribution donut"></svg>
+<div class="risklegend" id="riskTiles"></div>
 </div>
-<div id="inventory"><p class="note">No completed scan yet.</p></div>
-<div id="error" role="alert"></div>
-</div>
-
-<div class="card">
-<h2>5. Risk dashboard (mock/placeholder)</h2>
-<div class="note">Mock scoring — see model note below. Click a severity tile or rule to drill down to findings.</div>
-<div class="tiles" id="riskTiles"></div>
+<div>
 <div class="preview" id="risk">No completed scan yet.</div>
 <div id="riskRules"></div>
 </div>
-
-<div class="card">
-<h2>6. Finding detail</h2>
+</div>
+</section>
+<section class="card span8" id="sec-inventory" aria-label="Inventory">
+<p class="eyebrow">Triage loop</p>
+<h2>Crypto inventory / results</h2>
+<p class="note">Click a finding row to open its detail below. Click risk tiles or rule buttons to drill down.</p>
+<div class="chips" id="chips"></div>
+<div class="row" id="filterRow" style="display:none">
+<button id="clearFilters" class="ghost small" type="button">Clear filters</button>
+</div>
+<div class="tblwrap" id="inventory"><div class="empty">Run a mock scan to populate.<div class="cta note">Pick a target above, then Generate Scan Plan → Start mock scan.</div></div></div>
+<div id="error" role="alert"></div>
+<h3>Finding detail</h3>
 <div id="detail"><p class="note">Select a finding row in the inventory to see its evidence, confidence, and provenance.</p></div>
-</div>
-
-<div class="card">
-<h2>7. Crypto asset inventory + finding grouping</h2>
-<div class="note">Flat asset inventory &mdash; relationships not available yet.
-Co-occurrence grouping &mdash; not a dependency graph.</div>
-<div id="assets"><p class="note">No completed scan yet.</p></div>
-<div class="preview" id="graphState">Dependency edges: awaiting Person 1 edge data.</div>
-</div>
-
-<div class="card">
-<h2>8. Crypto Knowledge Graph <span class="badge">MOCK DATASET</span></h2>
-<div class="note">Deterministic mock graph for UI development — not scan data and not Person 1 CIR.
-Drag to pan, scroll to zoom, click nodes and edges. Risky nodes/paths are ringed red.</div>
+</section>
+<section class="card span8" id="sec-graph" aria-label="Graph">
+<p class="eyebrow">Attack-path view · scan-independent</p>
+<h2>Crypto Knowledge Graph <span class="badge">MOCK DATASET</span></h2>
+<p class="note">Deterministic mock graph for UI development — not scan data and not Person 1 CIR. Drag to pan, scroll to zoom, click nodes and edges. Risky nodes/paths use risk ring colors.</p>
 <div class="row">
-<input type="text" id="gsearch" placeholder="filter: e.g. RSA, tls, aws" style="max-width:22em">
-<label class="note"><input type="checkbox" id="grisky"> risky only</label>
-<button id="greset" class="secondary" type="button">Reset view</button>
-<button id="gtrace" type="button">Trace: internet → risk</button>
+<input type="text" id="gsearch" placeholder="filter: e.g. RSA, tls, aws" style="max-width:22em;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5em .7em" aria-label="Filter graph">
+<label class="chk"><input type="checkbox" id="grisky"> risky only</label>
+<button id="greset" class="ghost small" type="button">Reset view</button>
+<button id="gtrace" type="button" class="small" style="background:transparent;border:1px solid var(--cyan);color:var(--cyan)">Trace: internet → risk</button>
+<span class="gcontrols">
+<button id="gzin" class="ghost small" type="button" aria-label="Zoom in">+</button>
+<button id="gzout" class="ghost small" type="button" aria-label="Zoom out">−</button>
+<button id="gfit" class="ghost small" type="button">Fit</button>
+</span>
 </div>
 <div class="chips" id="gtypes"></div>
-<div id="gwrap" style="border:1px solid #d7d7d7;border-radius:.5em;overflow:hidden;background:#fafbfe">
-<svg id="graph" width="100%" height="520" role="img" aria-label="crypto knowledge graph"></svg>
+<div id="gwrap">
+<svg id="graph" role="img" aria-label="crypto knowledge graph"></svg>
+<div class="govlay mono" id="govlay">mock graph</div>
 </div>
 <div class="row">
 <div id="gdetail" style="flex:1;min-width:16em"><p class="note">Select a node or edge.</p></div>
+<div class="glegend" id="glegend" aria-label="Graph legend"></div>
 </div>
-</div>
-
-<div class="card">
-<h2>9. Migration Planner <span class="badge">MOCK / PLACEHOLDER</span></h2>
-<div class="note">Severity triage of existing mock recommendations — heaviest first.
-This is triage by current finding severity, NOT a migration sequence.</div>
+</section>
+<section class="card span4" id="sec-side" aria-label="Context">
+<p class="eyebrow">Context</p>
+<h2>Asset summary</h2>
+<div id="assets"><div class="empty">Run a mock scan to populate.</div></div>
+<div class="preview" id="graphState">Dependency edges: awaiting Person 1 edge data.</div>
+</section>
+<details class="card span12 disc" id="sec-assets">
+<summary style="cursor:pointer;color:var(--blue);font-size:13px">Crypto asset inventory + finding grouping (details)</summary>
+<div class="note" style="margin:.4em 0">Flat asset inventory &mdash; relationships not available yet. Co-occurrence grouping &mdash; not a dependency graph.</div>
+<div id="assetsFull"><p class="note">Open a scan to expand grouped assets here.</p></div>
+</details>
+<details class="card span6 disc" id="sec-migration">
+<summary style="cursor:pointer;color:var(--blue);font-size:13px">Migration Planner <span class="badge">MOCK / PLACEHOLDER</span></summary>
+<div class="note" style="margin:.4em 0">Severity triage of existing mock recommendations — heaviest first. This is triage by current finding severity, NOT a migration sequence.</div>
 <div id="migration"><p class="note">No completed scan yet.</p></div>
-<div class="preview" id="migration-missing">Not included yet: PQC target selection; migration timelines;
-effort estimates; phased sequencing; migration confidence; real migration state.
-All await Person 1 migration intelligence.</div>
-</div>
-
-<div class="card">
-<h2>10. Reports</h2>
-<div class="note">Reports render the stored mock scan through the existing report/export renderers.
-Nothing new is calculated here; risk/migration stay mock-labeled.</div>
+<div class="preview" id="migration-missing">Not included yet: PQC target selection; migration timelines; effort estimates; phased sequencing; migration confidence; real migration state. All await Person 1 migration intelligence.</div>
+</details>
+<details class="card span6 disc" id="sec-reports">
+<summary style="cursor:pointer;color:var(--blue);font-size:13px">10. Reports</summary>
+<div class="note" style="margin:.4em 0">Reports render the stored mock scan through the existing report/export renderers. Nothing new is calculated here; risk/migration stay mock-labeled.</div>
 <div id="reports"><p class="note">No completed scan yet.</p></div>
+</details>
+<div class="foot">Local-only mock platform. No new analysis is performed in the GUI; all intelligence labels stay mock until Person 1 / Person 2 integrate.</div>
+</main>
 </div>
-
+</div>
 <script>
 "use strict";
 function $(id){return document.getElementById(id);}
 function showError(msg){$("error").textContent = msg || "";}
-function setBar(pct){$("bar").style.width = Math.round(pct*100) + "%";}
+function setBar(pct){var b=$("bar");if(b){b.style.transform="scaleX("+Math.max(0,Math.min(1,pct))+")";}}
 async function api(path, opts){
   const res = await fetch(path, opts);
   const data = await res.json();
   if(!res.ok){ throw new Error(data.error || ("request failed: " + res.status)); }
   return data;
+}
+/* nav active + open closed detail targets */
+(function(){
+  var nav=$("mainnav");
+  if(!nav){return;}
+  var links=nav.querySelectorAll("a");
+  function openFor(hash){
+    if(!hash){return;}
+    var t=document.querySelector(hash);
+    if(t && t.tagName==="DETAILS" && !t.open){t.open=true;}
+  }
+  links.forEach(function(a){
+    a.addEventListener("click",function(){
+      links.forEach(function(x){x.classList.remove("active");});
+      a.classList.add("active");
+      openFor(a.getAttribute("href"));
+    });
+  });
+})();
+function profDepthSuffix(){
+  try{
+    var p=$("scanProfile")?$("scanProfile").value:"Standard";
+    var d=$("scanDepth")?$("scanDepth").value:"Normal";
+    return "\nprofile: "+p+"\ndepth: "+d+" (display only; mock scan ignores profile/depth)";
+  }catch(e){return "";}
 }
 $("previewBtn").addEventListener("click", async function(){
   showError("");
@@ -232,13 +411,15 @@ $("previewBtn").addEventListener("click", async function(){
     $("preview").textContent =
       "target: " + p.target + "\nmode: " + p.mode + " (" + p.client + ")\n" +
       "stages: " + p.stages.join(" -> ") + "\nstore: " + p.stores_through +
-      "\nread-back: " + p.reads_back_through + "\nnote: " + p.note;
+      "\nread-back: " + p.reads_back_through + "\nnote: " + p.note + profDepthSuffix();
+    var det=$("preview").closest("details"); if(det){det.open=true;}
   }catch(e){ showError(String(e.message || e)); }
 });
 let timer = null;
 let currentScanId = null;
 let filterSev = null;
 let filterRule = null;
+let lastInv = null, lastRisk = null, lastAssets = null;
 $("scanBtn").addEventListener("click", async function(){
   showError("");
   const t = $("target").value.trim();
@@ -258,7 +439,7 @@ async function poll(jobId){
     $("job").textContent =
       "job: " + j.job_id + "\ntarget: " + j.target + "\nstatus: " + j.status +
       " (" + Math.round(j.progress*100) + "%)\n" + j.simulated_note +
-      (j.scan_id ? "\nscan_id: " + j.scan_id : "") + (j.error ? "\nerror: " + j.error : "");
+      (j.scan_id ? "\nscan_id: " + j.scan_id : "") + (j.error ? "\nerror: " + j.error : "") + profDepthSuffix();
     if(j.status === "completed"){
       if(timer){ clearInterval(timer); timer = null; }
       currentScanId = j.scan_id;
@@ -275,11 +456,93 @@ async function poll(jobId){
     }
   }catch(e){ if(timer){ clearInterval(timer); timer = null; } showError(String(e.message || e)); }
 }
+/* ---- KPI + donut (derived only from loaded scan payloads; no invented history) ---- */
+var SEVC = {"critical":"#F87171","high":"#FB923C","medium":"#FACC15","low":"rgb(52,211,153)","info":"#94A3B8"};
+var SEVORDER = ["critical","high","medium","low","info"];
+function spark(id, values, color){
+  var svg=$(id); if(!svg){return;}
+  while(svg.firstChild){svg.removeChild(svg.firstChild);}
+  var ns=svg.namespaceURI;
+  var vals=(values||[]).map(Number).filter(function(v){return isFinite(v);});
+  if(!vals.length){vals=[0,0,0,0,0];}
+  var max=Math.max.apply(null,vals.concat([1]));
+  var pts=vals.map(function(v,i){
+    var x=6+i*(108/Math.max(1,vals.length-1));
+    var y=24-(v/max)*18;
+    return x.toFixed(1)+","+y.toFixed(1);
+  }).join(" ");
+  var pl=document.createElementNS(ns,"polyline");
+  pl.setAttribute("points",pts);
+  pl.setAttribute("fill","none");
+  pl.setAttribute("stroke",color);
+  pl.setAttribute("stroke-width","1.6");
+  svg.appendChild(pl);
+}
+function renderDonut(counts){
+  var svg=$("riskDonut"); if(!svg){return;}
+  while(svg.firstChild){svg.removeChild(svg.firstChild);}
+  var ns=svg.namespaceURI;
+  var total=SEVORDER.reduce(function(a,s){return a+(counts[s]||0);},0);
+  var R=62,C=2*Math.PI*R,cx=80,cy=80,off=0;
+  if(total===0){
+    var bg=document.createElementNS(ns,"circle");
+    bg.setAttribute("cx",cx);bg.setAttribute("cy",cy);bg.setAttribute("r",R);
+    bg.setAttribute("fill","none");bg.setAttribute("stroke","#1E293B");bg.setAttribute("stroke-width","18");
+    svg.appendChild(bg);
+  }else{
+    SEVORDER.forEach(function(sev){
+      var v=counts[sev]||0; if(!v){return;}
+      var frac=v/total;
+      var c=document.createElementNS(ns,"circle");
+      c.setAttribute("cx",cx);c.setAttribute("cy",cy);c.setAttribute("r",R);
+      c.setAttribute("fill","none");c.setAttribute("stroke",SEVC[sev]);c.setAttribute("stroke-width","18");
+      c.setAttribute("stroke-dasharray",(frac*C).toFixed(2)+" "+C.toFixed(2));
+      c.setAttribute("stroke-dashoffset",(-off*C).toFixed(2));
+      c.setAttribute("transform","rotate(-90 "+cx+" "+cy+")");
+      svg.appendChild(c);
+      off+=frac;
+    });
+  }
+  var t1=document.createElementNS(ns,"text");
+  t1.setAttribute("x",cx);t1.setAttribute("y",cy-2);t1.setAttribute("text-anchor","middle");
+  t1.setAttribute("class","donutcenter");t1.textContent=String(total);
+  var t2=document.createElementNS(ns,"text");
+  t2.setAttribute("x",cx);t2.setAttribute("y",cy+16);t2.setAttribute("text-anchor","middle");
+  t2.setAttribute("class","donutsub");t2.textContent="Findings";
+  svg.appendChild(t1);svg.appendChild(t2);
+}
+function updateKpis(){
+  var findings=lastInv?lastInv.finding_count:(lastRisk?lastRisk.finding_count:null);
+  var assets=lastAssets?lastAssets.asset_count:null;
+  var counts=lastRisk?lastRisk.severity_counts:(lastInv?lastInv.severity_counts:null);
+  var highR=counts?((counts.critical||0)+(counts.high||0)):null;
+  var legacy=(lastRisk&&lastRisk.by_rule)?lastRisk.by_rule.length:null;
+  if(findings!==null&&findings!==undefined){$("kpi-findings").textContent=String(findings);$("kpi-findings-sub").textContent="mock findings in stored scan";}
+  if(assets!==null&&assets!==undefined){$("kpi-assets").textContent=String(assets);$("kpi-assets-sub").textContent="flat CBOM-derived assets (mock)";}
+  if(highR!==null&&highR!==undefined){$("kpi-high").textContent=String(highR);$("kpi-high-sub").textContent="critical + high (mock)";}
+  if(legacy!==null&&legacy!==undefined){$("kpi-legacy").textContent=String(legacy);$("kpi-legacy-sub").textContent="distinct rules (mock)";}
+  if(counts){spark("spark-findings",SEVORDER.map(function(s){return counts[s]||0;}),"#60A5FA");}
+  if(lastRisk&&lastRisk.by_rule){spark("spark-legacy",lastRisk.by_rule.map(function(r){return r.count;}),"#A78BFA");}
+  if(counts){spark("spark-high",[(counts.critical||0),(counts.high||0),(counts.medium||0),(counts.low||0)],"#FB923C");}
+  if(lastAssets&&lastAssets.groupings){spark("spark-assets",lastAssets.groupings.by_file.map(function(g){return g.count;}),"rgb(34,211,238)");}
+}
+function globalFilter(){
+  var q="";
+  try{q=$("globalSearch").value.trim().toLowerCase();}catch(e){q="";}
+  var rows=document.querySelectorAll("#inventory tr[data-search]");
+  rows.forEach(function(r){
+    if(!q){r.style.display="";}
+    else{r.style.display=(r.getAttribute("data-search").indexOf(q)>=0)?"":"none";}
+  });
+  try{if(document.activeElement===$("globalSearch")&&$("gsearch").value!==$("globalSearch").value){$("gsearch").value=$("globalSearch").value;renderGraph();}}catch(e){}
+}
+try{$("globalSearch").addEventListener("input",globalFilter);}catch(e){}
 async function loadInventory(scanId){
   let path = "/api/inventory?scan_id=" + encodeURIComponent(scanId);
   if(filterSev){ path += "&severity=" + encodeURIComponent(filterSev); }
   if(filterRule){ path += "&rule=" + encodeURIComponent(filterRule); }
   const inv = await api(path);
+  lastInv = inv;
   const chips = $("chips");
   while(chips.firstChild){ chips.removeChild(chips.firstChild); }
   let countLabel = String(inv.finding_count);
@@ -309,9 +572,11 @@ async function loadInventory(scanId){
     p.className = "note";
     p.textContent = "No findings for this scan.";
     host.appendChild(p);
+    updateKpis();globalFilter();
     return;
   }
   const table = document.createElement("table");
+  table.className = "tbl";
   const head = document.createElement("tr");
   ["Severity","Rule","File","Line","Title","Confidence"].forEach(function(h){
     const th = document.createElement("th");
@@ -322,7 +587,11 @@ async function loadInventory(scanId){
   inv.findings.forEach(function(f){
     const tr = document.createElement("tr");
     tr.className = "clickable";
-    tr.addEventListener("click", function(){ loadFinding(currentScanId, f.index); });
+    tr.setAttribute("tabindex","0");
+    tr.setAttribute("data-search",(String(f.rule_id)+" "+String(f.file)+" "+String(f.title)+" "+String(f.severity)).toLowerCase());
+    function open(){ loadFinding(currentScanId, f.index); }
+    tr.addEventListener("click", open);
+    tr.addEventListener("keydown", function(ev){ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();open();} });
     const sev = document.createElement("td");
     const badge = document.createElement("span");
     badge.className = "sev sev-" + String(f.severity);
@@ -332,11 +601,22 @@ async function loadInventory(scanId){
     [["rule_id"],["file"],["line"],["title"]].forEach(function(k){
       const td = document.createElement("td");
       td.textContent = String(f[k[0]]);
+      if(k[0]==="file"||k[0]==="rule_id"){td.className="mono";}
       tr.appendChild(td);
     });
     const conf = document.createElement("td");
-    conf.textContent = (f.confidence === undefined || f.confidence === null)
-      ? "-" : String(f.confidence);
+    if(f.confidence === undefined || f.confidence === null){
+      conf.textContent = "-";
+    }else{
+      const wrap=document.createElement("span");wrap.className="conf";
+      const lab=document.createElement("span");lab.textContent=String(f.confidence);
+      const bar=document.createElement("span");bar.className="confbar";
+      const fill=document.createElement("i");
+      var cv=Number(f.confidence); if(!isFinite(cv)){cv=0;} cv=Math.max(0,Math.min(1,cv));
+      fill.style.transform="scaleX("+cv+")";
+      bar.appendChild(fill);wrap.appendChild(lab);wrap.appendChild(bar);
+      conf.appendChild(wrap);
+    }
     tr.appendChild(conf);
     table.appendChild(tr);
     if(f.snippet){
@@ -344,6 +624,7 @@ async function loadInventory(scanId){
       const std = document.createElement("td");
       std.setAttribute("colspan", "6");
       const det = document.createElement("details");
+      det.className="disc";
       const sum = document.createElement("summary");
       sum.textContent = "snippet";
       const code = document.createElement("code");
@@ -356,29 +637,35 @@ async function loadInventory(scanId){
     }
   });
   host.appendChild(table);
+  updateKpis();globalFilter();
 }
 async function loadRisk(scanId){
   const r = await api("/api/risk?scan_id=" + encodeURIComponent(scanId));
+  lastRisk = r;
   const tiles = $("riskTiles");
   while(tiles.firstChild){ tiles.removeChild(tiles.firstChild); }
-  Object.keys(r.severity_counts).forEach(function(sev){
+  SEVORDER.forEach(function(sev){
     const b = document.createElement("button");
     b.type = "button";
     b.className = "tile" + ((filterSev === sev) ? " active" : "");
     const n = document.createElement("b");
-    n.textContent = String(r.severity_counts[sev]);
+    n.textContent = String(r.severity_counts[sev]||0);
     const l = document.createElement("span");
-    l.textContent = sev;
+    var dot=document.createElement("span");dot.className="rdot";dot.style.background=SEVC[sev];
+    l.textContent = " " + sev;
     b.appendChild(n);
-    b.appendChild(l);
+    var row=document.createElement("span");row.appendChild(dot);row.appendChild(l);
+    b.appendChild(row);
+    b.setAttribute("aria-pressed",(filterSev===sev)?"true":"false");
     b.addEventListener("click", function(){
       filterSev = (filterSev === sev) ? null : sev;
       loadInventory(scanId);
       loadRisk(scanId);
-      document.getElementById("inventory").scrollIntoView();
+      document.getElementById("sec-inventory").scrollIntoView();
     });
     tiles.appendChild(b);
   });
+  renderDonut(r.severity_counts);
   $("risk").textContent =
     "score: " + r.score + " / level: " + r.level + " (mock/placeholder)\n" +
     "findings: " + r.finding_count + "\nbreakdown: " +
@@ -386,7 +673,7 @@ async function loadRisk(scanId){
     "\nmodel: " + r.model;
   const rules = $("riskRules");
   while(rules.firstChild){ rules.removeChild(rules.firstChild); }
-  if(!r.by_rule.length){ return; }
+  if(!r.by_rule.length){ updateKpis(); return; }
   const note = document.createElement("p");
   note.className = "note";
   note.textContent = "Rules (click to drill down):";
@@ -402,11 +689,12 @@ async function loadRisk(scanId){
       filterRule = (filterRule === row.rule_id) ? null : row.rule_id;
       loadInventory(scanId);
       loadRisk(scanId);
-      document.getElementById("inventory").scrollIntoView();
+      document.getElementById("sec-inventory").scrollIntoView();
     });
     wrap.appendChild(b);
   });
   rules.appendChild(wrap);
+  updateKpis();
 }
 async function loadFinding(scanId, idx){
   showError("");
@@ -416,7 +704,7 @@ async function loadFinding(scanId, idx){
     const host = $("detail");
     while(host.firstChild){ host.removeChild(host.firstChild); }
     const badge = document.createElement("span");
-    badge.className = "badge";
+    badge.className = "badge blue";
     badge.textContent = d.provenance.status;
     host.appendChild(badge);
     const title = document.createElement("h3");
@@ -441,6 +729,7 @@ async function loadFinding(scanId, idx){
       dt.textContent = pair[0];
       const dd = document.createElement("dd");
       dd.textContent = pair[1];
+      if(pair[0]==="File"){dd.className="mono";}
       dl.appendChild(dt);
       dl.appendChild(dd);
     });
@@ -454,12 +743,13 @@ async function loadFinding(scanId, idx){
     strip.textContent = d.scan_provenance.started_at + " -> " +
       d.scan_provenance.finished_at + ". " + d.scan_provenance.label;
     host.appendChild(strip);
-    host.scrollIntoView();
+    document.getElementById("sec-inventory").scrollIntoView();
   }catch(e){ showError(String(e.message || e)); }
 }
 async function loadAssets(scanId){
   try{
     const a = await api("/api/assets?scan_id=" + encodeURIComponent(scanId));
+    lastAssets = a;
     const host = $("assets");
     while(host.firstChild){ host.removeChild(host.firstChild); }
     const lab = document.createElement("p");
@@ -467,7 +757,9 @@ async function loadAssets(scanId){
     lab.textContent = a.asset_label + " Assets: " + a.asset_count + ".";
     host.appendChild(lab);
     if(a.assets.length){
+      const wrap=document.createElement("div");wrap.className="tblwrap";
       const table = document.createElement("table");
+      table.className="tbl";
       const head = document.createElement("tr");
       ["Asset (bom-ref)","Name","Type","Evidence location"].forEach(function(h){
         const th = document.createElement("th");
@@ -475,10 +767,10 @@ async function loadAssets(scanId){
         head.appendChild(th);
       });
       table.appendChild(head);
-      a.assets.forEach(function(c){
+      a.assets.slice(0,5).forEach(function(c){
         const tr = document.createElement("tr");
         const ref = document.createElement("td");
-        ref.textContent = String(c["bom-ref"]);
+        ref.textContent = String(c["bom-ref"]);ref.className="mono";
         tr.appendChild(ref);
         const nm = document.createElement("td");
         nm.textContent = String(c.name) + " (" + String(c.cryptoProperties.assetType) + ")";
@@ -487,44 +779,55 @@ async function loadAssets(scanId){
         ty.textContent = String(c.type);
         tr.appendChild(ty);
         const loc = document.createElement("td");
-        loc.textContent = String(c.evidence.occurrences[0].location);
+        loc.textContent = String(c.evidence.occurrences[0].location);loc.className="mono";
         tr.appendChild(loc);
         table.appendChild(tr);
       });
-      host.appendChild(table);
+      wrap.appendChild(table);
+      host.appendChild(wrap);
+      if(a.assets.length>5){
+        var more=document.createElement("p");more.className="note";
+        more.textContent="Showing 5 of "+a.assets.length+". Open details below for grouping.";
+        host.appendChild(more);
+      }
     }else{
       const p = document.createElement("p");
       p.className = "note";
       p.textContent = "No crypto assets in this scan.";
       host.appendChild(p);
     }
-    const glab = document.createElement("p");
-    glab.className = "note";
-    glab.textContent = a.groupings.label;
-    host.appendChild(glab);
-    a.groupings.by_file.forEach(function(g){
-      const h = document.createElement("h4");
-      h.textContent = g.file + " x" + g.count;
-      host.appendChild(h);
-      const ul = document.createElement("ul");
-      g.findings.forEach(function(f){
-        const li = document.createElement("li");
-        li.textContent = "[" + f.severity + "] " + f.rule_id + " line " + f.line + ": " + f.title;
-        ul.appendChild(li);
+    var full=$("assetsFull");
+    if(full){
+      while(full.firstChild){full.removeChild(full.firstChild);}
+      const glab = document.createElement("p");
+      glab.className = "note";
+      glab.textContent = a.groupings.label;
+      full.appendChild(glab);
+      a.groupings.by_file.forEach(function(g){
+        const h = document.createElement("h4");
+        h.textContent = g.file + " x" + g.count;
+        full.appendChild(h);
+        const ul = document.createElement("ul");
+        g.findings.forEach(function(f){
+          const li = document.createElement("li");
+          li.textContent = "[" + f.severity + "] " + f.rule_id + " line " + f.line + ": " + f.title;
+          ul.appendChild(li);
+        });
+        full.appendChild(ul);
       });
-      host.appendChild(ul);
-    });
-    const rl = document.createElement("h4");
-    rl.textContent = "Rules across files";
-    host.appendChild(rl);
-    const rul = document.createElement("ul");
-    a.groupings.by_rule.forEach(function(r){
-      const li = document.createElement("li");
-      li.textContent = r.rule_id + " [" + r.severity + "] x" + r.count + ": " + r.files.join(", ");
-      rul.appendChild(li);
-    });
-    host.appendChild(rul);
+      const rl = document.createElement("h4");
+      rl.textContent = "Rules across files";
+      full.appendChild(rl);
+      const rul = document.createElement("ul");
+      a.groupings.by_rule.forEach(function(r){
+        const li = document.createElement("li");
+        li.textContent = r.rule_id + " [" + r.severity + "] x" + r.count + ": " + r.files.join(", ");
+        rul.appendChild(li);
+      });
+      full.appendChild(rul);
+    }
     $("graphState").textContent = a.graph.message + " " + a.graph.detail;
+    updateKpis();
   }catch(e){ showError(String(e.message || e)); }
 }
 async function loadMigration(scanId){
@@ -567,17 +870,17 @@ async function loadMigration(scanId){
       if(it.graph_node_ids.length){
         const b = document.createElement("button");
         b.type = "button";
-        b.className = "secondary";
+        b.className = "ghost small";
         b.textContent = "Show " + it.graph_node_ids[0] + " in graph";
         b.addEventListener("click", function(){
           selectNode(it.graph_node_ids[0]);
-          document.getElementById("gwrap").scrollIntoView();
+          document.getElementById("sec-graph").scrollIntoView();
         });
         host.appendChild(b);
       }
       const ib = document.createElement("button");
       ib.type = "button";
-      ib.className = "secondary";
+      ib.className = "ghost small";
       ib.style.marginLeft = ".5em";
       ib.textContent = "Show findings in inventory";
       ib.addEventListener("click", function(){
@@ -585,17 +888,12 @@ async function loadMigration(scanId){
         filterSev = null;
         filterRule = it.rule_id;
         loadInventory(currentScanId);
-        document.getElementById("inventory").scrollIntoView();
+        document.getElementById("sec-inventory").scrollIntoView();
       });
       host.appendChild(ib);
     });
   }catch(e){ showError(String(e.message || e)); }
 }
-$("clearFilters").addEventListener("click", function(){
-  filterSev = null;
-  filterRule = null;
-  if(currentScanId){ loadInventory(currentScanId); loadRisk(currentScanId); }
-});
 $("clearFilters").addEventListener("click", function(){
   filterSev = null;
   filterRule = null;
@@ -627,7 +925,7 @@ async function loadReports(scanId){
       else{ a.setAttribute("download", ""); }
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "secondary";
+      btn.className = "ghost small";
       btn.textContent = (fmt === "html" ? "View " : "Download ") + fmt.toUpperCase();
       a.appendChild(btn);
       row.appendChild(a);
@@ -636,12 +934,28 @@ async function loadReports(scanId){
   }catch(e){ showError(String(e.message || e)); }
 }
 const SVGNS = document.getElementById("graph").namespaceURI;
-const GTCOLORS = {"Endpoint":"#e8eaf6","Service":"#dbeafe","Container":"#e0e7ff","Library":"#fef3c7","CryptoOperation":"#ede9fe","CryptoAsset":"#dcfce7","CertificateKey":"#ffedd5","CloudResource":"#f3f4f6"};
+const GTCOLORS = {"Endpoint":"#60A5FA","Service":"rgb(34,211,238)","Container":"#A78BFA","Library":"#94A3B8","CryptoOperation":"#64748B","CryptoAsset":"#E2E8F0","CertificateKey":"#60A5FA","CloudResource":"#94A3B8"};
 const GRISKY = {"high":true,"critical":true};
+const GRISKCOLOR = {"critical":"#F87171","high":"#FB923C","medium":"#FACC15","low":"rgb(52,211,153)","info":"#94A3B8","none":"#64748B"};
 let GDATA = null;
 let gView = {x:0,y:0,k:1};
 let gHiddenTypes = {};
 let gTraceOn = null;
+let gSelected = null;
+let gZoomTimer = null;
+function gZoomLevel(){ return gView.k < 1.05 ? "out" : (gView.k < 1.9 ? "mid" : "in"); }
+function gScheduleRender(){
+  if(gZoomTimer){ clearTimeout(gZoomTimer); }
+  gZoomTimer = setTimeout(function(){ gZoomTimer = null; renderGraph(); }, 140);
+}
+function gExitTrace(rerender){
+  gTraceOn = null;
+  try{
+    var b=$("gtrace");
+    if(b){ b.removeAttribute("aria-pressed"); }
+  }catch(e){}
+  if(rerender !== false){ renderGraph(); }
+}
 function gEl(name, attrs, parent){
   const el = document.createElementNS(SVGNS, name);
   for(const k in attrs){ el.setAttribute(k, attrs[k]); }
@@ -663,6 +977,11 @@ function gNodeById(id){
   for(const n of GDATA.nodes){ if(n.id === id){ return n; } }
   return null;
 }
+function gDegree(id){
+  var d=0;
+  for(const e of GDATA.edges){ if(e.source===id||e.target===id){d++;} }
+  return d;
+}
 function gVisible(n, q){
   if(gHiddenTypes[n.type]){ return false; }
   if(document.getElementById("grisky").checked && !GRISKY[n.risk]){ return false; }
@@ -673,6 +992,7 @@ async function loadGraph(){
   try{
     GDATA = await api("/api/graph");
     buildTypeChips();
+    buildLegend();
     renderGraph();
   }catch(e){ showError(String(e.message || e)); }
 }
@@ -683,62 +1003,142 @@ function buildTypeChips(){
     const b = document.createElement("button");
     b.type = "button";
     b.className = "tile";
-    b.textContent = t;
-    b.style.background = GTCOLORS[t] || "#fff";
+    var dot=document.createElement("span");dot.className="rdot";dot.style.background=GTCOLORS[t]||"#94A3B8";
+    b.appendChild(dot);
+    var lab=document.createElement("span");lab.textContent=" "+t;b.appendChild(lab);
     b.addEventListener("click", function(){
       gHiddenTypes[t] = !gHiddenTypes[t];
-      b.classList.toggle("gtrace-hl", false);
       b.style.opacity = gHiddenTypes[t] ? ".4" : "1";
       renderGraph();
     });
     host.appendChild(b);
   });
 }
+function buildLegend(){
+  var host=$("glegend"); if(!host||!GDATA){return;}
+  while(host.firstChild){host.removeChild(host.firstChild);}
+  function cap(t){var c=document.createElement("div");c.className="cap";c.textContent=t;host.appendChild(c);}
+  function li(swClass,swColor,label,isLine,isRing){
+    var d=document.createElement("div");d.className="li";
+    var s=document.createElement("span");
+    s.className=isLine?"ln":(isRing?"rg":"sw");
+    if(swColor){s.style.background=swColor;}
+    if(isLine){s.style.borderColor=swColor;}
+    if(isRing){s.style.borderColor=swColor;}
+    d.appendChild(s);
+    var t=document.createElement("span");t.textContent=label;d.appendChild(t);
+    host.appendChild(d);
+  }
+  cap("Node ring = risk");
+  [["Critical","#F87171"],["High","#FB923C"],["Medium","#FACC15"],["Low","rgb(52,211,153)"],["Info / none","#94A3B8"]].forEach(function(p){
+    li("sw",p[1],p[0],false,false);
+  });
+  cap("Path");
+  li("ln","rgb(34,211,238)","Trace path",true,false);
+  li("rg","#A78BFA","Selected",false,true);
+  cap("Node color = type (filter above)");
+}
 function renderGraph(){
   const svg = $("graph");
   while(svg.firstChild){ svg.removeChild(svg.firstChild); }
   const W = GDATA.canvas.width, H = GDATA.canvas.height;
   svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var zlev = gZoomLevel();
+  svg.setAttribute("data-z", zlev);
   const defs = gEl("defs", {}, svg);
-  [["garr","#8a93a6"],["garrR","#c00"],["garrB","#2456a6"]].forEach(function(m){
+  var pat=gEl("pattern",{id:"ggrid",width:"36",height:"36",patternUnits:"userSpaceOnUse"},defs);
+  gEl("path",{d:"M 36 0 L 0 0 0 36",fill:"none",stroke:"#1E293B","stroke-width":"1"},pat);
+  [["garr","#2A3342"],["garrR","#F87171"],["garrB","rgb(34,211,238)"]].forEach(function(m){
     const mk = gEl("marker", {id:m[0], viewBox:"0 0 10 10", refX:"9", refY:"5",
-      markerWidth:"7", markerHeight:"7", orient:"auto-start-reverse"}, defs);
+      markerWidth:"6", markerHeight:"6", orient:"auto-start-reverse"}, defs);
     gEl("path", {d:"M 0 1 L 9 5 L 0 9 z", fill:m[1]}, mk);
   });
+  gEl("rect",{x:"0",y:"0",width:W,height:H,fill:"url(#ggrid)",opacity:"0.4"},svg);
   const root = gEl("g", {id:"groot"}, svg);
   const q = $("gsearch").value.trim().toLowerCase();
   const vis = {};
   GDATA.nodes.forEach(function(n){ vis[n.id] = gVisible(n, q); });
+  var inTrace = {};
+  if(gTraceOn && gTraceOn.nodeIds){
+    gTraceOn.nodeIds.forEach(function(nid){ inTrace[nid] = true; });
+  }
   const eLayer = gEl("g", {}, root);
   const nLayer = gEl("g", {}, root);
+  [false, true].forEach(function(passTraced){
   GDATA.edges.forEach(function(e){
     const a = gNodeById(e.source), b = gNodeById(e.target);
     const shown = vis[e.source] && vis[e.target];
     const traced = gTraceOn && gTraceOn.edgeIds.indexOf(e.id) >= 0;
+    if(!!traced !== passTraced){ return; }
+    var dimmed = !shown;
+    if(gTraceOn && !traced){ dimmed = true; }
     const risky = GRISKY[a.risk] || GRISKY[b.risk];
     const x1 = a.x + 75, y1 = a.y + 28, x2 = b.x + 75, y2 = b.y + 28;
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
     const ln = gEl("line", {x1:x1, y1:y1, x2:x2, y2:y2,
-      "class":"gedge" + (risky ? " risky" : "") + (traced ? " trace" : "") + (shown ? "" : " dim"),
-      "marker-end": traced ? "url(#garrB)" : (risky ? "url(#garrR)" : "url(#garr)")}, eLayer);
+      "class":"gedge" + (risky ? " risky" : "") + (traced ? " trace" : "") + (dimmed ? " dim" : ""),
+      "marker-end": dimmed ? "none" : (traced ? "url(#garrB)" : (risky ? "url(#garrR)" : "url(#garr)"))}, eLayer);
     ln.addEventListener("click", function(ev){ ev.stopPropagation(); selectEdge(e.id); });
-    gEl("line", {x1:x1, y1:y1, x2:x2, y2:y2, "class":"gedge-hit" + (shown ? "" : " dim")}, eLayer)
+    gEl("line", {x1:x1, y1:y1, x2:x2, y2:y2, "class":"gedge-hit" + (dimmed ? " dim" : "")}, eLayer)
       .addEventListener("click", function(ev){ ev.stopPropagation(); selectEdge(e.id); });
-    const lb = gEl("text", {x:mx, y:my - 4, "class":"glabel" + (shown ? "" : " dim"), "text-anchor":"middle"}, eLayer);
-    lb.textContent = e.type;
+    if(zlev === "in" || traced){
+      const lb = gEl("text", {x:mx, y:my - 4, "class":"glabel eldetail" + (dimmed ? " dim" : ""), "text-anchor":"middle"}, eLayer);
+      lb.textContent = e.type;
+    }
+  });
   });
   GDATA.nodes.forEach(function(n){
-    const g = gEl("g", {"class":"gnode" + (GRISKY[n.risk] ? " risky" : "") + (vis[n.id] ? "" : " dim"),
-      transform:"translate(" + n.x + "," + n.y + ")", "data-nid":n.id}, nLayer);
-    gEl("rect", {width:150, height:56, rx:8, fill:GTCOLORS[n.type] || "#fff"}, g);
+    var deg=gDegree(n.id);
+    var cx=n.x+75, cy=n.y+28;
+    var baseR=14+(deg>=6?5:(deg>=3?2:0));
+    var ring=GRISKCOLOR[n.risk]||"#64748B";
+    var isSel=(gSelected === n.id);
+    var isTraced=!!inTrace[n.id];
+    var dimmed=!vis[n.id];
+    if(gTraceOn && !isTraced){ dimmed = true; }
+    var priority = GRISKY[n.risk] || deg >= 5 || isSel || isTraced;
+    const g = gEl("g", {"class":"gnode" + (dimmed ? " dim" : "") + (isSel ? " selected" : ""),
+      transform:"translate(" + cx + "," + cy + ")", "data-nid":n.id, tabindex:"0", role:"button", "aria-label":n.label+" "+n.type+" risk "+n.risk}, nLayer);
+    var haloOp = n.risk === "critical" ? ".5" : (n.risk === "high" ? ".4" : (GRISKY[n.risk] ? ".3" : "0"));
+    if(isTraced && haloOp === "0"){ haloOp = ".25"; }
+    if(!dimmed || isSel){
+      var halo=gEl("circle",{r:baseR+5,fill:"none",stroke:ring,"stroke-opacity":haloOp,"stroke-width":"5"},g);
+      halo.setAttribute("pointer-events","none");
+    }
+    var core=gEl("circle",{r:baseR,"class":"core",stroke:ring,"stroke-width":"2"},g);
+    void core;
+    if(isTraced){
+      var tr=gEl("circle",{r:baseR+9,"class":"tracering"},g);
+      tr.setAttribute("pointer-events","none");
+    }
+    if(isSel){
+      var sr=gEl("circle",{r:baseR+9,"class":"selring"},g);
+      sr.setAttribute("pointer-events","none");
+    }
     const title = gEl("title", {}, g);
     title.textContent = n.label + " (" + n.type + ", risk " + n.risk + ")";
-    gText(g, 75, 18, n.label.slice(0, 22), 11, true);
-    gText(g, 75, 32, n.type, 9, false, "#555");
-    gText(g, 75, 46, "risk: " + n.risk, 9, true, GRISKY[n.risk] ? "#c00" : "#444");
+    var initials=gText(g, 0, 4, n.label.slice(0,2).toUpperCase(), 10, true, "#E2E8F0");
+    void initials;
+    var showName = (zlev === "in") || (zlev === "mid") || priority;
+    var showSub = (zlev === "in") || ((zlev === "mid") && priority);
+    if(showName){
+      var lab=gText(g, 0, baseR+16, n.label.slice(0,22), 12, true, "#E2E8F0");
+      lab.setAttribute("class","nlabel");
+    }
+    if(showSub){
+      var sub=gEl("text",{x:0, y:baseR+29, "font-size":10, "text-anchor":"middle", fill:"#94A3B8"},g);
+      sub.textContent = n.type + " · ";
+      var rs=gEl("tspan",{fill:ring},sub);
+      rs.textContent = n.risk;
+    }
     g.addEventListener("click", function(ev){ ev.stopPropagation(); selectNode(n.id); });
+    g.addEventListener("keydown", function(ev){ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();selectNode(n.id);} });
   });
   gApply();
+  try{
+    var ov=$("govlay");
+    if(ov){ ov.textContent = GDATA.node_count + " nodes · " + GDATA.edge_count + " edges · mock · " + Math.round(gView.k*100) + "%"; }
+  }catch(e){}
 }
 function gDetailBox(){
   const host = $("gdetail");
@@ -756,9 +1156,8 @@ function gKv(host, k, v){
   host.appendChild(p);
 }
 function selectNode(id){
+  gSelected = id;
   renderGraph();
-  const hit = document.querySelector('.gnode[data-nid="' + id + '"]');
-  if(hit){ hit.classList.add("selected"); }
   const n = gNodeById(id);
   const host = gDetailBox();
   const h = document.createElement("h4");
@@ -795,27 +1194,29 @@ function selectNode(id){
   if(n.rule_id){
     const b = document.createElement("button");
     b.type = "button";
+    b.className = "xlink small";
     b.textContent = "Show in inventory (" + n.rule_id + ")";
     b.addEventListener("click", function(){
       if(!currentScanId){ showError("run a mock scan first to cross-link inventory"); return; }
       filterSev = null;
       filterRule = n.rule_id;
       loadInventory(currentScanId);
-      document.getElementById("inventory").scrollIntoView();
+      document.getElementById("sec-inventory").scrollIntoView();
     });
     host.appendChild(b);
   }
   const rb = document.createElement("button");
   rb.type = "button";
-  rb.className = "secondary";
+  rb.className = "ghost small";
   rb.textContent = "Open risk dashboard";
   rb.style.marginLeft = ".5em";
   rb.addEventListener("click", function(){
-    document.getElementById("riskTiles").scrollIntoView();
+    document.getElementById("sec-risk").scrollIntoView();
   });
   host.appendChild(rb);
 }
 function selectEdge(id){
+  gSelected = null;
   document.querySelectorAll(".gedge.selected").forEach(function(el){ el.classList.remove("selected"); });
   renderGraph();
   const host = gDetailBox();
@@ -853,7 +1254,8 @@ function tracePath(pid){
       }
     }
   }
-  gTraceOn = {id: pid, edgeIds: edgeIds};
+  gTraceOn = {id: pid, edgeIds: edgeIds, nodeIds: t.node_ids.slice()};
+  try{ $("gtrace").setAttribute("aria-pressed","true"); }catch(e){}
   renderGraph();
   const host = gDetailBox();
   const h = document.createElement("h4");
@@ -877,21 +1279,46 @@ function tracePath(pid){
   host.appendChild(p);
   const rb = document.createElement("button");
   rb.type = "button";
+  rb.className = "ghost small";
   rb.textContent = "Open risk dashboard";
   rb.addEventListener("click", function(){
-    document.getElementById("riskTiles").scrollIntoView();
+    document.getElementById("sec-risk").scrollIntoView();
   });
   host.appendChild(rb);
+}
+function gZoom(f){
+  var r=$("graph").getBoundingClientRect();
+  var k2=Math.min(3,Math.max(.3,gView.k*f));
+  gView.x=r.width/2-(r.width/2-gView.x)*(k2/gView.k);
+  gView.y=200-(200-gView.y)*(k2/gView.k);
+  gView.k=k2;gApply();gScheduleRender();
 }
 $("greset").addEventListener("click", function(){
   gView = {x:0,y:0,k:1};
   gHiddenTypes = {};
-  gTraceOn = null;
+  gSelected = null;
+  gExitTrace(false);
   $("gsearch").value = "";
   document.querySelectorAll("#gtypes .tile").forEach(function(b){ b.style.opacity = "1"; });
   renderGraph();
 });
-$("gtrace").addEventListener("click", function(){ tracePath("internet-to-risk"); });
+try{$("gfit").addEventListener("click", function(){ gView={x:0,y:0,k:1};gApply();renderGraph(); });}catch(e){}
+try{$("gzin").addEventListener("click", function(){ gZoom(1.25); });}catch(e){}
+try{$("gzout").addEventListener("click", function(){ gZoom(0.8); });}catch(e){}
+$("gtrace").addEventListener("click", function(){
+  if(gTraceOn && gTraceOn.id === "internet-to-risk"){
+    gExitTrace(true);
+    return;
+  }
+  tracePath("internet-to-risk");
+});
+document.getElementById("graph").addEventListener("keydown", function(ev){
+  if(ev.key === "Escape"){
+    gSelected = null;
+    if(gTraceOn){ gExitTrace(true); }
+    else{ renderGraph(); }
+  }
+});
 $("gsearch").addEventListener("input", function(){ renderGraph(); });
 $("grisky").addEventListener("change", function(){ renderGraph(); });
 (function(){
@@ -921,8 +1348,10 @@ $("grisky").addEventListener("change", function(){ renderGraph(); });
     gView.y = py - (py - gView.y) * (k2 / gView.k);
     gView.k = k2;
     gApply();
+    gScheduleRender();
   }, {passive:false});
 })();
+renderDonut({critical:0,high:0,medium:0,low:0,info:0});
 loadGraph().catch(function(e){ showError(String(e && e.message || e)); });
 </script>
 </body>
