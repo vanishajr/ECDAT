@@ -206,6 +206,13 @@ effort estimates; phased sequencing; migration confidence; real migration state.
 All await Person 1 migration intelligence.</div>
 </div>
 
+<div class="card">
+<h2>10. Reports</h2>
+<div class="note">Reports render the stored mock scan through the existing report/export renderers.
+Nothing new is calculated here; risk/migration stay mock-labeled.</div>
+<div id="reports"><p class="note">No completed scan yet.</p></div>
+</div>
+
 <script>
 "use strict";
 function $(id){return document.getElementById(id);}
@@ -261,6 +268,7 @@ async function poll(jobId){
       loadRisk(j.scan_id);
       loadAssets(j.scan_id);
       loadMigration(j.scan_id);
+      loadReports(j.scan_id);
     }else if(j.status === "failed"){
       if(timer){ clearInterval(timer); timer = null; }
       showError(j.error || "scan failed");
@@ -593,6 +601,40 @@ $("clearFilters").addEventListener("click", function(){
   filterRule = null;
   if(currentScanId){ loadInventory(currentScanId); loadRisk(currentScanId); }
 });
+async function loadReports(scanId){
+  try{
+    const r = await api("/api/reports?scan_id=" + encodeURIComponent(scanId));
+    const host = $("reports");
+    while(host.firstChild){ host.removeChild(host.firstChild); }
+    const sum = document.createElement("p");
+    sum.className = "note";
+    sum.textContent = "scan " + r.scan_id + " (" + r.target + "): " +
+      r.finding_count + " findings, risk " + r.risk.level +
+      " (" + r.risk.score + ") [mock scoring].";
+    host.appendChild(sum);
+    const mock = document.createElement("p");
+    mock.className = "note";
+    mock.textContent = "Mock reports: generated from the stored mock scan; " +
+      "no new analysis is performed.";
+    host.appendChild(mock);
+    const row = document.createElement("div");
+    row.className = "row";
+    r.formats.forEach(function(fmt){
+      const a = document.createElement("a");
+      a.href = "/api/reports/download?scan_id=" + encodeURIComponent(scanId) +
+        "&format=" + encodeURIComponent(fmt);
+      if(fmt === "html"){ a.target = "_blank"; a.rel = "noopener"; }
+      else{ a.setAttribute("download", ""); }
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "secondary";
+      btn.textContent = (fmt === "html" ? "View " : "Download ") + fmt.toUpperCase();
+      a.appendChild(btn);
+      row.appendChild(a);
+    });
+    host.appendChild(row);
+  }catch(e){ showError(String(e.message || e)); }
+}
 const SVGNS = document.getElementById("graph").namespaceURI;
 const GTCOLORS = {"Endpoint":"#e8eaf6","Service":"#dbeafe","Container":"#e0e7ff","Library":"#fef3c7","CryptoOperation":"#ede9fe","CryptoAsset":"#dcfce7","CertificateKey":"#ffedd5","CloudResource":"#f3f4f6"};
 const GRISKY = {"high":true,"critical":true};
@@ -917,6 +959,16 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _bytes(self, code: int, body: bytes, content_type: str,
+               filename: str) -> None:
+        self.send_response(code)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Disposition",
+                         f'attachment; filename="{filename}"')
+        self.end_headers()
+        self.wfile.write(body)
+
     def _read_json(self) -> dict:
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -991,6 +1043,26 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(404, {"error": "scan not found"})
             else:
                 self._json(200, plan)
+        elif parsed.path == "/api/reports":
+            summary = self.service.report_summary(
+                query.get("scan_id", [""])[0])
+            if summary is None:
+                self._json(404, {"error": "scan not found"})
+            else:
+                self._json(200, summary)
+        elif parsed.path == "/api/reports/download":
+            try:
+                artifact = self.service.report_artifact(
+                    query.get("scan_id", [""])[0],
+                    query.get("format", [""])[0])
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            if artifact is None:
+                self._json(404, {"error": "scan not found"})
+            else:
+                content_type, filename, body = artifact
+                self._bytes(200, body, content_type, filename)
         else:
             self._json(404, {"error": "not found"})
 

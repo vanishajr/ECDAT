@@ -14,7 +14,7 @@ import argparse
 from pathlib import Path
 
 from ecdat.commands import export_cmd, list_cmd, recommend_cmd, report_cmd
-from ecdat.commands import ci_cmd, gui_cmd, risk_cmd, scan_binary_cmd, scan_cloud_cmd, scan_cmd
+from ecdat.commands import ci_cmd, demo_cmd, gui_cmd, risk_cmd, scan_binary_cmd, scan_cloud_cmd, scan_cmd
 from ecdat.commands import scan_container_cmd, show_cmd
 
 DEFAULT_DB = str(Path.home() / ".ecdat" / "ecdat.db")
@@ -119,6 +119,12 @@ def build_parser() -> argparse.ArgumentParser:
     mode_ci.add_argument("--mock", action="store_true", help="use MockCoreClient (default)")
     mode_ci.add_argument("--real", action="store_true", help="use RealCoreClient")
     p_ci.set_defaults(func=ci_cmd.run)
+
+    p_demo = sub.add_parser("demo", help="seed a demo workspace and launch the local mock GUI")
+    p_demo.add_argument("--db", default=None, help="SQLite DB path (default: fresh temp demo workspace)")
+    p_demo.add_argument("--host", default="127.0.0.1", help="loopback host to bind (default: 127.0.0.1)")
+    p_demo.add_argument("--port", type=int, default=8734, help="port to bind (0 = OS selects)")
+    p_demo.set_defaults(func=demo_cmd.run)
 
     return parser
 

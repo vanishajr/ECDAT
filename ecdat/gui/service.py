@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import re
 import sqlite3
 import threading
 from pathlib import Path
@@ -27,8 +28,12 @@ from pathlib import Path
 from ecdat.core.client import CoreClient, get_client
 from ecdat.core.validate import validate
 from ecdat.exports import cbom as cbom_mod
+from ecdat.exports import csv_gen as csv_mod
+from ecdat.exports import sarif as sarif_mod
 from ecdat.gui.graph import GraphProvider, MockGraphProvider
 from ecdat.gui.migration import MigrationProvider, MockMigrationProvider
+from ecdat.reports import html as html_mod
+from ecdat.reports import pdf as pdf_mod
 from ecdat.reports.aggregate import build_report
 from ecdat.store import db
 from ecdat.store import findings as fstore
@@ -455,3 +460,76 @@ class GuiService:
             return None
         return self.migration_provider.get_plan(
             doc["scan_id"], doc["target"], self._project_findings(doc))
+
+    # -- reports ------------------------------------------------------------------
+    #
+    # Reports render the stored canonical scan through the existing
+    # renderers (reports.html/pdf, exports csv/sarif, canonical JSON).
+    # No new report logic lives here: this layer only selects the
+    # renderer and wraps bytes for download. Unknown scans return
+    # None; unknown formats raise ValueError (HTTP 400 at the edge).
+
+    REPORT_FORMATS: tuple[str, ...] = ("html", "pdf", "csv", "json", "sarif")
+
+    _REPORT_TYPES: dict[str, str] = {
+        "html": "text/html; charset=utf-8",
+        "pdf": "application/pdf",
+        "csv": "text/csv; charset=utf-8",
+        "json": "application/json",
+        "sarif": "application/json",
+    }
+
+    _REPORT_EXTS: dict[str, str] = {
+        "html": "html",
+        "pdf": "pdf",
+        "csv": "csv",
+        "json": "json",
+        "sarif": "sarif.json",
+    }
+
+    def report_summary(self, scan_id: str) -> dict | None:
+        """Report metadata for a stored scan. None if unknown."""
+        doc = self._load_doc(scan_id)
+        if doc is None:
+            return None
+        rep = build_report(doc)
+        return {
+            "scan_id": doc["scan_id"],
+            "target": doc["target"],
+            "finding_count": rep["finding_count"],
+            "risk": {"score": rep["risk"]["score"],
+                     "level": rep["risk"]["level"]},
+            "formats": list(self.REPORT_FORMATS),
+            "model": RISK_MODEL_NOTE,
+            "mock": True,
+            "source": "existing report/export renderers over get_scan_doc",
+        }
+
+    def report_artifact(self, scan_id: str,
+                        format: str) -> tuple[str, str, bytes] | None:
+        """(content_type, filename, body) for one report format.
+
+        None if the scan is unknown. Raises ValueError for an
+        unknown format. Filenames are sanitized; bodies are generated
+        in memory from the stored scan — never read from disk.
+        """
+        if format not in self.REPORT_FORMATS:
+            raise ValueError(f"unknown report format: {format!r}")
+        doc = self._load_doc(scan_id)
+        if doc is None:
+            return None
+        rep = build_report(doc)
+        if format == "html":
+            body = html_mod.to_html(rep).encode("utf-8")
+        elif format == "pdf":
+            body = pdf_mod.to_pdf_bytes(rep)
+        elif format == "csv":
+            body = (csv_mod.to_csv(doc) + "\n").encode("utf-8")
+        elif format == "json":
+            body = (json.dumps(doc, indent=2, sort_keys=True)
+                    + "\n").encode("utf-8")
+        else:  # sarif
+            body = (sarif_mod.to_sarif(doc) + "\n").encode("utf-8")
+        safe = re.sub(r"[^A-Za-z0-9._-]", "_", doc["scan_id"])
+        filename = f"ecdat-{safe}-report.{self._REPORT_EXTS[format]}"
+        return (self._REPORT_TYPES[format], filename, body)
