@@ -14,7 +14,7 @@ import argparse
 from pathlib import Path
 
 from ecdat.commands import export_cmd, list_cmd, recommend_cmd, report_cmd
-from ecdat.commands import gui_cmd, risk_cmd, scan_binary_cmd, scan_cloud_cmd, scan_cmd
+from ecdat.commands import ci_cmd, gui_cmd, risk_cmd, scan_binary_cmd, scan_cloud_cmd, scan_cmd
 from ecdat.commands import scan_container_cmd, show_cmd
 
 DEFAULT_DB = str(Path.home() / ".ecdat" / "ecdat.db")
@@ -107,6 +107,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_gui.add_argument("--host", default="127.0.0.1", help="loopback host to bind (default: 127.0.0.1)")
     p_gui.add_argument("--port", type=int, default=8734, help="port to bind (0 = OS selects)")
     p_gui.set_defaults(func=gui_cmd.run)
+
+    p_ci = sub.add_parser("ci", help="mock-first CI gate: scan a target and enforce a severity threshold")
+    p_ci.add_argument("target", help="file or directory to scan")
+    p_ci.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
+    p_ci.add_argument("--fail-on", choices=["info", "low", "medium", "high", "critical"], default=None, help="fail when a finding at/above this severity exists (default: report only, always pass)")
+    p_ci.add_argument("--summary", action="store_true", help="print concise human summary (default output)")
+    p_ci.add_argument("--json", action="store_true", help="print machine-readable JSON to stdout instead of the human summary")
+    p_ci.add_argument("--sarif", default=None, metavar="PATH", help="write SARIF via the existing Task 7 exporter to PATH (stdout still carries summary/JSON)")
+    mode_ci = p_ci.add_mutually_exclusive_group()
+    mode_ci.add_argument("--mock", action="store_true", help="use MockCoreClient (default)")
+    mode_ci.add_argument("--real", action="store_true", help="use RealCoreClient")
+    p_ci.set_defaults(func=ci_cmd.run)
 
     return parser
 
