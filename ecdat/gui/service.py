@@ -28,6 +28,7 @@ from ecdat.core.client import CoreClient, get_client
 from ecdat.core.validate import validate
 from ecdat.exports import cbom as cbom_mod
 from ecdat.gui.graph import GraphProvider, MockGraphProvider
+from ecdat.gui.migration import MigrationProvider, MockMigrationProvider
 from ecdat.reports.aggregate import build_report
 from ecdat.store import db
 from ecdat.store import findings as fstore
@@ -104,10 +105,12 @@ class GuiService:
     """Mock-first GUI use cases. Thread-safe; opens a fresh DB per op."""
 
     def __init__(self, db_path: str | Path, client: CoreClient | None = None,
-                 graph_provider: GraphProvider | None = None) -> None:
+                 graph_provider: GraphProvider | None = None,
+                 migration_provider: MigrationProvider | None = None) -> None:
         self.db_path = Path(db_path).expanduser()
         self.client = client if client is not None else get_client("mock")
         self.graph_provider = graph_provider if graph_provider is not None else MockGraphProvider()
+        self.migration_provider = migration_provider if migration_provider is not None else MockMigrationProvider()
         self._lock = threading.Lock()
         self._jobs: dict[str, dict] = {}
         self._counter = itertools.count(1)
@@ -438,3 +441,17 @@ class GuiService:
     def graph(self) -> dict:
         """Frontend-ready knowledge graph from the configured provider."""
         return self.graph_provider.get_graph()
+
+    # -- migration planner ------------------------------------------------------------
+    #
+    # Mock/placeholder recombination (see ecdat.gui.migration): Task 6
+    # recommendations + affected files + mock-graph rule links. Unknown
+    # scans return None, following existing service conventions.
+
+    def migration_plan(self, scan_id: str) -> dict | None:
+        """Frontend-ready migration plan. None if unknown."""
+        doc = self._load_doc(scan_id)
+        if doc is None:
+            return None
+        return self.migration_provider.get_plan(
+            doc["scan_id"], doc["target"], self._project_findings(doc))

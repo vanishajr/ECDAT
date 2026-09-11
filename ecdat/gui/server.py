@@ -196,6 +196,16 @@ Drag to pan, scroll to zoom, click nodes and edges. Risky nodes/paths are ringed
 </div>
 </div>
 
+<div class="card">
+<h2>9. Migration Planner <span class="badge">MOCK / PLACEHOLDER</span></h2>
+<div class="note">Severity triage of existing mock recommendations — heaviest first.
+This is triage by current finding severity, NOT a migration sequence.</div>
+<div id="migration"><p class="note">No completed scan yet.</p></div>
+<div class="preview" id="migration-missing">Not included yet: PQC target selection; migration timelines;
+effort estimates; phased sequencing; migration confidence; real migration state.
+All await Person 1 migration intelligence.</div>
+</div>
+
 <script>
 "use strict";
 function $(id){return document.getElementById(id);}
@@ -250,6 +260,7 @@ async function poll(jobId){
       loadInventory(j.scan_id);
       loadRisk(j.scan_id);
       loadAssets(j.scan_id);
+      loadMigration(j.scan_id);
     }else if(j.status === "failed"){
       if(timer){ clearInterval(timer); timer = null; }
       showError(j.error || "scan failed");
@@ -506,6 +517,70 @@ async function loadAssets(scanId){
     });
     host.appendChild(rul);
     $("graphState").textContent = a.graph.message + " " + a.graph.detail;
+  }catch(e){ showError(String(e.message || e)); }
+}
+async function loadMigration(scanId){
+  try{
+    const m = await api("/api/migration?scan_id=" + encodeURIComponent(scanId));
+    const host = $("migration");
+    while(host.firstChild){ host.removeChild(host.firstChild); }
+    const tri = document.createElement("p");
+    tri.className = "note";
+    tri.textContent = m.triage_label;
+    host.appendChild(tri);
+    if(!m.items.length){
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = "No findings to plan for in this scan.";
+      host.appendChild(p);
+      return;
+    }
+    m.items.forEach(function(it){
+      const h = document.createElement("h4");
+      h.textContent = it.rule_id + " [" + it.severity + "] x" + it.count;
+      host.appendChild(h);
+      const dl = document.createElement("dl");
+      dl.className = "kv";
+      [["Title", it.title],
+       ["Action", it.action],
+       ["Refs", it.refs.length ? it.refs.join(", ") : "none"],
+       ["Affected files", it.affected_files.length ? it.affected_files.join(", ") : "none"],
+       ["Graph nodes", it.graph_node_ids.length ? it.graph_node_ids.join(", ") : "none"],
+       ["Status", it.status]
+      ].forEach(function(pair){
+        const dt = document.createElement("dt");
+        dt.textContent = pair[0];
+        const dd = document.createElement("dd");
+        dd.textContent = pair[1];
+        dl.appendChild(dt);
+        dl.appendChild(dd);
+      });
+      host.appendChild(dl);
+      if(it.graph_node_ids.length){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "secondary";
+        b.textContent = "Show " + it.graph_node_ids[0] + " in graph";
+        b.addEventListener("click", function(){
+          selectNode(it.graph_node_ids[0]);
+          document.getElementById("gwrap").scrollIntoView();
+        });
+        host.appendChild(b);
+      }
+      const ib = document.createElement("button");
+      ib.type = "button";
+      ib.className = "secondary";
+      ib.style.marginLeft = ".5em";
+      ib.textContent = "Show findings in inventory";
+      ib.addEventListener("click", function(){
+        if(!currentScanId){ showError("run a mock scan first to cross-link inventory"); return; }
+        filterSev = null;
+        filterRule = it.rule_id;
+        loadInventory(currentScanId);
+        document.getElementById("inventory").scrollIntoView();
+      });
+      host.appendChild(ib);
+    });
   }catch(e){ showError(String(e.message || e)); }
 }
 $("clearFilters").addEventListener("click", function(){
@@ -910,6 +985,12 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(200, assets)
         elif parsed.path == "/api/graph":
             self._json(200, self.service.graph())
+        elif parsed.path == "/api/migration":
+            plan = self.service.migration_plan(query.get("scan_id", [""])[0])
+            if plan is None:
+                self._json(404, {"error": "scan not found"})
+            else:
+                self._json(200, plan)
         else:
             self._json(404, {"error": "not found"})
 
