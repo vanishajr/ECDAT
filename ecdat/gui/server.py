@@ -88,6 +88,20 @@ code{font-size:.85em;background:#f4f4f4;padding:.1em .3em;border-radius:.3em}
 #error{color:#7a1f26;font-weight:600}
 .chips{display:flex;gap:.5em;flex-wrap:wrap;margin:.4em 0}
 .chip{background:#eef2f9;border:1px solid #c4d2e8;border-radius:999px;padding:.15em .7em;font-size:.85em}
+#graph{display:block;cursor:grab;touch-action:none}
+#graph text{font-family:inherit;pointer-events:none}
+.gnode{cursor:pointer}
+.gnode rect{stroke:#5b6478;stroke-width:1.5}
+.gnode.risky rect{stroke:#c00;stroke-width:2.5}
+.gnode.selected rect{stroke:#2456a6;stroke-width:3}
+.gnode.dim,.gedge.dim,.glabel.dim{opacity:.1}
+.gedge{stroke:#8a93a6;stroke-width:1.5;cursor:pointer}
+.gedge.risky{stroke:#c00}
+.gedge.trace{stroke:#2456a6;stroke-width:3}
+.gedge.selected{stroke:#2456a6;stroke-width:3}
+.gedge-hit{stroke:rgba(0,0,0,0);stroke-width:12;cursor:pointer}
+.glabel{font-size:9px;fill:#555}
+.gtrace-on{outline:2px solid #2456a6}
 .tiles{display:flex;gap:.5em;flex-wrap:wrap;margin:.5em 0}
 .tile{border:1px solid #bbb;background:#fff;border-radius:.5em;padding:.4em .8em;cursor:pointer;font-size:.9em;color:#1a1a1a}
 .tile b{display:block;font-size:1.2em}
@@ -161,6 +175,25 @@ Staged for UI purposes only &mdash; the mock scan itself is instantaneous.</div>
 Co-occurrence grouping &mdash; not a dependency graph.</div>
 <div id="assets"><p class="note">No completed scan yet.</p></div>
 <div class="preview" id="graphState">Dependency edges: awaiting Person 1 edge data.</div>
+</div>
+
+<div class="card">
+<h2>8. Crypto Knowledge Graph <span class="badge">MOCK DATASET</span></h2>
+<div class="note">Deterministic mock graph for UI development — not scan data and not Person 1 CIR.
+Drag to pan, scroll to zoom, click nodes and edges. Risky nodes/paths are ringed red.</div>
+<div class="row">
+<input type="text" id="gsearch" placeholder="filter: e.g. RSA, tls, aws" style="max-width:22em">
+<label class="note"><input type="checkbox" id="grisky"> risky only</label>
+<button id="greset" class="secondary" type="button">Reset view</button>
+<button id="gtrace" type="button">Trace: internet → risk</button>
+</div>
+<div class="chips" id="gtypes"></div>
+<div id="gwrap" style="border:1px solid #d7d7d7;border-radius:.5em;overflow:hidden;background:#fafbfe">
+<svg id="graph" width="100%" height="520" role="img" aria-label="crypto knowledge graph"></svg>
+</div>
+<div class="row">
+<div id="gdetail" style="flex:1;min-width:16em"><p class="note">Select a node or edge.</p></div>
+</div>
 </div>
 
 <script>
@@ -480,6 +513,300 @@ $("clearFilters").addEventListener("click", function(){
   filterRule = null;
   if(currentScanId){ loadInventory(currentScanId); loadRisk(currentScanId); }
 });
+$("clearFilters").addEventListener("click", function(){
+  filterSev = null;
+  filterRule = null;
+  if(currentScanId){ loadInventory(currentScanId); loadRisk(currentScanId); }
+});
+const SVGNS = document.getElementById("graph").namespaceURI;
+const GTCOLORS = {"Endpoint":"#e8eaf6","Service":"#dbeafe","Container":"#e0e7ff","Library":"#fef3c7","CryptoOperation":"#ede9fe","CryptoAsset":"#dcfce7","CertificateKey":"#ffedd5","CloudResource":"#f3f4f6"};
+const GRISKY = {"high":true,"critical":true};
+let GDATA = null;
+let gView = {x:0,y:0,k:1};
+let gHiddenTypes = {};
+let gTraceOn = null;
+function gEl(name, attrs, parent){
+  const el = document.createElementNS(SVGNS, name);
+  for(const k in attrs){ el.setAttribute(k, attrs[k]); }
+  if(parent){ parent.appendChild(el); }
+  return el;
+}
+function gText(parent, x, y, s, size, bold, fill){
+  const t = gEl("text", {x:x, y:y, "font-size":size, "text-anchor":"middle"}, parent);
+  if(bold){ t.setAttribute("font-weight","700"); }
+  if(fill){ t.setAttribute("fill", fill); }
+  t.textContent = s;
+  return t;
+}
+function gApply(){
+  const root = document.getElementById("groot");
+  if(root){ root.setAttribute("transform", "translate(" + gView.x + "," + gView.y + ") scale(" + gView.k + ")"); }
+}
+function gNodeById(id){
+  for(const n of GDATA.nodes){ if(n.id === id){ return n; } }
+  return null;
+}
+function gVisible(n, q){
+  if(gHiddenTypes[n.type]){ return false; }
+  if(document.getElementById("grisky").checked && !GRISKY[n.risk]){ return false; }
+  if(q && (n.id + " " + n.label + " " + n.type).toLowerCase().indexOf(q) < 0){ return false; }
+  return true;
+}
+async function loadGraph(){
+  try{
+    GDATA = await api("/api/graph");
+    buildTypeChips();
+    renderGraph();
+  }catch(e){ showError(String(e.message || e)); }
+}
+function buildTypeChips(){
+  const host = $("gtypes");
+  while(host.firstChild){ host.removeChild(host.firstChild); }
+  GDATA.node_types.forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile";
+    b.textContent = t;
+    b.style.background = GTCOLORS[t] || "#fff";
+    b.addEventListener("click", function(){
+      gHiddenTypes[t] = !gHiddenTypes[t];
+      b.classList.toggle("gtrace-hl", false);
+      b.style.opacity = gHiddenTypes[t] ? ".4" : "1";
+      renderGraph();
+    });
+    host.appendChild(b);
+  });
+}
+function renderGraph(){
+  const svg = $("graph");
+  while(svg.firstChild){ svg.removeChild(svg.firstChild); }
+  const W = GDATA.canvas.width, H = GDATA.canvas.height;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  const defs = gEl("defs", {}, svg);
+  [["garr","#8a93a6"],["garrR","#c00"],["garrB","#2456a6"]].forEach(function(m){
+    const mk = gEl("marker", {id:m[0], viewBox:"0 0 10 10", refX:"9", refY:"5",
+      markerWidth:"7", markerHeight:"7", orient:"auto-start-reverse"}, defs);
+    gEl("path", {d:"M 0 1 L 9 5 L 0 9 z", fill:m[1]}, mk);
+  });
+  const root = gEl("g", {id:"groot"}, svg);
+  const q = $("gsearch").value.trim().toLowerCase();
+  const vis = {};
+  GDATA.nodes.forEach(function(n){ vis[n.id] = gVisible(n, q); });
+  const eLayer = gEl("g", {}, root);
+  const nLayer = gEl("g", {}, root);
+  GDATA.edges.forEach(function(e){
+    const a = gNodeById(e.source), b = gNodeById(e.target);
+    const shown = vis[e.source] && vis[e.target];
+    const traced = gTraceOn && gTraceOn.edgeIds.indexOf(e.id) >= 0;
+    const risky = GRISKY[a.risk] || GRISKY[b.risk];
+    const x1 = a.x + 75, y1 = a.y + 28, x2 = b.x + 75, y2 = b.y + 28;
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const ln = gEl("line", {x1:x1, y1:y1, x2:x2, y2:y2,
+      "class":"gedge" + (risky ? " risky" : "") + (traced ? " trace" : "") + (shown ? "" : " dim"),
+      "marker-end": traced ? "url(#garrB)" : (risky ? "url(#garrR)" : "url(#garr)")}, eLayer);
+    ln.addEventListener("click", function(ev){ ev.stopPropagation(); selectEdge(e.id); });
+    gEl("line", {x1:x1, y1:y1, x2:x2, y2:y2, "class":"gedge-hit" + (shown ? "" : " dim")}, eLayer)
+      .addEventListener("click", function(ev){ ev.stopPropagation(); selectEdge(e.id); });
+    const lb = gEl("text", {x:mx, y:my - 4, "class":"glabel" + (shown ? "" : " dim"), "text-anchor":"middle"}, eLayer);
+    lb.textContent = e.type;
+  });
+  GDATA.nodes.forEach(function(n){
+    const g = gEl("g", {"class":"gnode" + (GRISKY[n.risk] ? " risky" : "") + (vis[n.id] ? "" : " dim"),
+      transform:"translate(" + n.x + "," + n.y + ")", "data-nid":n.id}, nLayer);
+    gEl("rect", {width:150, height:56, rx:8, fill:GTCOLORS[n.type] || "#fff"}, g);
+    const title = gEl("title", {}, g);
+    title.textContent = n.label + " (" + n.type + ", risk " + n.risk + ")";
+    gText(g, 75, 18, n.label.slice(0, 22), 11, true);
+    gText(g, 75, 32, n.type, 9, false, "#555");
+    gText(g, 75, 46, "risk: " + n.risk, 9, true, GRISKY[n.risk] ? "#c00" : "#444");
+    g.addEventListener("click", function(ev){ ev.stopPropagation(); selectNode(n.id); });
+  });
+  gApply();
+}
+function gDetailBox(){
+  const host = $("gdetail");
+  while(host.firstChild){ host.removeChild(host.firstChild); }
+  return host;
+}
+function gKv(host, k, v){
+  const p = document.createElement("p");
+  p.className = "note";
+  p.style.margin = ".2em 0";
+  const b = document.createElement("b");
+  b.textContent = k + ": ";
+  p.appendChild(b);
+  p.appendChild(document.createTextNode(v));
+  host.appendChild(p);
+}
+function selectNode(id){
+  renderGraph();
+  const hit = document.querySelector('.gnode[data-nid="' + id + '"]');
+  if(hit){ hit.classList.add("selected"); }
+  const n = gNodeById(id);
+  const host = gDetailBox();
+  const h = document.createElement("h4");
+  h.textContent = n.label;
+  host.appendChild(h);
+  gKv(host, "Type", n.type);
+  gKv(host, "Risk", n.risk + (GRISKY[n.risk] ? " (risky path)" : ""));
+  gKv(host, "Confidence", String(n.confidence) + " (mock dataset value)");
+  Object.keys(n.metadata).sort().forEach(function(k){ gKv(host, k, n.metadata[k]); });
+  const rel = GDATA.edges.filter(function(e){ return e.source === id || e.target === id; });
+  const rh = document.createElement("h4");
+  rh.textContent = "Relationships (" + rel.length + ")";
+  host.appendChild(rh);
+  const ul = document.createElement("ul");
+  rel.forEach(function(e){
+    const other = e.source === id ? e.target : e.source;
+    const dir = e.source === id ? "out" : "in";
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile";
+    b.textContent = dir + " " + e.type + " → " + other;
+    b.addEventListener("click", function(){ selectNode(other); });
+    li.appendChild(b);
+    if(e.detail){
+      const sp = document.createElement("span");
+      sp.className = "note";
+      sp.textContent = " " + e.detail;
+      li.appendChild(sp);
+    }
+    ul.appendChild(li);
+  });
+  host.appendChild(ul);
+  if(n.rule_id){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = "Show in inventory (" + n.rule_id + ")";
+    b.addEventListener("click", function(){
+      if(!currentScanId){ showError("run a mock scan first to cross-link inventory"); return; }
+      filterSev = null;
+      filterRule = n.rule_id;
+      loadInventory(currentScanId);
+      document.getElementById("inventory").scrollIntoView();
+    });
+    host.appendChild(b);
+  }
+  const rb = document.createElement("button");
+  rb.type = "button";
+  rb.className = "secondary";
+  rb.textContent = "Open risk dashboard";
+  rb.style.marginLeft = ".5em";
+  rb.addEventListener("click", function(){
+    document.getElementById("riskTiles").scrollIntoView();
+  });
+  host.appendChild(rb);
+}
+function selectEdge(id){
+  document.querySelectorAll(".gedge.selected").forEach(function(el){ el.classList.remove("selected"); });
+  renderGraph();
+  const host = gDetailBox();
+  let found = null;
+  for(const e of GDATA.edges){ if(e.id === id){ found = e; break; } }
+  if(!found){ return; }
+  const h = document.createElement("h4");
+  h.textContent = found.type + ": " + found.source + " → " + found.target;
+  host.appendChild(h);
+  gKv(host, "Relationship", found.type);
+  gKv(host, "Source", found.source + " (" + gNodeById(found.source).type + ")");
+  gKv(host, "Target", found.target + " (" + gNodeById(found.target).type + ")");
+  if(found.detail){ gKv(host, "Detail", found.detail); }
+  [["source", found.source], ["target", found.target]].forEach(function(p){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile";
+    b.textContent = "Select " + p[0] + ": " + p[1];
+    b.style.marginRight = ".4em";
+    b.addEventListener("click", function(){ selectNode(p[1]); });
+    host.appendChild(b);
+  });
+}
+function tracePath(pid){
+  let t = null;
+  for(const c of GDATA.trace_paths){ if(c.id === pid){ t = c; break; } }
+  if(!t){ return; }
+  const edgeIds = [];
+  for(let i = 0; i + 1 < t.node_ids.length; i++){
+    const a = t.node_ids[i], b = t.node_ids[i + 1];
+    for(const e of GDATA.edges){
+      if((e.source === a && e.target === b) || (e.source === b && e.target === a)){
+        edgeIds.push(e.id);
+        break;
+      }
+    }
+  }
+  gTraceOn = {id: pid, edgeIds: edgeIds};
+  renderGraph();
+  const host = gDetailBox();
+  const h = document.createElement("h4");
+  h.textContent = "Trace: " + t.label;
+  host.appendChild(h);
+  const ol = document.createElement("ol");
+  t.node_ids.forEach(function(nid){
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile";
+    b.textContent = nid;
+    b.addEventListener("click", function(){ selectNode(nid); });
+    li.appendChild(b);
+    ol.appendChild(li);
+  });
+  host.appendChild(ol);
+  const p = document.createElement("p");
+  p.className = "note";
+  p.textContent = t.note;
+  host.appendChild(p);
+  const rb = document.createElement("button");
+  rb.type = "button";
+  rb.textContent = "Open risk dashboard";
+  rb.addEventListener("click", function(){
+    document.getElementById("riskTiles").scrollIntoView();
+  });
+  host.appendChild(rb);
+}
+$("greset").addEventListener("click", function(){
+  gView = {x:0,y:0,k:1};
+  gHiddenTypes = {};
+  gTraceOn = null;
+  $("gsearch").value = "";
+  document.querySelectorAll("#gtypes .tile").forEach(function(b){ b.style.opacity = "1"; });
+  renderGraph();
+});
+$("gtrace").addEventListener("click", function(){ tracePath("internet-to-risk"); });
+$("gsearch").addEventListener("input", function(){ renderGraph(); });
+$("grisky").addEventListener("change", function(){ renderGraph(); });
+(function(){
+  const svg = $("graph");
+  let pan = null;
+  svg.addEventListener("pointerdown", function(ev){
+    pan = {x:ev.clientX, y:ev.clientY, vx:gView.x, vy:gView.y};
+    svg.setPointerCapture(ev.pointerId);
+    svg.style.cursor = "grabbing";
+  });
+  svg.addEventListener("pointermove", function(ev){
+    if(!pan){ return; }
+    const r = svg.getBoundingClientRect();
+    const sx = GDATA ? GDATA.canvas.width / r.width : 1;
+    gView.x = pan.vx + (ev.clientX - pan.x) * sx;
+    gView.y = pan.vy + (ev.clientY - pan.y) * sx;
+    gApply();
+  });
+  svg.addEventListener("pointerup", function(){ pan = null; svg.style.cursor = "grab"; });
+  svg.addEventListener("wheel", function(ev){
+    ev.preventDefault();
+    const r = svg.getBoundingClientRect();
+    const sx = GDATA.canvas.width / r.width;
+    const px = (ev.clientX - r.left) * sx, py = (ev.clientY - r.top) * sx;
+    const k2 = Math.min(3, Math.max(.3, gView.k * Math.exp(-ev.deltaY * .0012)));
+    gView.x = px - (px - gView.x) * (k2 / gView.k);
+    gView.y = py - (py - gView.y) * (k2 / gView.k);
+    gView.k = k2;
+    gApply();
+  }, {passive:false});
+})();
+loadGraph().catch(function(e){ showError(String(e && e.message || e)); });
 </script>
 </body>
 </html>
@@ -581,6 +908,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(404, {"error": "scan not found"})
             else:
                 self._json(200, assets)
+        elif parsed.path == "/api/graph":
+            self._json(200, self.service.graph())
         else:
             self._json(404, {"error": "not found"})
 

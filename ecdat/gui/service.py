@@ -27,6 +27,7 @@ from pathlib import Path
 from ecdat.core.client import CoreClient, get_client
 from ecdat.core.validate import validate
 from ecdat.exports import cbom as cbom_mod
+from ecdat.gui.graph import GraphProvider, MockGraphProvider
 from ecdat.reports.aggregate import build_report
 from ecdat.store import db
 from ecdat.store import findings as fstore
@@ -102,9 +103,11 @@ GRAPH_EMPTY_DETAIL = "No dependency relationships are available in canonical v1.
 class GuiService:
     """Mock-first GUI use cases. Thread-safe; opens a fresh DB per op."""
 
-    def __init__(self, db_path: str | Path, client: CoreClient | None = None) -> None:
+    def __init__(self, db_path: str | Path, client: CoreClient | None = None,
+                 graph_provider: GraphProvider | None = None) -> None:
         self.db_path = Path(db_path).expanduser()
         self.client = client if client is not None else get_client("mock")
+        self.graph_provider = graph_provider if graph_provider is not None else MockGraphProvider()
         self._lock = threading.Lock()
         self._jobs: dict[str, dict] = {}
         self._counter = itertools.count(1)
@@ -425,3 +428,13 @@ class GuiService:
             "mock": True,
             "source": "CBOM derivation + build_report over get_scan_doc",
         }
+
+    # -- knowledge graph ------------------------------------------------------------
+    #
+    # Scan-independent mock dataset (see ecdat.gui.graph): canonical v1
+    # carries no nodes/edges, so the graph cannot be derived from a
+    # scan. Person 1 CIR output replaces the provider, not the UI.
+
+    def graph(self) -> dict:
+        """Frontend-ready knowledge graph from the configured provider."""
+        return self.graph_provider.get_graph()
