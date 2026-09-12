@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ecdat.local/schemas/canonical_v1.json",
+  "title": "ECDATA Canonical Scan Document v1 (PROVISIONAL)",
+  "description": "PROVISIONAL — pending Person 1 (Core Intelligence) + Person 2 (Discovery/Scanning) sign-off. Do not extend or rename fields without all-3 agreement. Minimal v1 contract for Person 3 platform layer (CLI/store/exports/reports). Version: canonical_v1 / schema_version 1.0.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scan_id",
+    "target",
+    "started_at",
+    "finished_at",
+    "tool_versions",
+    "findings",
+    "stats"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Canonical schema version. Must be exactly '1.0' for v1 documents.",
+      "const": "1.0"
+    },
+    "scan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "description": "Scanned path as given to the scan command (file or directory).",
+      "type": "string",
+      "minLength": 1
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tool_versions": {
+      "description": "Versions of tools that produced this document.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["files_scanned", "findings_count"],
+      "additionalProperties": false,
+      "properties": {
+        "files_scanned": { "type": "integer", "minimum": 0 },
+        "findings_count": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["rule_id", "title", "severity", "file", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "file": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 0 },
+        "snippet": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "metadata": {
+          "description": "Free-form extras reserved for Person 1. No required keys in v1.",
+          "type": "object"
+        }
+      }
+    }
+  }
+}

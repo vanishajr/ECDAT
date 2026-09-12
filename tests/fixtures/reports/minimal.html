@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ECDAT Report: scan-minimal-001</title>
+<style>body{font-family:sans-serif;max-width:60em;margin:2em auto;padding:0 1em}table{border-collapse:collapse}th,td{border:1px solid #999;padding:.3em .6em;text-align:left}</style>
+</head>
+<body>
+<h1>ECDAT Report: scan-minimal-001</h1>
+<h2>Executive Summary</h2>
+<ul>
+<li>Target: samples/rsa_small.py</li>
+<li>Findings: 1 (files scanned: 1)</li>
+<li>Risk: medium (5) [mock scoring]</li>
+</ul>
+<h2>Scan Information</h2>
+<ul>
+<li>Started: 2026-09-10T10:00:00Z</li>
+<li>Finished: 2026-09-10T10:00:02Z</li>
+<li>ecdat: 0.1.0</li></ul>
+<h2>Findings by Severity</h2>
+<table><tr><th>Severity</th><th>Count</th></tr><tr><td>high</td><td>1</td></tr></table>
+<h2>Findings by Rule</h2>
+<table><tr><th>Rule</th><th>Severity</th><th>Count</th><th>Title</th></tr><tr><td>RSA-1024</td><td>high</td><td>1</td><td>Weak RSA key size (1024-bit)</td></tr></table>
+<h2>Top Affected Files/Services</h2>
+<table><tr><th>File/Service</th><th>Count</th></tr><tr><td>samples/rsa_small.py</td><td>1</td></tr></table>
+<h2>Risk Summary (mock)</h2>
+<p>Score 5 / level medium using the temporary mock scoring model.</p>
+<h2>Migration Summary (mock placeholder)</h2>
+<ul><li><b>RSA-1024</b> [high] x1: Replace 1024-bit RSA keys with 2048-bit+ RSA or PQC KEM (mock).</li></ul>
+<p><em>Risk and migration sections are mock/placeholder output pending Person 1's real engine.</em></p>
+</body>
+</html>

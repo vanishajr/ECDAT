@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1" serialNumber="urn:ecdat:scan-minimal-001">
+  <metadata>
+    <description>Minimal/mock CBOM representation derived from ECDAT canonical v1 findings; pending richer CIR from Person 1.</description>
+    <timestamp>2026-09-10T10:00:02Z</timestamp>
+    <tools>
+      <tool>
+        <name>ecdat</name>
+        <version>0.1.0</version>
+      </tool>
+    </tools>
+    <component bom-ref="scan-minimal-001" type="application">
+      <name>samples/rsa_small.py</name>
+      <version>scan-minimal-001</version>
+    </component>
+  </metadata>
+  <components>
+    <component bom-ref="RSA-1024:samples/rsa_small.py:12#0" type="cryptographic-asset">
+      <name>RSA-1024</name>
+      <description>Weak RSA key size (1024-bit)</description>
+      <evidence>
+        <occurrence>
+          <location>samples/rsa_small.py:12</location>
+          <additionalContext>rsa.generate_private_key(key_size=1024)</additionalContext>
+        </occurrence>
+      </evidence>
+      <cryptoProperties>
+        <assetType>algorithm</assetType>
+      </cryptoProperties>
+    </component>
+  </components>
+  <vulnerabilities>
+    <vulnerability bom-ref="RSA-1024:samples/rsa_small.py:12#0">
+      <id>RSA-1024</id>
+      <source>
+        <name>ecdat</name>
+      </source>
+      <ratings>
+        <rating>
+          <severity>high</severity>
+          <method>other</method>
+        </rating>
+      </ratings>
+      <description>Weak RSA key size (1024-bit)</description>
+      <affects>
+        <target ref="RSA-1024:samples/rsa_small.py:12#0" />
+      </affects>
+    </vulnerability>
+  </vulnerabilities>
+</bom>

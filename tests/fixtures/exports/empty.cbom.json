@@ -1,0 +1,23 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [],
+  "metadata": {
+    "component": {
+      "bom-ref": "scan-empty-001",
+      "name": "samples/clean.py",
+      "type": "application",
+      "version": "scan-empty-001"
+    },
+    "description": "Minimal/mock CBOM representation derived from ECDAT canonical v1 findings; pending richer CIR from Person 1.",
+    "timestamp": "2026-09-10T12:00:01Z",
+    "tools": [
+      {
+        "name": "ecdat",
+        "version": "0.1.0"
+      }
+    ]
+  },
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

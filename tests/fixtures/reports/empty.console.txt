@@ -1,0 +1,16 @@
+ECDAT report: scan-empty-001
+target:   samples/clean.py
+findings: 0 (files scanned: 1)
+risk:     none (0) [mock scoring]
+
+by severity:
+  none
+
+by rule:
+  none
+
+top files/services:
+  none
+
+migration (mock placeholder):
+  no recommendations

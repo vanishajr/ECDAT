@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "scan_id": "scan-minimal-001",
+  "target": "samples/rsa_small.py",
+  "started_at": "2026-09-10T10:00:00Z",
+  "finished_at": "2026-09-10T10:00:02Z",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  },
+  "findings": [
+    {
+      "rule_id": "RSA-1024",
+      "title": "Weak RSA key size (1024-bit)",
+      "severity": "high",
+      "file": "samples/rsa_small.py",
+      "line": 12,
+      "snippet": "rsa.generate_private_key(key_size=1024)",
+      "confidence": 0.95
+    }
+  ],
+  "stats": {
+    "files_scanned": 1,
+    "findings_count": 1
+  }
+}
