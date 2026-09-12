@@ -80,19 +80,19 @@ class MockCoreClient:
 
 
 class RealCoreClient:
-    """Thin placeholder for Person 1's real Core API.
+    """Person 1 Core adapter: CIR is source of truth, canonical is export.
 
-    DO NOT implement detection here. At integration time, this class
-    becomes a small adapter that imports Person 1's finalized entry
-    point, calls it, and returns its canonical dict (validated).
-    Until then, scan() raises NotImplementedError.
+    scan() runs ecdat.core.api.scan(target) -> CIR dict, then
+    api.to_canonical(cir) -> canonical v1 dict, validated before return.
+    No SQLite, no network, no heavy deps (single-process + threadpool).
     """
 
-    def scan(self, target: Path) -> dict:  # noqa: ARG002
-        raise NotImplementedError(
-            "Person 1 Core entry point not finalized. "
-            "Use get_client('mock') until the real adapter is agreed."
-        )
+    def scan(self, target: Path) -> dict:
+        from ecdat.core import api as _api
+
+        cir = _api.scan(Path(target))
+        doc = _api.to_canonical(cir)
+        return validate(doc)
 
 
 def get_client(mode: str = "mock", **kwargs) -> CoreClient:
