@@ -54,7 +54,8 @@ python -m ecdat.cli gui             # dashboard on your own DB (no seeding)
 `list`, `show`, `risk`, `recommend`, `export` (json/csv/cbom-json/cbom-xml/sarif),
 `report` (markdown/console/html/pdf), `ci` (mock-first gate with
 `--fail-on`, `--json`, `--summary`, `--sarif`), `gui`, `demo`.
-`python -m ecdat.benchmark run|cases|suite-run` runs the benchmark harness.
+`python -m ecdat.benchmark run|cases|suite-run|baselines` runs the benchmark harness
+(`suite-run --baseline NAME` evaluates one registered baseline).
 
 ## Generated artifacts
 

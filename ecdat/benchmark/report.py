@@ -41,6 +41,7 @@ REPORT_VERSION = "1"
 
 _EVALUATED = "evaluated"
 _FAILED = "failed"
+_NOT_APPLICABLE = "not_applicable"
 
 # The only provider types this model can honestly describe today.
 PROVIDER_TYPES = ("mock", "unknown")
@@ -73,6 +74,21 @@ def summarize_case(entry: dict) -> dict:
             "metrics": None,
             "unavailable": None,
             "error": entry["error"],
+        }
+    if entry["status"] == _NOT_APPLICABLE:
+        # Baseline abstention: preserved, never scored, never failed.
+        return {
+            "case_id": entry["case_id"],
+            "group": entry["group"],
+            "title": _title_of(entry["case_id"]),
+            "status": _NOT_APPLICABLE,
+            "synthetic": entry["synthetic"],
+            "predicted_n": None,
+            "counts": None,
+            "metrics": None,
+            "unavailable": None,
+            "error": None,
+            "reason": entry.get("reason"),
         }
     metrics = entry["metrics"]
     return {

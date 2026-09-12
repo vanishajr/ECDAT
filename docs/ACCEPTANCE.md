@@ -1,6 +1,6 @@
 # ECDAT Person 3 — Final Acceptance Checklist (SIH26164)
 
-Branch: `person3-platform`. Validation: `python -m pytest -q` → **462 passing**.
+Branch: `person3-platform`. Validation: `python -m pytest -q` → **497 passing**.
 All mock behavior is labeled in code, CLI, GUI, and tests. Nothing here
 claims real detection, accuracy, PQC intelligence, or superiority.
 
@@ -18,7 +18,7 @@ Status key: **PASS** = P3-complete · **PARTIAL** = usable, known gap ·
 | CI gate (`--fail-on/--json/--summary/--sarif`) | `ci_cmd.py`, `test_ci.py` (26) |
 | GUI cards 1–10 incl. Reports downloads | `server.py`, `service.py`, `test_gui*.py` |
 | SQLite store, canonical validation | `store/`, `core/`, `test_store.py`, `test_validate.py` |
-| Benchmark pipeline + HTML/CSV/SVG/PDF artifacts | `benchmark/`, `test_benchmark*.py` |
+| Benchmark pipeline + HTML/CSV/SVG/PDF artifacts + baseline adapters | `benchmark/` (`baselines.py`, registry, mock doubles), `test_benchmark*.py` |
 | Consumer contracts (client/graph/risk/migration) | `tests/contract/` |
 | Demo + README | `demo_cmd.py`, `README.md`, `test_demo.py` |
 | SIH readiness: loopback-only, no net deps, no secrets, no hard-coded paths | audit 2026-09-11; `LOOPBACK_HOSTS` enforced |
@@ -41,10 +41,10 @@ Status key: **PASS** = P3-complete · **PARTIAL** = usable, known gap ·
 | CIR graph data | P1 | `GraphProvider` protocol |
 | Real risk / PQC engines | P1 | `risk_from_findings`, recommend map, `MigrationProvider` |
 | Discovery/evidence inputs | P2 | `MockCoreClient` routing, scan commands |
-| Real benchmark labels, baselines, param/wrapper scoring | P1/P2 | `PredictionProvider`, ground-truth model |
+| Real benchmark labels, real tool measurements, param/wrapper scoring | P1/P2 | `PredictionProvider`, ground-truth model, baseline-adapter framework (tools never executed) |
 
 ## 4. Intentionally deferred
 
 Duplicate-suppression cases (needs real streams), cache speedup (no cache),
-baseline adapters (no chosen tool), PNG chart rendering (no imaging dep),
+PNG chart rendering (no imaging dep),
 `[project.scripts]` entrypoint (invocation is `python -m ecdat.cli`).

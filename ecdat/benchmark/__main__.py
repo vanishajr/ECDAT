@@ -9,6 +9,9 @@ execution never mixes with normal scan/export/report behavior:
     python -m ecdat.benchmark cases [--group GROUP] [--json]
     python -m ecdat.benchmark suite-run [--group GROUP] [--json]
         [--output PATH] [--html PATH] [--csv PATH]
+    python -m ecdat.benchmark baselines [--json]
+    python -m ecdat.benchmark suite-run [--baseline NAME] ...
+        (evaluate one registered baseline instead of the mock provider)
 
 `run` prints the console summary and, with --output, writes the
 stable JSON result. Exit 0 unless a benchmark run itself fails.
@@ -83,6 +86,13 @@ def build_parser() -> argparse.ArgumentParser:
                               "(<section>.svg per chart)")
     p_suite.add_argument("--pdf", default=None, metavar="PATH",
                          help="write benchmark PDF report here")
+    p_suite.add_argument("--baseline", default=None, metavar="NAME",
+                         help="evaluate one registered baseline "
+                              "(see baselines) instead of the mock provider")
+    sub.add_parser("baselines", help="list registered baseline adapters "
+                                     "with local availability").add_argument(
+        "--json", action="store_true",
+        help="machine-readable registry JSON on stdout")
     return parser
 
 
@@ -111,7 +121,24 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{suite['case_count']} case(s), all synthetic fixtures; "
                   f"no detector evaluated.")
         return 0
+    if args.command == "baselines":
+        # Registry + PATH discovery only: nothing is executed.
+        from ecdat.benchmark import baselines as baselines_mod
+        rows = [baselines_mod.get_baseline(name).describe()
+                for name in baselines_mod.list_baselines()]
+        if args.json:
+            print(output_mod.to_json({"baselines": rows}))
+        else:
+            for row in rows:
+                state = ("AVAILABLE" if row["available"] else "UNAVAILABLE")
+                print(f"{row['baseline']}: {state} — "
+                      f"{row['availability_reason']}")
+            print(f"{len(rows)} baseline(s); unavailable tools are not "
+                  f"failures, just unevaluated.")
+        return 0
     if args.command == "suite-run":
+        if args.baseline is not None:
+            return _suite_run_baseline(args)
         # Empty mock provider: demonstrates execution + honest
         # unavailable metrics. Never detector accuracy.
         run = execution_mod.run_suite(MockPredictionProvider(),
@@ -159,6 +186,50 @@ def main(argv: list[str] | None = None) -> int:
         if result["success"]["rate"] < 1.0:
             rc = 1
     return rc
+
+
+def _suite_run_baseline(args: argparse.Namespace) -> int:
+    """Evaluate one registered baseline over the suite selection."""
+    from ecdat.benchmark import baselines as baselines_mod
+
+    try:
+        adapter = baselines_mod.get_baseline(args.baseline)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    run = baselines_mod.run_baseline(adapter, group=args.group)
+    if args.json:
+        print(baselines_mod.logical_json(run))
+    else:
+        print(baselines_mod.to_console(run))
+    if args.output:
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(baselines_mod.logical_json(run) + "\n")
+    # HTML/CSV/charts/PDF reuse the existing report pipeline; the
+    # provider is labeled mock for test doubles, unknown otherwise —
+    # never "real", so no accuracy can be implied.
+    if args.html or args.csv or args.charts or args.pdf:
+        report = report_mod.build_report(
+            run, provider_type=("mock" if adapter.describe()["test_double"]
+                                else "unknown"))
+        if args.html:
+            out = Path(args.html)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(render_mod.render_html(report) + "\n")
+        if args.csv:
+            out = Path(args.csv)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            for section, text in render_mod.render_csv_sections(
+                    report).items():
+                out.with_name(
+                    f"{out.stem}-{section}{out.suffix or '.csv'}"
+                ).write_text(text + "\n")
+        if args.charts:
+            charts_mod.write_charts(report, args.charts)
+        if args.pdf:
+            pdf_mod.write_pdf(report, args.pdf)
+    return 0
 
 
 if __name__ == "__main__":
