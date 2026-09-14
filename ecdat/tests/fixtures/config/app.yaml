@@ -1,0 +1,26 @@
+server:
+  port: 8443
+  ssl:
+    enabled: true
+    key-store: classpath:keystore.jks
+    key-store-password: changeit
+    key-password: changeit
+    trust-store: classpath:truststore.jks
+    trust-store-password: changeit
+    protocol: TLSv1.3
+    ciphers: TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256
+
+database:
+  url: jdbc:postgresql://localhost:5432/mydb
+  ssl: true
+  sslmode: verify-full
+  sslcert: /etc/ssl/certs/postgresql.crt
+  sslkey: /etc/ssl/private/postgresql.key
+  sslrootcert: /etc/ssl/certs/ca.crt
+
+api:
+  tls:
+    min_version: "1.2"
+    max_version: "1.3"
+    cert_file: "/etc/ssl/certs/api.crt"
+    key_file: "/etc/ssl/private/api.key"
