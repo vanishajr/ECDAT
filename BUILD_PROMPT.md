@@ -1,4 +1,4 @@
-﻿# ECDAT PERSON 2 - PASS 2 FULL AUTONOMOUS COMPLETION
+﻿# ECDAT PERSON 2 — PASS 2 FULL AUTONOMOUS COMPLETION
 
 Read `ECDAT_PERSON2_CONTEXT.md` first. It is the authoritative context for this work.
 
@@ -10,15 +10,18 @@ Your job is to investigate, fix, test, benchmark, clean, and finish the Discover
 
 # 0. CRITICAL AGENT ALLOCATION RULE
 
-There is ONE agent available:
+There are TWO agents available:
 
-1. YOU - the main remote agent using Nemotron.
+1. YOU — the main remote agent using Nemotron.
+2. `local-investigator` — the local Qwen3 8B read-only investigator.
 
-## YOU MUST PERFORM THE SIX INVESTIGATION TRACKS BELOW YOURSELF
+The purpose of the local investigator is to save remote context by performing repository reconnaissance locally.
 
-Perform these six independent investigations directly:
+## YOU MUST USE `local-investigator` FOR THE SIX INVESTIGATION TRACKS BELOW
 
-### Investigator 1 - Source Detection
+Delegate these six independent investigations to `local-investigator`:
+
+### Investigator 1 — Source Detection
 Audit:
 - `ecdat/scanners/source/`
 - source detection implementation
@@ -27,7 +30,7 @@ Audit:
 - detection accuracy
 - the known `get_key_sizes` evaluator/scanner failure if still present
 
-### Investigator 2 - Pass 2 Evaluator / Benchmark Infrastructure
+### Investigator 2 — Pass 2 Evaluator / Benchmark Infrastructure
 Audit:
 - `ecdat/benchmarks/evaluate_pass2.py`
 - evaluation logic
@@ -38,7 +41,7 @@ Audit:
 - evaluator failure paths
 - benchmark artifact handling
 
-### Investigator 3 - All Discovery Scanners
+### Investigator 3 — All Discovery Scanners
 Audit the remaining scanner implementations:
 - dependency/library
 - binary
@@ -50,7 +53,7 @@ Audit the remaining scanner implementations:
 
 Check actual implementation, tests, fixtures, and obvious detection gaps.
 
-### Investigator 4 - Accuracy / False Positive / False Negative Coverage
+### Investigator 4 — Accuracy / False Positive / False Negative Coverage
 Independently inspect the test and fixture corpus and determine:
 - what is actually detected
 - what is missed
@@ -58,7 +61,7 @@ Independently inspect the test and fixture corpus and determine:
 - whether tests genuinely exercise the relevant code paths
 - where Pass 2 accuracy requirements are currently weak or untested
 
-### Investigator 5 - Integration / Fusion / Handoff
+### Investigator 5 — Integration / Fusion / Handoff
 Audit Person 2's integration boundary:
 - detector JSON
 - core/fusion handoff
@@ -71,7 +74,7 @@ Audit Person 2's integration boundary:
 - Person 1 handoff
 - Person 3/CLI/export compatibility
 
-### Investigator 6 - Performance / Scalability
+### Investigator 6 — Performance / Scalability
 Audit the current implementation for:
 - large repository behavior
 - 100k LOC feasibility
@@ -82,6 +85,32 @@ Audit the current implementation for:
 - obvious scalability problems
 
 Do not merely estimate performance. Identify what must actually be benchmarked.
+
+## LOCAL INVESTIGATOR RULES
+
+For these six investigations, actually delegate to:
+
+`local-investigator`
+
+Do not substitute another agent.
+
+Do not delegate unrelated work merely to create more agents.
+
+The local investigator is READ-ONLY.
+
+It must inspect actual implementation, execution paths, tests, and fixtures.
+
+It must distinguish:
+
+VERIFIED
+INFERRED
+UNKNOWN
+
+It must not invent evidence.
+
+After receiving the six reports, critically evaluate them yourself and verify important claims before changing code.
+
+If the task/delegation system executes the six investigations sequentially rather than concurrently, continue anyway. Do not abandon the investigations merely because execution is not perfectly parallel.
 
 ---
 
@@ -189,7 +218,7 @@ Preserve the baseline unless a failure is directly caused by a Pass 2 fix.
 
 # 4. INVESTIGATE FIRST
 
-Complete the six investigations before making substantial changes where practical.
+Complete the six `local-investigator` investigations before making substantial changes where practical.
 
 Read their reports carefully.
 
@@ -532,6 +561,8 @@ Do not declare Pass 2 complete until the evidence supports the claim.
 # MOST IMPORTANT RULE
 
 **Finish the actual work.**
+
+Use the local Qwen3 8B `local-investigator` specifically for the six reconnaissance tracks defined above to save remote context.
 
 You remain responsible for reasoning, implementation, debugging, testing, benchmarking, verification, and final completion.
 
