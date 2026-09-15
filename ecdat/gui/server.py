@@ -430,7 +430,7 @@ button{transition:border-color .12s ease,background .12s ease,color .12s ease}
 <section class="kpi span3"><p class="kl">Legacy Algorithms</p><div class="krow"><div class="kv2" id="kpi-legacy">—</div></div><div class="ksub" id="kpi-legacy-sub">distinct rules (mock)</div><svg id="spark-legacy" width="120" height="28" aria-hidden="true"></svg></section>
 <section class="card span4" id="sec-risk" aria-label="Risk">
 <p class="eyebrow">Risk · mock scoring</p>
-<h2>Risk dashboard <span class="badge">MOCK SCORING MODEL</span></h2>
+<h2>Risk dashboard <span class="badge" id="riskBadge">MOCK SCORING MODEL</span></h2>
 <p class="note">Severity-weighted mock score for the stored scan. Click a severity bar or rule to drill down to findings.</p>
 <div class="riskwrap">
 <div>
@@ -520,7 +520,7 @@ button{transition:border-color .12s ease,background .12s ease,color .12s ease}
 </section>
 <section class="card span12 stage" id="sec-graph" aria-label="Graph">
 <p class="eyebrow">Dependencies · scan-independent mock topology</p>
-<h2>Crypto Knowledge Graph <span class="badge">MOCK DATASET</span></h2>
+<h2>Crypto Knowledge Graph <span class="badge" id="graphBadge">MOCK DATASET</span></h2>
 <p class="note">Deterministic mock graph for UI development — not scan data and not Person 1 CIR. Drag to pan, scroll to zoom, click nodes and edges. Node rings use severity colors.</p>
 <p class="note ctxnote" id="graphCtx">Graph is scan-independent mock topology; inventory filters do not alter it.</p>
 <div class="row">
@@ -557,7 +557,7 @@ button{transition:border-color .12s ease,background .12s ease,color .12s ease}
 </details>
 <section class="card span6" id="sec-migration">
 <p class="eyebrow">Migration</p>
-<h2>Migration Planner <span class="badge">MOCK / PLACEHOLDER</span></h2>
+<h2>Migration Planner <span class="badge" id="migBadge">MOCK / PLACEHOLDER</span></h2>
 <div class="note" style="margin:.4em 0">Severity triage of existing mock recommendations — heaviest first. This is triage by current finding severity, NOT a migration sequence.</div>
 <p class="note ctxnote" id="migrationRisk">Migration triage follows the current risk level once a scan completes.</p>
 <div id="migration"><div class="empty"><h4>No migration recommendations yet</h4>Migration triage appears after the first mock scan.</div></div>
@@ -656,7 +656,7 @@ $("scanBtn").addEventListener("click", async function(){
     const job = await api("/api/scans", {method:"POST",
       headers:{"Content-Type":"application/json"},
       body: JSON.stringify({target:t})});
-    logAct("scan","Mock scan started",t);
+    logAct("scan", (job.mock === false) ? "Real scan started" : "Mock scan started", t, job.mock === false);
     poll(job.job_id);
     timer = setInterval(function(){ poll(job.job_id); }, 300);
   }catch(e){ showError(String(e.message || e)); }
@@ -675,13 +675,15 @@ async function poll(jobId){
       filterSev = null;
       filterRule = null;
       setPipe("results");
-      logAct("done","Mock scan completed",j.target);
+      currentReal = (j.mock === false);
+      logAct("done", currentReal ? "Real scan completed" : "Mock scan completed", j.target, currentReal);
       showScanDone(j);
       loadInventory(j.scan_id);
       loadRisk(j.scan_id);
       loadAssets(j.scan_id);
       loadMigration(j.scan_id);
       loadReports(j.scan_id);
+      loadGraphFor(j.scan_id);
     }else if(j.status === "failed"){
       if(timer){ clearInterval(timer); timer = null; }
       setPipe("target");
@@ -1028,10 +1030,13 @@ async function loadRisk(scanId){
   renderDonut(r.severity_counts);
   renderRiskBars(r, scanId);
   $("risk").textContent =
-    "score: " + r.score + " / level: " + r.level + " (mock/placeholder)\n" +
+    "score: " + r.score + " / level: " + r.level +
+    ((r.mock === false) ? " (p1 risk engine)\n" : " (mock/placeholder)\n") +
     "findings: " + r.finding_count + "\nbreakdown: " +
     Object.keys(r.breakdown).sort().map(function(k){return k + "=" + r.breakdown[k];}).join(" ") +
     "\nmodel: " + r.model;
+  var rbadge = $("riskBadge");
+  if(rbadge){ rbadge.textContent = (r.mock === false) ? "P1 RISK ENGINE" : "MOCK SCORING MODEL"; }
   const rules = $("riskRules");
   while(rules.firstChild){ rules.removeChild(rules.firstChild); }
   if(!r.by_rule.length){ updateKpis(); return; }
@@ -1249,6 +1254,8 @@ async function loadMigration(scanId){
     tri.className = "note";
     tri.textContent = m.triage_label;
     host.appendChild(tri);
+    var mbadge = $("migBadge");
+    if(mbadge){ mbadge.textContent = (m.mock === false) ? "P1 RECOMMENDATIONS" : "MOCK / PLACEHOLDER"; }
     if(!m.items.length){
       const p = document.createElement("p");
       p.className = "note";
@@ -1319,12 +1326,16 @@ async function loadReports(scanId){
     sum.className = "note";
     sum.textContent = "scan " + r.scan_id + " (" + r.target + "): " +
       r.finding_count + " findings, risk " + r.risk.level +
-      " (" + r.risk.score + ") [mock scoring].";
+      " (" + r.risk.score + ")" +
+      ((r.mock === false) ? " [p1 risk engine]." : " [mock scoring].");
     host.appendChild(sum);
     const mock = document.createElement("p");
     mock.className = "note";
-    mock.textContent = "Mock reports: generated from the stored mock scan; " +
-      "no new analysis is performed.";
+    mock.textContent = (r.mock === false)
+      ? "Real reports: generated from the stored real scan; " +
+        "no new analysis is performed."
+      : "Mock reports: generated from the stored mock scan; " +
+        "no new analysis is performed.";
     host.appendChild(mock);
     const row = document.createElement("div");
     row.className = "row";
@@ -1346,6 +1357,7 @@ async function loadReports(scanId){
   }catch(e){ showError(String(e.message || e)); }
 }
 var ACTLOG = [];
+var currentReal = false;
 var ACTICON = {"plan":"○","scan":"◎","done":"●","export":"⎙","trace":"⁂"};
 function actTime(ts){
   var s=Math.max(0,Math.round((Date.now()-ts)/1000));
@@ -1354,8 +1366,9 @@ function actTime(ts){
   if(m<60){return m+" min ago";}
   return Math.floor(m/60)+" h ago";
 }
-function logAct(kind, title, sub){
-  ACTLOG.unshift({kind:kind,title:title,sub:sub||"",ts:Date.now()});
+function logAct(kind, title, sub, real){
+  if(real === undefined || real === null){ real = currentReal; }
+  ACTLOG.unshift({kind:kind,title:title,sub:sub||"",ts:Date.now(),real:!!real});
   if(ACTLOG.length>6){ACTLOG.length=6;}
   renderActivity();
 }
@@ -1379,7 +1392,7 @@ function renderActivity(){
     d.appendChild(b);
     if(ev.sub){var s=document.createElement("span");s.textContent=ev.sub;d.appendChild(s);}
     var t=document.createElement("span");t.className="ftime";t.textContent=actTime(ev.ts);
-    var p=document.createElement("span");p.className="fpill";p.textContent="Mock";
+    var p=document.createElement("span");p.className="fpill";p.textContent=ev.real?"Real":"Mock";
     li.appendChild(ic);li.appendChild(d);li.appendChild(t);li.appendChild(p);
     host.appendChild(li);
   });
@@ -1442,12 +1455,31 @@ function gVisible(n, q){
 async function loadGraph(){
   try{
     GDATA = await api("/api/graph");
+    var gb0 = $("graphBadge"); if(gb0){ gb0.textContent = "MOCK DATASET"; }
     buildTypeChips();
     buildLegend();
     renderGraph();
     if(lastRisk && currentScanId){ annotateRiskRules(currentScanId, $("riskRules")); }
     updateWorkflow();
   }catch(e){ showError(String(e.message || e)); }
+}
+async function loadGraphFor(scanId){
+  // Real scans render stored CIR topology; anything else (mock/legacy
+  // scans, unknown IDs) keeps the scan-independent mock dataset.
+  if(scanId){
+    try{
+      GDATA = await api("/api/graph?scan_id=" + encodeURIComponent(scanId));
+      var gb = $("graphBadge"); if(gb){ gb.textContent = "CIR SCAN DATA"; }
+      gSelected = null; gExitTrace(false);
+      buildTypeChips();
+      buildLegend();
+      renderGraph();
+      if(lastRisk && currentScanId){ annotateRiskRules(currentScanId, $("riskRules")); }
+      updateWorkflow();
+      return;
+    }catch(e){ /* fall through to the mock dataset */ }
+  }
+  loadGraph();
 }
 function buildTypeChips(){
   const host = $("gtypes");
@@ -1618,7 +1650,9 @@ function selectNode(id){
   host.appendChild(h);
   gKv(host, "Type", n.type);
   gKv(host, "Risk", n.risk + (GRISKY[n.risk] ? " (risky path)" : ""));
-  gKv(host, "Confidence", String(n.confidence) + " (mock dataset value)");
+  gKv(host, "Confidence", (n.confidence === undefined || n.confidence === null)
+    ? "not applicable (topology node)"
+    : (String(n.confidence) + " (graph value)"));
   Object.keys(n.metadata).sort().forEach(function(k){ gKv(host, k, n.metadata[k]); });
   const rel = GDATA.edges.filter(function(e){ return e.source === id || e.target === id; });
   const rh = document.createElement("h4");
@@ -1942,7 +1976,15 @@ class _Handler(BaseHTTPRequestHandler):
             else:
                 self._json(200, assets)
         elif parsed.path == "/api/graph":
-            self._json(200, self.service.graph())
+            scan_id = query.get("scan_id", [""])[0]
+            if scan_id:
+                graph = self.service.graph_for_scan(scan_id)
+                if graph is None:
+                    self._json(404, {"error": "no CIR graph for scan"})
+                else:
+                    self._json(200, graph)
+            else:
+                self._json(200, self.service.graph())
         elif parsed.path == "/api/migration":
             plan = self.service.migration_plan(query.get("scan_id", [""])[0])
             if plan is None:

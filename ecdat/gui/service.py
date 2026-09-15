@@ -51,6 +51,12 @@ SIMULATED_NOTE = (
     "so queued -> scanning -> completed is staged for UI purposes only."
 )
 
+REAL_PROGRESS_NOTE = (
+    "Staged progress for UI purposes: the real scan runs synchronously "
+    "when the job completes. Queued -> scanning -> completed carries no "
+    "timing information about the actual discovery work."
+)
+
 # Canonical v1 finding keys the inventory may surface. Anything else is
 # dropped so the GUI can never invent CIR fields.
 _FINDING_KEYS = (
@@ -91,6 +97,24 @@ REDACTION_REASON = (
     "contain no secrets; nothing was masked."
 )
 REDACTION_CAPABILITY = "Real PII redaction capability pending Person 1."
+
+# Real-scan counterparts: usage_state is data (stored CIR evidence
+# assessment surfaced via canonical metadata), and snippets arrive
+# already redacted from the discovery/analysis stages.
+REAL_PROVENANCE_NOTE = (
+    "Produced by the integrated real pipeline (P2 discovery, P1 "
+    "analysis) and stored with its CIR sidecar. usage_state comes from "
+    "the stored CIR evidence assessment, not from a fixture."
+)
+REAL_REDACTION_REASON = (
+    "Snippets are stored as redacted excerpts: the discovery evidence "
+    "validator masks secrets/key material and analysis caps excerpts; "
+    "nothing further was masked at render time."
+)
+REAL_REDACTION_CAPABILITY = (
+    "PII/secret redaction enforced at discovery (P2 evidence validator) "
+    "and analysis (P1 excerpt cap)."
+)
 
 SCAN_PROVENANCE_LABEL = (
     "Scan provenance (not a finding observation timeline): canonical v1 "
@@ -146,7 +170,12 @@ class GuiService:
     # -- jobs ---------------------------------------------------------------
 
     def submit(self, target: str) -> dict:
-        """Create a simulated scan job. Returns its initial snapshot."""
+        """Create a simulated scan job. Returns its initial snapshot.
+
+        The snapshot's ``mock`` flag mirrors the configured client: mock
+        clients produce mock data, real clients (scan_with_cir) run the
+        integrated pipeline. Progress stays staged in both modes.
+        """
         cleaned = (target or "").strip()
         if not cleaned:
             raise ValueError("target must be a non-empty string")
@@ -160,6 +189,7 @@ class GuiService:
                 "polls": 0,
                 "scan_id": None,
                 "error": None,
+                "real": callable(getattr(self.client, "scan_with_cir", None)),
             }
             return self._snapshot_locked(self._jobs[job_id])
 
@@ -187,31 +217,46 @@ class GuiService:
             return self._snapshot_locked(job)
 
     def _finish_locked(self, job: dict) -> str:
-        """Run the mock scan and store it. Caller holds the lock."""
-        doc = self.client.scan(Path(job["target"]))
+        """Run the scan (mock or real) and store it. Caller holds the lock.
+
+        Mock clients return canonical only (cir=None stored). Real
+        clients expose scan_with_cir: one scan producing both the
+        canonical document and the CIR sidecar stored under the same
+        scan ID. Real failures propagate as job errors (never mock).
+        """
+        from typing import cast
+
+        scan_with_cir = getattr(self.client, "scan_with_cir", None)
+        cir: dict | None = None
+        if callable(scan_with_cir):
+            pair = cast("tuple[dict, dict]", scan_with_cir(Path(job["target"])))
+            cir, doc = pair[0], pair[1]
+        else:
+            doc = self.client.scan(Path(job["target"]))
         validate(doc)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = db.open_db(self.db_path)
         try:
             try:
-                sstore.insert_scan(conn, doc)
+                sstore.insert_scan(conn, doc, cir)
                 fstore.insert_findings_for_scan(conn, doc)
             except sqlite3.IntegrityError:
-                conn.rollback()  # fixture scan_id already stored: reuse it
+                conn.rollback()  # scan_id already stored: reuse it
         finally:
             conn.close()
         return str(doc["scan_id"])
 
     @staticmethod
     def _snapshot_locked(job: dict) -> dict:
+        real = bool(job.get("real", False))
         snap: dict = {
             "job_id": job["job_id"],
             "target": job["target"],
             "status": job["status"],
             "progress": job["progress"],
-            "mock": True,
+            "mock": not real,
             "simulated": True,
-            "simulated_note": SIMULATED_NOTE,
+            "simulated_note": REAL_PROGRESS_NOTE if real else SIMULATED_NOTE,
         }
         if job["scan_id"] is not None:
             snap["scan_id"] = job["scan_id"]
@@ -282,7 +327,7 @@ class GuiService:
             "filters": {"severity": severity, "rule": rule},
             "severity_counts": dict(sorted(counts.items())),
             "findings": findings,
-            "mock": True,
+            "mock": self._load_cir(scan_id) is None,
             "source": "get_scan_doc (canonical source of truth)",
         }
 
@@ -310,6 +355,11 @@ class GuiService:
             "confidence": "confidence" in finding,
             "metadata": "metadata" in finding,
         }
+        real = self._load_cir(scan_id) is not None
+        usage_state = "Possible"
+        if isinstance(finding.get("metadata"), dict):
+            usage_state = str(
+                finding["metadata"].get("usage_state") or "Possible")
         return {
             "scan_id": doc["scan_id"],
             "target": doc["target"],
@@ -325,36 +375,66 @@ class GuiService:
             else [],
             "redaction": {
                 "applied": False,
-                "reason": REDACTION_REASON,
-                "capability": REDACTION_CAPABILITY,
+                "reason": REAL_REDACTION_REASON if real else REDACTION_REASON,
+                "capability": REAL_REDACTION_CAPABILITY
+                if real else REDACTION_CAPABILITY,
             },
             "provenance": {
-                "status": PROVENANCE_STATUS,
-                "note": PROVENANCE_NOTE,
+                "status": f"{usage_state} (real)"
+                if real else PROVENANCE_STATUS,
+                "note": REAL_PROVENANCE_NOTE if real else PROVENANCE_NOTE,
             },
             "scan_provenance": {
                 "started_at": doc["started_at"],
                 "finished_at": doc["finished_at"],
                 "label": SCAN_PROVENANCE_LABEL,
             },
-            "mock": True,
+            "mock": not real,
             "source": "get_scan_doc (canonical source of truth)",
         }
 
     # -- risk dashboard -----------------------------------------------------------
 
-    def risk_summary(self, scan_id: str) -> dict | None:
-        """Mock risk dashboard payload. None if unknown.
+    def _load_cir(self, scan_id: str) -> dict | None:
+        """Stored enriched CIR sidecar, or None (mock/legacy/unknown scan)."""
+        conn = db.open_db(self.db_path)
+        try:
+            return sstore.get_scan_cir(conn, scan_id)
+        finally:
+            conn.close()
 
-        Reuses build_report() (hence Task 6 risk_from_findings) without
-        duplicating scoring logic; this method only zero-fills severity
-        levels for display and attaches mock/placeholder labels.
+    def risk_summary(self, scan_id: str) -> dict | None:
+        """Risk dashboard payload (mock or real). None if unknown.
+
+        Mock scans reuse build_report() (Task 6 risk_from_findings) with
+        mock/placeholder labels, unchanged. Real scans (CIR sidecar
+        present) project P1 wire risks — no mock scoring runs on real
+        data, and no new scoring is invented here.
         """
         doc = self._load_doc(scan_id)
         if doc is None:
             return None
+        cir = self._load_cir(scan_id)
         rep = build_report(doc)
         severity_counts = {sev: rep["by_severity"].get(sev, 0) for sev in SEVERITY_ORDER}
+        if cir is not None:
+            from ecdat.adapters import risk_view as _risk_view
+
+            posture = _risk_view.summarize_wire_risks(
+                cir.get("risks", []) or [], rep["finding_count"])
+            return {
+                "scan_id": doc["scan_id"],
+                "target": doc["target"],
+                "score": posture["score"],
+                "level": posture["level"],
+                "breakdown": dict(sorted(rep["risk"]["breakdown"].items())),
+                "finding_count": posture["finding_count"],
+                "severity_counts": severity_counts,
+                "by_rule": rep["by_rule"],
+                "model": posture["model"],
+                "mock": False,
+                "source": "p1-risk over stored CIR (wire risks, score 0..10)",
+            }
         return {
             "scan_id": doc["scan_id"],
             "target": doc["target"],
@@ -433,7 +513,7 @@ class GuiService:
                 "message": GRAPH_EMPTY_MESSAGE,
                 "detail": GRAPH_EMPTY_DETAIL,
             },
-            "mock": True,
+            "mock": self._load_cir(scan_id) is None,
             "source": "CBOM derivation + build_report over get_scan_doc",
         }
 
@@ -447,6 +527,33 @@ class GuiService:
         """Frontend-ready knowledge graph from the configured provider."""
         return self.graph_provider.get_graph()
 
+    def graph_for_scan(self, scan_id: str) -> dict | None:
+        """Frontend-ready graph from a stored real CIR. None if unavailable.
+
+        Adapts the CIR wire graph through the P3-owned vocabulary
+        adapter into the frozen frontend envelope (layout + validation
+        via to_frontend_graph, same as the mock provider). Mock/legacy
+        scans (no CIR sidecar) return None — callers fall back to the
+        scan-independent mock dataset.
+        """
+        from ecdat.adapters import graph_adapter as _graph_adapter
+        from ecdat.gui.graph import to_frontend_graph
+
+        cir = self._load_cir(scan_id)
+        if cir is None:
+            return None
+        raw, _folded = _graph_adapter.adapt_cir_graph(
+            cir, cir.get("risks", []) or [])
+        graph = to_frontend_graph(raw)
+        graph.update({
+            "mock": False,
+            "dataset": "cir-scan",
+            "note": ("Real scan topology from the stored CIR wire graph "
+                     "(file nodes folded into operation metadata)."),
+            "source": "stored CIR over P2 discovery",
+        })
+        return graph
+
     # -- migration planner ------------------------------------------------------------
     #
     # Mock/placeholder recombination (see ecdat.gui.migration): Task 6
@@ -454,10 +561,21 @@ class GuiService:
     # scans return None, following existing service conventions.
 
     def migration_plan(self, scan_id: str) -> dict | None:
-        """Frontend-ready migration plan. None if unknown."""
+        """Frontend-ready migration plan (mock or real). None if unknown.
+
+        Mock scans use the severity-triage placeholder provider,
+        unchanged. Real scans (CIR sidecar present) map P1 internal
+        recommendation records into the same envelope.
+        """
         doc = self._load_doc(scan_id)
         if doc is None:
             return None
+        cir = self._load_cir(scan_id)
+        if cir is not None:
+            from ecdat.adapters import migration_adapter as _migration_adapter
+
+            return _migration_adapter.to_real_plan(
+                doc["scan_id"], doc["target"], cir)
         return self.migration_provider.get_plan(
             doc["scan_id"], doc["target"], self._project_findings(doc))
 
@@ -488,11 +606,32 @@ class GuiService:
     }
 
     def report_summary(self, scan_id: str) -> dict | None:
-        """Report metadata for a stored scan. None if unknown."""
+        """Report metadata for a stored scan (mock or real). None if unknown.
+
+        Risk scores mirror risk_summary(): mock scans carry mock
+        scoring labels, real scans carry the stored P1 posture.
+        """
         doc = self._load_doc(scan_id)
         if doc is None:
             return None
         rep = build_report(doc)
+        cir = self._load_cir(scan_id)
+        if cir is not None:
+            from ecdat.adapters import risk_view as _risk_view
+
+            posture = _risk_view.summarize_wire_risks(
+                cir.get("risks", []) or [], rep["finding_count"])
+            return {
+                "scan_id": doc["scan_id"],
+                "target": doc["target"],
+                "finding_count": rep["finding_count"],
+                "risk": {"score": posture["score"],
+                         "level": posture["level"]},
+                "formats": list(self.REPORT_FORMATS),
+                "model": posture["model"],
+                "mock": False,
+                "source": "p1-risk over stored CIR",
+            }
         return {
             "scan_id": doc["scan_id"],
             "target": doc["target"],

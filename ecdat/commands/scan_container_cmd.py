@@ -25,7 +25,6 @@ from pathlib import Path
 from jsonschema import ValidationError
 
 from ecdat.commands import ERROR, TARGET_NOT_FOUND, VALIDATION_FAILED
-from ecdat.core.client import get_client
 from ecdat.core.validate import load_json, validate
 from ecdat.store import db
 from ecdat.store import findings as fstore
@@ -54,15 +53,11 @@ def run(args: argparse.Namespace) -> int:
         return TARGET_NOT_FOUND
 
     if args.real:
-        client = get_client("real")
-        try:
-            doc = client.scan(Path(label))
-        except NotImplementedError as exc:
-            # RealCoreClient placeholder: clean message, no traceback.
-            print(f"error: {exc}", file=sys.stderr)
-            return ERROR
-    else:
-        doc = _mock_doc(label)
+        from ecdat.commands._real_scan import run_real_and_store
+
+        return run_real_and_store(
+            args, label, scanners=["container", "binary", "config"])
+    doc = _mock_doc(label)
 
     try:
         validate(doc)

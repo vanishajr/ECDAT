@@ -82,9 +82,12 @@ def run(args: argparse.Namespace) -> int:
             print(f"error: scan not found: {args.scan_id}", file=sys.stderr)
             return ERROR
         findings = fstore.list_findings(conn, args.scan_id)
+        cir = sstore.get_scan_cir(conn, args.scan_id)
     finally:
         conn.close()
 
+    if cir is not None:
+        return _run_real(args, findings, cir)
     result = risk_from_findings(findings)
 
     if args.json:
@@ -108,6 +111,49 @@ def run(args: argparse.Namespace) -> int:
     if result["breakdown"]:
         parts = " ".join(
             f"{sev}={count}" for sev, count in sorted(result["breakdown"].items())
+        )
+        print(f"breakdown: {parts}")
+    else:
+        print("breakdown: none")
+    return 0
+
+
+def _run_real(
+    args: argparse.Namespace, findings: list[dict], cir: dict
+) -> int:
+    """Real-risk output from stored P1 wire risks (no mock scoring)."""
+    from ecdat.adapters import risk_view as _risk_view
+
+    posture = _risk_view.summarize_wire_risks(
+        cir.get("risks", []) or [], len(findings))
+    breakdown: dict[str, int] = {}
+    for f in findings:
+        sev = str(f.get("severity", ""))
+        breakdown[sev] = breakdown.get(sev, 0) + 1
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "scan_id": args.scan_id,
+                    "risk": {"score": posture["score"],
+                             "level": posture["level"]},
+                    "breakdown": dict(sorted(breakdown.items())),
+                    "finding_count": posture["finding_count"],
+                    "risk_count": posture["risk_count"],
+                    "model": posture["model"],
+                    "source": posture["source"],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    print(f"scan_id: {args.scan_id}")
+    print(f"risk:    {posture['level']} ({posture['score']}) [p1 risk engine]")
+    print(f"findings: {posture['finding_count']}")
+    if breakdown:
+        parts = " ".join(
+            f"{sev}={count}" for sev, count in sorted(breakdown.items())
         )
         print(f"breakdown: {parts}")
     else:

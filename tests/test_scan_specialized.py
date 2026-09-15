@@ -89,12 +89,13 @@ def test_scan_binary_missing_target(tmp_path, capsys):
 
 
 def test_scan_binary_real_placeholder_is_clean(tmp_path, capsys):
+    # Integrated real mode: --real runs the binary scanner subset.
     target = _binary(tmp_path)
     rc = main(["scan-binary", str(target), "--db", _db(tmp_path), "--real"])
-    assert rc == 1
+    assert rc == 0
     out, err = capsys.readouterr()
     assert "Traceback" not in out + err
-    assert err.strip() != ""
+    assert out.strip().startswith("scan:")
 
 
 def test_scan_binary_validation_failure(tmp_path, capsys, monkeypatch):

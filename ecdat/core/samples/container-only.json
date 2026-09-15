@@ -1,0 +1,648 @@
+{
+  "assets": [
+    {
+      "asset_id": "ast:6d56398d5352da60",
+      "canonical": "TLS1.0",
+      "confidence": 0.9,
+      "context": {
+        "data_classification": "restricted",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service web-frontend; usage TLS1.0; data_lifetime_years=10; migration_years=2; image sha256:9f2c7a1e4b5d; endpoint https://shop.example.com:443"
+      },
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "detail": "config-match config-tls-old at /etc/nginx/nginx.conf:7",
+          "snippet": "ssl_protocols TLSv1 TLSv1.1 TLSv1.2;",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "library": "openssl",
+      "location": {
+        "file": "/etc/nginx/nginx.conf",
+        "line": 7
+      },
+      "protocol": "TLS1.0",
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:cfe9c56bf3720865",
+      "canonical": "X.509",
+      "confidence": 0.93,
+      "context": {
+        "data_classification": "restricted",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service web-frontend; usage X.509; data_lifetime_years=9; migration_years=3; endpoint https://shop.example.com:443; cert cert:shop-example-2026"
+      },
+      "evidence": [
+        {
+          "confidence": 0.93,
+          "detail": "cert-parse cert-rsa-2048 at /etc/nginx/certs/shop.crt",
+          "snippet": "Subject: CN=shop.example.com; RSA-2048; sig sha256WithRSAEncryption",
+          "tool": "agentC-x509-parser"
+        }
+      ],
+      "implementation": {
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "key_size": 2048,
+      "library": "openssl",
+      "location": {
+        "file": "/etc/nginx/certs/shop.crt"
+      },
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": true,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:51ef0eedf328f26f",
+      "canonical": "AES",
+      "confidence": 0.4,
+      "context": {
+        "data_classification": "public",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service web-frontend; usage AES; data_lifetime_years=1; migration_years=1; image sha256:9f2c7a1e4b5d"
+      },
+      "evidence": [
+        {
+          "confidence": 0.4,
+          "detail": "dependency-capability lib-provides-aes in image layer 7d3a",
+          "snippet": "package openssl 3.0.13 provides AES (no use evidence)",
+          "tool": "syft"
+        }
+      ],
+      "implementation": {
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "key_size": 256,
+      "library": "openssl",
+      "location": {
+        "file": "image:layer:7d3a:/usr/lib/x86_64-linux-gnu/libcrypto.so.3"
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": true,
+        "sensitive_data": false,
+        "usage_state": "ProvidedOnly"
+      },
+      "usage_state": "ProvidedOnly"
+    },
+    {
+      "asset_id": "ast:c3bdd3ee77c637cd",
+      "canonical": "PBKDF2",
+      "confidence": 0.87,
+      "context": {
+        "data_classification": "internal",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service web-frontend; usage PBKDF2; data_lifetime_years=6; migration_years=1; image sha256:9f2c7a1e4b5d"
+      },
+      "evidence": [
+        {
+          "confidence": 0.87,
+          "detail": "source-api-call crypto-pbkdf2-weak at /app/accounts.py:51",
+          "snippet": "hashlib.pbkdf2_hmac('sha1', pw, salt, 1000)",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "hashlib.pbkdf2_hmac",
+        "library": "hashlib"
+      },
+      "library": "hashlib",
+      "location": {
+        "file": "/app/accounts.py",
+        "function": "hash_password",
+        "line": 51
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": false,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:0a882c22ced70e11",
+      "canonical": "RSA",
+      "confidence": 0.8,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "cloud",
+        "notes": "service web-frontend; usage RSA; data_lifetime_years=10; migration_years=2; key arn:aws:kms:eu-west-1:1234:key/abcd-1234"
+      },
+      "evidence": [
+        {
+          "confidence": 0.8,
+          "detail": "cloud-inventory kms-rsa-2048 for aws:kms:key/abcd-1234",
+          "snippet": "KeySpec RSA_2048; KeyUsage ENCRYPT_DECRYPT; EnableRotation false",
+          "tool": "agentC-aws-inventory"
+        }
+      ],
+      "implementation": {
+        "library": "boto3",
+        "provider": "aws",
+        "version": "1.34.0"
+      },
+      "key_size": 2048,
+      "library": "boto3",
+      "location": {
+        "file": "aws:kms:key/abcd-1234",
+        "uri": "arn:aws:kms:eu-west-1:1234:key/abcd-1234"
+      },
+      "risk_inputs": {
+        "exposure": "cloud",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Probable"
+      },
+      "usage_state": "Probable"
+    }
+  ],
+  "cir_version": "0.1",
+  "finished_at": "2026-09-10T12:00:06Z",
+  "graph": {
+    "edges": [
+      {
+        "from": "cert:cert:shop-example-2026",
+        "relationship": "protects",
+        "to": "ep:https://shop.example.com:443"
+      },
+      {
+        "from": "cfg:/etc/nginx/nginx.conf",
+        "relationship": "calls",
+        "to": "svc:web-frontend"
+      },
+      {
+        "from": "cloud:arn:aws:kms:eu-west-1:1234:key/abcd-1234",
+        "relationship": "contains",
+        "to": "key:arn:aws:kms:eu-west-1:1234:key/abcd-1234"
+      },
+      {
+        "from": "img:sha256:9f2c7a1e4b5d",
+        "relationship": "contains",
+        "to": "lib:hashlib"
+      },
+      {
+        "from": "img:sha256:9f2c7a1e4b5d",
+        "relationship": "contains",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "key:arn:aws:kms:eu-west-1:1234:key/abcd-1234",
+        "relationship": "protects",
+        "to": "op:2c13f7b6bb4f6d89"
+      },
+      {
+        "from": "lib:boto3@1.34.0",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "lib:hashlib",
+        "relationship": "derives",
+        "to": "ast:c3bdd3ee77c637cd"
+      },
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:51ef0eedf328f26f"
+      },
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:6d56398d5352da60"
+      },
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:cfe9c56bf3720865"
+      },
+      {
+        "from": "op:2c13f7b6bb4f6d89",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "op:2c13f7b6bb4f6d89",
+        "relationship": "depends_on",
+        "to": "lib:boto3@1.34.0"
+      },
+      {
+        "from": "op:74408e9b21d46645",
+        "relationship": "derives",
+        "to": "ast:cfe9c56bf3720865"
+      },
+      {
+        "from": "op:74408e9b21d46645",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "op:bdcf1b6f590b44ab",
+        "relationship": "derives",
+        "to": "ast:6d56398d5352da60"
+      },
+      {
+        "from": "op:bdcf1b6f590b44ab",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "op:ce6bb1d07e1451ec",
+        "relationship": "derives",
+        "to": "ast:c3bdd3ee77c637cd"
+      },
+      {
+        "from": "op:ce6bb1d07e1451ec",
+        "relationship": "depends_on",
+        "to": "lib:hashlib"
+      },
+      {
+        "from": "op:ebe3485dcbdbc359",
+        "relationship": "derives",
+        "to": "ast:51ef0eedf328f26f"
+      },
+      {
+        "from": "op:ebe3485dcbdbc359",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "owner:team-platform",
+        "relationship": "contains",
+        "to": "svc:web-frontend"
+      },
+      {
+        "from": "svc:web-frontend",
+        "relationship": "terminates",
+        "to": "ep:https://shop.example.com:443"
+      },
+      {
+        "from": "svc:web-frontend",
+        "relationship": "contains",
+        "to": "img:sha256:9f2c7a1e4b5d"
+      },
+      {
+        "from": "svc:web-frontend",
+        "relationship": "uses",
+        "to": "op:2c13f7b6bb4f6d89"
+      },
+      {
+        "from": "svc:web-frontend",
+        "relationship": "uses",
+        "to": "op:74408e9b21d46645"
+      },
+      {
+        "from": "svc:web-frontend",
+        "relationship": "uses",
+        "to": "op:bdcf1b6f590b44ab"
+      },
+      {
+        "from": "svc:web-frontend",
+        "relationship": "uses",
+        "to": "op:ce6bb1d07e1451ec"
+      },
+      {
+        "from": "svc:web-frontend",
+        "relationship": "uses",
+        "to": "op:ebe3485dcbdbc359"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "ast:0a882c22ced70e11",
+        "kind": "asset",
+        "label": "RSA",
+        "ref": "ast:0a882c22ced70e11"
+      },
+      {
+        "id": "ast:51ef0eedf328f26f",
+        "kind": "asset",
+        "label": "AES",
+        "ref": "ast:51ef0eedf328f26f"
+      },
+      {
+        "id": "ast:6d56398d5352da60",
+        "kind": "asset",
+        "label": "TLS1.0",
+        "ref": "ast:6d56398d5352da60"
+      },
+      {
+        "id": "ast:c3bdd3ee77c637cd",
+        "kind": "asset",
+        "label": "PBKDF2",
+        "ref": "ast:c3bdd3ee77c637cd"
+      },
+      {
+        "id": "ast:cfe9c56bf3720865",
+        "kind": "asset",
+        "label": "X.509",
+        "ref": "ast:cfe9c56bf3720865"
+      },
+      {
+        "id": "cert:cert:shop-example-2026",
+        "kind": "file",
+        "label": "cert:shop-example-2026",
+        "ref": "cert:cert:shop-example-2026"
+      },
+      {
+        "id": "cfg:/etc/nginx/nginx.conf",
+        "kind": "file",
+        "label": "/etc/nginx/nginx.conf",
+        "ref": "cfg:/etc/nginx/nginx.conf"
+      },
+      {
+        "id": "cloud:arn:aws:kms:eu-west-1:1234:key/abcd-1234",
+        "kind": "host",
+        "label": "arn:aws:kms:eu-west-1:1234:key/abcd-1234",
+        "ref": "cloud:arn:aws:kms:eu-west-1:1234:key/abcd-1234"
+      },
+      {
+        "id": "ep:https://shop.example.com:443",
+        "kind": "host",
+        "label": "https://shop.example.com:443",
+        "ref": "ep:https://shop.example.com:443"
+      },
+      {
+        "id": "img:sha256:9f2c7a1e4b5d",
+        "kind": "host",
+        "label": "sha256:9f2c7a1e4b5d",
+        "ref": "img:sha256:9f2c7a1e4b5d"
+      },
+      {
+        "id": "key:arn:aws:kms:eu-west-1:1234:key/abcd-1234",
+        "kind": "key",
+        "label": "arn:aws:kms:eu-west-1:1234:key/abcd-1234",
+        "ref": "key:arn:aws:kms:eu-west-1:1234:key/abcd-1234"
+      },
+      {
+        "id": "lib:boto3@1.34.0",
+        "kind": "library",
+        "label": "boto3@1.34.0",
+        "ref": "lib:boto3@1.34.0"
+      },
+      {
+        "id": "lib:hashlib",
+        "kind": "library",
+        "label": "hashlib",
+        "ref": "lib:hashlib"
+      },
+      {
+        "id": "lib:openssl@3.0.13",
+        "kind": "library",
+        "label": "openssl@3.0.13",
+        "ref": "lib:openssl@3.0.13"
+      },
+      {
+        "id": "op:2c13f7b6bb4f6d89",
+        "kind": "operation",
+        "label": "RSA [op:2c13f7b6bb4f6d89]",
+        "ref": "op:2c13f7b6bb4f6d89"
+      },
+      {
+        "id": "op:74408e9b21d46645",
+        "kind": "operation",
+        "label": "X.509 [op:74408e9b21d46645]",
+        "ref": "op:74408e9b21d46645"
+      },
+      {
+        "id": "op:bdcf1b6f590b44ab",
+        "kind": "operation",
+        "label": "TLS1.0 [op:bdcf1b6f590b44ab]",
+        "ref": "op:bdcf1b6f590b44ab"
+      },
+      {
+        "id": "op:ce6bb1d07e1451ec",
+        "kind": "operation",
+        "label": "PBKDF2 [op:ce6bb1d07e1451ec]",
+        "ref": "op:ce6bb1d07e1451ec"
+      },
+      {
+        "id": "op:ebe3485dcbdbc359",
+        "kind": "operation",
+        "label": "AES [op:ebe3485dcbdbc359]",
+        "ref": "op:ebe3485dcbdbc359"
+      },
+      {
+        "id": "owner:team-platform",
+        "kind": "service",
+        "label": "team-platform",
+        "ref": "owner:team-platform"
+      },
+      {
+        "id": "svc:web-frontend",
+        "kind": "service",
+        "label": "web-frontend",
+        "ref": "svc:web-frontend"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "asset_id": "ast:6d56398d5352da60",
+      "confidence": 0.9,
+      "context": {
+        "data_classification": "restricted",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service web-frontend; usage TLS1.0; data_lifetime_years=10; migration_years=2; image sha256:9f2c7a1e4b5d; endpoint https://shop.example.com:443"
+      },
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "detail": "config-match config-tls-old at /etc/nginx/nginx.conf:7",
+          "snippet": "ssl_protocols TLSv1 TLSv1.1 TLSv1.2;",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "/etc/nginx/nginx.conf",
+        "line": 7
+      },
+      "operation_id": "op:bdcf1b6f590b44ab",
+      "operation_type": "TLS",
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:cfe9c56bf3720865",
+      "confidence": 0.93,
+      "context": {
+        "data_classification": "restricted",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service web-frontend; usage X.509; data_lifetime_years=9; migration_years=3; endpoint https://shop.example.com:443; cert cert:shop-example-2026"
+      },
+      "evidence": [
+        {
+          "confidence": 0.93,
+          "detail": "cert-parse cert-rsa-2048 at /etc/nginx/certs/shop.crt",
+          "snippet": "Subject: CN=shop.example.com; RSA-2048; sig sha256WithRSAEncryption",
+          "tool": "agentC-x509-parser"
+        }
+      ],
+      "implementation": {
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "/etc/nginx/certs/shop.crt"
+      },
+      "operation_id": "op:74408e9b21d46645",
+      "operation_type": "Storage",
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": true,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:51ef0eedf328f26f",
+      "confidence": 0.4,
+      "context": {
+        "data_classification": "public",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service web-frontend; usage AES; data_lifetime_years=1; migration_years=1; image sha256:9f2c7a1e4b5d"
+      },
+      "evidence": [
+        {
+          "confidence": 0.4,
+          "detail": "dependency-capability lib-provides-aes in image layer 7d3a",
+          "snippet": "package openssl 3.0.13 provides AES (no use evidence)",
+          "tool": "syft"
+        }
+      ],
+      "implementation": {
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "image:layer:7d3a:/usr/lib/x86_64-linux-gnu/libcrypto.so.3"
+      },
+      "operation_id": "op:ebe3485dcbdbc359",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": true,
+        "sensitive_data": false,
+        "usage_state": "ProvidedOnly"
+      }
+    },
+    {
+      "asset_id": "ast:c3bdd3ee77c637cd",
+      "confidence": 0.87,
+      "context": {
+        "data_classification": "internal",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service web-frontend; usage PBKDF2; data_lifetime_years=6; migration_years=1; image sha256:9f2c7a1e4b5d"
+      },
+      "evidence": [
+        {
+          "confidence": 0.87,
+          "detail": "source-api-call crypto-pbkdf2-weak at /app/accounts.py:51",
+          "snippet": "hashlib.pbkdf2_hmac('sha1', pw, salt, 1000)",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "hash_password",
+      "implementation": {
+        "api": "hashlib.pbkdf2_hmac",
+        "library": "hashlib"
+      },
+      "location": {
+        "file": "/app/accounts.py",
+        "function": "hash_password",
+        "line": 51
+      },
+      "operation_id": "op:ce6bb1d07e1451ec",
+      "operation_type": "KDF",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": false,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:0a882c22ced70e11",
+      "confidence": 0.8,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "cloud",
+        "notes": "service web-frontend; usage RSA; data_lifetime_years=10; migration_years=2; key arn:aws:kms:eu-west-1:1234:key/abcd-1234"
+      },
+      "evidence": [
+        {
+          "confidence": 0.8,
+          "detail": "cloud-inventory kms-rsa-2048 for aws:kms:key/abcd-1234",
+          "snippet": "KeySpec RSA_2048; KeyUsage ENCRYPT_DECRYPT; EnableRotation false",
+          "tool": "agentC-aws-inventory"
+        }
+      ],
+      "implementation": {
+        "library": "boto3",
+        "provider": "aws",
+        "version": "1.34.0"
+      },
+      "location": {
+        "file": "aws:kms:key/abcd-1234",
+        "uri": "arn:aws:kms:eu-west-1:1234:key/abcd-1234"
+      },
+      "operation_id": "op:2c13f7b6bb4f6d89",
+      "operation_type": "Storage",
+      "risk_inputs": {
+        "exposure": "cloud",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Probable"
+      }
+    }
+  ],
+  "registry_version": "2026.09.11",
+  "scan_id": "scan:sample-container-001",
+  "started_at": "2026-09-10T12:00:00Z",
+  "stats": {
+    "asset_count": 5,
+    "edge_count": 29,
+    "node_count": 21,
+    "operation_count": 5
+  },
+  "target": "registry.example.com/web-frontend:1.25",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  }
+}

@@ -1,0 +1,661 @@
+{
+  "assets": [
+    {
+      "asset_id": "ast:0a882c22ced70e11",
+      "canonical": "RSA",
+      "confidence": 0.96,
+      "context": {
+        "data_classification": "restricted",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service payments-api; usage RSA; data_lifetime_years=12; migration_years=4; image sha256:pay1; endpoint https://pay.example.com:8443; key local:key:pay-rsa-2048; cert cert:pay-2026"
+      },
+      "evidence": [
+        {
+          "confidence": 0.95,
+          "detail": "source-api-call crypto-rsa-confirmed at samples/payments/payments.py:64",
+          "snippet": "rsa.encrypt(card_token, public_key)  # PCI scope",
+          "tool": "semgrep"
+        },
+        {
+          "confidence": 0.85,
+          "detail": "binary-symbol crypto-rsa-symbol in payments-svc",
+          "snippet": "symbol RSA_public_encrypt @0x12ab (same 2048-bit key)",
+          "tool": "floss"
+        },
+        {
+          "confidence": 0.9,
+          "detail": "cert-parse cert-key-match for payments.crt",
+          "snippet": "RSA-2048 fingerprint match: source key == cert key",
+          "tool": "agentC-x509-parser"
+        }
+      ],
+      "implementation": {
+        "api": "rsa.encrypt",
+        "library": "cryptography",
+        "version": "44.0.0"
+      },
+      "key_size": 2048,
+      "library": "cryptography",
+      "location": {
+        "file": "samples/payments/payments.py",
+        "function": "charge",
+        "line": 64
+      },
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:094a4671557d726c",
+      "canonical": "ChaCha20-Poly1305",
+      "confidence": 0.9,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "third-party",
+        "notes": "service payments-api; usage ChaCha20-Poly1305; data_lifetime_years=5; migration_years=2"
+      },
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "detail": "source-api-call crypto-aead-chacha at samples/payments/tokens.py:23",
+          "snippet": "crypto_aead_xchacha20poly1305_ietf_encrypt(token, ...)",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "crypto_aead_xchacha20poly1305_ietf_encrypt",
+        "library": "libsodium",
+        "version": "1.0.19"
+      },
+      "library": "libsodium",
+      "location": {
+        "file": "samples/payments/tokens.py",
+        "function": "seal_token",
+        "line": 23
+      },
+      "risk_inputs": {
+        "exposure": "third-party",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:098c91c1d6b62435",
+      "canonical": "ML-KEM",
+      "confidence": 0.88,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service payments-api; usage ML-KEM; data_lifetime_years=8; migration_years=3"
+      },
+      "evidence": [
+        {
+          "confidence": 0.88,
+          "detail": "source-api-call crypto-mlkem at samples/payments/kex.py:31",
+          "snippet": "OQS_KEM_mlkem_768_encaps(kem, ct, ss, pk)",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "OQS_KEM_mlkem_768_encaps",
+        "library": "liboqs",
+        "version": "0.12.0"
+      },
+      "library": "liboqs",
+      "location": {
+        "file": "samples/payments/kex.py",
+        "function": "establish_kem",
+        "line": 31
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:42746822cfc620a5",
+      "canonical": "X25519+ML-KEM-768",
+      "confidence": 0.87,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "third-party",
+        "notes": "service payments-api; usage X25519+ML-KEM-768; data_lifetime_years=7; migration_years=3; endpoint https://partner.example.com:443"
+      },
+      "evidence": [
+        {
+          "confidence": 0.87,
+          "detail": "source-api-call crypto-hybrid-kex at samples/payments/tls.py:12",
+          "snippet": "set_hybrid_group('X25519MLKEM768')",
+          "tool": "semgrep"
+        },
+        {
+          "confidence": 0.8,
+          "detail": "config-match config-hybrid-group at samples/payments/tls.conf:4",
+          "snippet": "Groups = X25519MLKEM768:X25519",
+          "tool": "agentC-config-parser"
+        }
+      ],
+      "implementation": {
+        "api": "X25519MLKEM768",
+        "library": "oqs-provider",
+        "version": "0.8.0"
+      },
+      "library": "oqs-provider",
+      "location": {
+        "file": "samples/payments/tls.py",
+        "line": 12
+      },
+      "risk_inputs": {
+        "exposure": "third-party",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    }
+  ],
+  "cir_version": "0.1",
+  "finished_at": "2026-09-10T13:00:07Z",
+  "graph": {
+    "edges": [
+      {
+        "from": "cert:cert:pay-2026",
+        "relationship": "protects",
+        "to": "ep:https://pay.example.com:8443"
+      },
+      {
+        "from": "img:sha256:pay1",
+        "relationship": "contains",
+        "to": "lib:cryptography@44.0.0"
+      },
+      {
+        "from": "img:sha256:pay1",
+        "relationship": "contains",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "key:local:key:pay-rsa-2048",
+        "relationship": "protects",
+        "to": "op:d44677d4b78ab515"
+      },
+      {
+        "from": "lib:cryptography@44.0.0",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "lib:liboqs@0.12.0",
+        "relationship": "derives",
+        "to": "ast:098c91c1d6b62435"
+      },
+      {
+        "from": "lib:libsodium@1.0.19",
+        "relationship": "derives",
+        "to": "ast:094a4671557d726c"
+      },
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "lib:oqs-provider@0.8.0",
+        "relationship": "derives",
+        "to": "ast:42746822cfc620a5"
+      },
+      {
+        "from": "op:0ca0b57b6a095df2",
+        "relationship": "derives",
+        "to": "ast:42746822cfc620a5"
+      },
+      {
+        "from": "op:0ca0b57b6a095df2",
+        "relationship": "depends_on",
+        "to": "lib:oqs-provider@0.8.0"
+      },
+      {
+        "from": "op:27ebc85a24839c8c",
+        "relationship": "derives",
+        "to": "ast:098c91c1d6b62435"
+      },
+      {
+        "from": "op:27ebc85a24839c8c",
+        "relationship": "depends_on",
+        "to": "lib:liboqs@0.12.0"
+      },
+      {
+        "from": "op:405ef0b6065ca208",
+        "relationship": "derives",
+        "to": "ast:094a4671557d726c"
+      },
+      {
+        "from": "op:405ef0b6065ca208",
+        "relationship": "depends_on",
+        "to": "lib:libsodium@1.0.19"
+      },
+      {
+        "from": "op:d44677d4b78ab515",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "op:d44677d4b78ab515",
+        "relationship": "depends_on",
+        "to": "lib:cryptography@44.0.0"
+      },
+      {
+        "from": "op:d44677d4b78ab515",
+        "relationship": "derives",
+        "to": "op:fd909b6122e3cbc7"
+      },
+      {
+        "from": "op:fd909b6122e3cbc7",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "op:fd909b6122e3cbc7",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "owner:team-payments",
+        "relationship": "contains",
+        "to": "svc:payments-api"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "terminates",
+        "to": "ep:https://partner.example.com:443"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "terminates",
+        "to": "ep:https://pay.example.com:8443"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "contains",
+        "to": "img:sha256:pay1"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "uses",
+        "to": "op:0ca0b57b6a095df2"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "uses",
+        "to": "op:27ebc85a24839c8c"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "uses",
+        "to": "op:405ef0b6065ca208"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "uses",
+        "to": "op:d44677d4b78ab515"
+      },
+      {
+        "from": "svc:payments-api",
+        "relationship": "uses",
+        "to": "op:fd909b6122e3cbc7"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "ast:094a4671557d726c",
+        "kind": "asset",
+        "label": "ChaCha20-Poly1305",
+        "ref": "ast:094a4671557d726c"
+      },
+      {
+        "id": "ast:098c91c1d6b62435",
+        "kind": "asset",
+        "label": "ML-KEM",
+        "ref": "ast:098c91c1d6b62435"
+      },
+      {
+        "id": "ast:0a882c22ced70e11",
+        "kind": "asset",
+        "label": "RSA",
+        "ref": "ast:0a882c22ced70e11"
+      },
+      {
+        "id": "ast:42746822cfc620a5",
+        "kind": "asset",
+        "label": "X25519+ML-KEM-768",
+        "ref": "ast:42746822cfc620a5"
+      },
+      {
+        "id": "cert:cert:pay-2026",
+        "kind": "file",
+        "label": "cert:pay-2026",
+        "ref": "cert:cert:pay-2026"
+      },
+      {
+        "id": "ep:https://partner.example.com:443",
+        "kind": "host",
+        "label": "https://partner.example.com:443",
+        "ref": "ep:https://partner.example.com:443"
+      },
+      {
+        "id": "ep:https://pay.example.com:8443",
+        "kind": "host",
+        "label": "https://pay.example.com:8443",
+        "ref": "ep:https://pay.example.com:8443"
+      },
+      {
+        "id": "img:sha256:pay1",
+        "kind": "host",
+        "label": "sha256:pay1",
+        "ref": "img:sha256:pay1"
+      },
+      {
+        "id": "key:local:key:pay-rsa-2048",
+        "kind": "key",
+        "label": "local:key:pay-rsa-2048",
+        "ref": "key:local:key:pay-rsa-2048"
+      },
+      {
+        "id": "lib:cryptography@44.0.0",
+        "kind": "library",
+        "label": "cryptography@44.0.0",
+        "ref": "lib:cryptography@44.0.0"
+      },
+      {
+        "id": "lib:liboqs@0.12.0",
+        "kind": "library",
+        "label": "liboqs@0.12.0",
+        "ref": "lib:liboqs@0.12.0"
+      },
+      {
+        "id": "lib:libsodium@1.0.19",
+        "kind": "library",
+        "label": "libsodium@1.0.19",
+        "ref": "lib:libsodium@1.0.19"
+      },
+      {
+        "id": "lib:openssl@3.0.13",
+        "kind": "library",
+        "label": "openssl@3.0.13",
+        "ref": "lib:openssl@3.0.13"
+      },
+      {
+        "id": "lib:oqs-provider@0.8.0",
+        "kind": "library",
+        "label": "oqs-provider@0.8.0",
+        "ref": "lib:oqs-provider@0.8.0"
+      },
+      {
+        "id": "op:0ca0b57b6a095df2",
+        "kind": "operation",
+        "label": "X25519+ML-KEM-768 [op:0ca0b57b6a095df2]",
+        "ref": "op:0ca0b57b6a095df2"
+      },
+      {
+        "id": "op:27ebc85a24839c8c",
+        "kind": "operation",
+        "label": "ML-KEM [op:27ebc85a24839c8c]",
+        "ref": "op:27ebc85a24839c8c"
+      },
+      {
+        "id": "op:405ef0b6065ca208",
+        "kind": "operation",
+        "label": "ChaCha20-Poly1305 [op:405ef0b6065ca208]",
+        "ref": "op:405ef0b6065ca208"
+      },
+      {
+        "id": "op:d44677d4b78ab515",
+        "kind": "operation",
+        "label": "RSA [op:d44677d4b78ab515]",
+        "ref": "op:d44677d4b78ab515"
+      },
+      {
+        "id": "op:fd909b6122e3cbc7",
+        "kind": "operation",
+        "label": "RSA [op:fd909b6122e3cbc7]",
+        "ref": "op:fd909b6122e3cbc7"
+      },
+      {
+        "id": "owner:team-payments",
+        "kind": "service",
+        "label": "team-payments",
+        "ref": "owner:team-payments"
+      },
+      {
+        "id": "svc:payments-api",
+        "kind": "service",
+        "label": "payments-api",
+        "ref": "svc:payments-api"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "asset_id": "ast:0a882c22ced70e11",
+      "confidence": 0.96,
+      "context": {
+        "data_classification": "restricted",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service payments-api; usage RSA; data_lifetime_years=12; migration_years=4; image sha256:pay1; endpoint https://pay.example.com:8443; key local:key:pay-rsa-2048; cert cert:pay-2026"
+      },
+      "evidence": [
+        {
+          "confidence": 0.95,
+          "detail": "source-api-call crypto-rsa-confirmed at samples/payments/payments.py:64",
+          "snippet": "rsa.encrypt(card_token, public_key)  # PCI scope",
+          "tool": "semgrep"
+        },
+        {
+          "confidence": 0.85,
+          "detail": "binary-symbol crypto-rsa-symbol in payments-svc",
+          "snippet": "symbol RSA_public_encrypt @0x12ab (same 2048-bit key)",
+          "tool": "floss"
+        },
+        {
+          "confidence": 0.9,
+          "detail": "cert-parse cert-key-match for payments.crt",
+          "snippet": "RSA-2048 fingerprint match: source key == cert key",
+          "tool": "agentC-x509-parser"
+        }
+      ],
+      "function": "charge",
+      "implementation": {
+        "api": "rsa.encrypt",
+        "library": "cryptography",
+        "version": "44.0.0"
+      },
+      "location": {
+        "file": "samples/payments/payments.py",
+        "function": "charge",
+        "line": 64
+      },
+      "operation_id": "op:d44677d4b78ab515",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:0a882c22ced70e11",
+      "confidence": 0.4,
+      "context": {
+        "data_classification": "public",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service payments-api; usage RSA; data_lifetime_years=1; migration_years=1; image sha256:pay1"
+      },
+      "evidence": [
+        {
+          "confidence": 0.4,
+          "detail": "dependency-capability lib-provides-rsa in image layer a1",
+          "snippet": "package openssl 3.0.13 provides RSA (same asset, no use)",
+          "tool": "syft"
+        }
+      ],
+      "implementation": {
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "image:layer:a1:/usr/lib/libcrypto.so.3"
+      },
+      "operation_id": "op:fd909b6122e3cbc7",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": true,
+        "sensitive_data": false,
+        "usage_state": "ProvidedOnly"
+      }
+    },
+    {
+      "asset_id": "ast:094a4671557d726c",
+      "confidence": 0.9,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "third-party",
+        "notes": "service payments-api; usage ChaCha20-Poly1305; data_lifetime_years=5; migration_years=2"
+      },
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "detail": "source-api-call crypto-aead-chacha at samples/payments/tokens.py:23",
+          "snippet": "crypto_aead_xchacha20poly1305_ietf_encrypt(token, ...)",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "seal_token",
+      "implementation": {
+        "api": "crypto_aead_xchacha20poly1305_ietf_encrypt",
+        "library": "libsodium",
+        "version": "1.0.19"
+      },
+      "location": {
+        "file": "samples/payments/tokens.py",
+        "function": "seal_token",
+        "line": 23
+      },
+      "operation_id": "op:405ef0b6065ca208",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "third-party",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:098c91c1d6b62435",
+      "confidence": 0.88,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service payments-api; usage ML-KEM; data_lifetime_years=8; migration_years=3"
+      },
+      "evidence": [
+        {
+          "confidence": 0.88,
+          "detail": "source-api-call crypto-mlkem at samples/payments/kex.py:31",
+          "snippet": "OQS_KEM_mlkem_768_encaps(kem, ct, ss, pk)",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "establish_kem",
+      "implementation": {
+        "api": "OQS_KEM_mlkem_768_encaps",
+        "library": "liboqs",
+        "version": "0.12.0"
+      },
+      "location": {
+        "file": "samples/payments/kex.py",
+        "function": "establish_kem",
+        "line": 31
+      },
+      "operation_id": "op:27ebc85a24839c8c",
+      "operation_type": "KeyExchange",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:42746822cfc620a5",
+      "confidence": 0.87,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "third-party",
+        "notes": "service payments-api; usage X25519+ML-KEM-768; data_lifetime_years=7; migration_years=3; endpoint https://partner.example.com:443"
+      },
+      "evidence": [
+        {
+          "confidence": 0.87,
+          "detail": "source-api-call crypto-hybrid-kex at samples/payments/tls.py:12",
+          "snippet": "set_hybrid_group('X25519MLKEM768')",
+          "tool": "semgrep"
+        },
+        {
+          "confidence": 0.8,
+          "detail": "config-match config-hybrid-group at samples/payments/tls.conf:4",
+          "snippet": "Groups = X25519MLKEM768:X25519",
+          "tool": "agentC-config-parser"
+        }
+      ],
+      "implementation": {
+        "api": "X25519MLKEM768",
+        "library": "oqs-provider",
+        "version": "0.8.0"
+      },
+      "location": {
+        "file": "samples/payments/tls.py",
+        "line": 12
+      },
+      "operation_id": "op:0ca0b57b6a095df2",
+      "operation_type": "KeyExchange",
+      "risk_inputs": {
+        "exposure": "third-party",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    }
+  ],
+  "registry_version": "2026.09.11",
+  "scan_id": "scan:sample-multi-001",
+  "started_at": "2026-09-10T13:00:00Z",
+  "stats": {
+    "asset_count": 4,
+    "edge_count": 29,
+    "node_count": 21,
+    "operation_count": 5
+  },
+  "target": "payments-api (multi-surface: repo+image+cert)",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  }
+}

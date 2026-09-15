@@ -1,16 +1,17 @@
 """CoreClient interface + mock/real implementations (Person 3 platform layer).
 
-Person 1 (Core Intelligence) owns real detection. This module defines the
+Person 1 (Core Intelligence) owns real analysis and Person 2
+(Discovery) owns real detection. This module defines the
 decoupling contract Person 3 codes against:
 
     CoreClient.scan(target: Path) -> dict   # canonical v1 JSON dict
 
-- MockCoreClient: deterministic, fixture-backed, no real scanning. Used
-  until Person 1's entry point is finalized. Output is validated with
-  ecdat.core.validate.validate() before return.
-- RealCoreClient: thin placeholder adapter. scan() raises
-  NotImplementedError until Person 1's import path + function signature
-  are agreed. Only this class changes at integration time.
+- MockCoreClient: deterministic, fixture-backed, no real scanning.
+  Output is validated with ecdat.core.validate.validate() before return.
+- RealCoreClient: integrated adapter. scan() runs the single logical
+  real scan (P2 DiscoveryEngine -> CIR v0.1 -> P1 validate/enrich/convert
+  -> P3 normalization -> validated canonical). Failures raise
+  RealScanError; there is no mock fallback.
 - get_client(mode): factory for "mock" / "real".
 """
 
@@ -80,18 +81,74 @@ class MockCoreClient:
 
 
 class RealCoreClient:
-    """Thin placeholder for Person 1's real Core API.
+    """Integrated real adapter: ONE logical scan, no mock fallback.
 
-    DO NOT implement detection here. At integration time, this class
-    becomes a small adapter that imports Person 1's finalized entry
-    point, calls it, and returns its canonical dict (validated).
-    Until then, scan() raises NotImplementedError.
+    scan() runs the P3-owned pipeline (``ecdat.adapters.pipeline``):
+    P2 DiscoveryEngine scans the target exactly once into CIR v0.1,
+    P1 validates/scores/recommends/converts that CIR, P3 normalizes
+    (deterministic scan ID, RFC3339 timestamps, real files_scanned,
+    asset-only findings) and validates the canonical document.
+
+    P1's ``api.scan()`` is deliberately never called — it performs its
+    own discovery and would scan the target a second time. P2's naive
+    ``_cir_to_canonical`` is likewise unused; conversion is P1's
+    ``to_canonical``.
+
+    Constructor options (all optional): ``scanners`` (explicit list —
+    the default safe subset applies when omitted), ``allow_container``,
+    ``allow_cloud``, ``allow_runtime`` (opt-in families), ``risk_z``.
+    Every failure raises ``RealScanError`` (never mock data).
     """
 
-    def scan(self, target: Path) -> dict:  # noqa: ARG002
-        raise NotImplementedError(
-            "Person 1 Core entry point not finalized. "
-            "Use get_client('mock') until the real adapter is agreed."
+    def __init__(
+        self,
+        scanners: list[str] | tuple[str, ...] | None = None,
+        allow_container: bool = False,
+        allow_cloud: bool = False,
+        allow_runtime: bool = False,
+        risk_z: float = 10.0,
+        **kwargs,
+    ) -> None:
+        if kwargs:
+            raise ValueError(
+                f"unknown RealCoreClient option(s): {sorted(kwargs)}"
+            )
+        self.scanners = list(scanners) if scanners is not None else None
+        self.allow_container = bool(allow_container)
+        self.allow_cloud = bool(allow_cloud)
+        self.allow_runtime = bool(allow_runtime)
+        self.risk_z = float(risk_z)
+
+    def scan(self, target: Path) -> dict:
+        from ecdat.adapters.pipeline import RealScanError  # noqa: F401
+        from ecdat.adapters.pipeline import run_real_scan
+
+        _enriched, canonical = run_real_scan(
+            target,
+            scanners=self.scanners,
+            allow_container=self.allow_container,
+            allow_cloud=self.allow_cloud,
+            allow_runtime=self.allow_runtime,
+            risk_z=self.risk_z,
+        )
+        return canonical
+
+    def scan_with_cir(self, target: Path) -> tuple[dict, dict]:
+        """Scan and return ``(cir_dict, canonical_doc)``.
+
+        The CIR sidecar is what the platform persists next to the
+        canonical document (risk, recommendations, graph). Same
+        single-scan semantics and failure behavior as ``scan``.
+        """
+        from ecdat.adapters.pipeline import run_real_scan
+
+        return run_real_scan(
+            target,
+            scanners=self.scanners,
+            allow_container=self.allow_container,
+            allow_cloud=self.allow_cloud,
+            allow_runtime=self.allow_runtime,
+            risk_z=self.risk_z,
         )
 
 
@@ -100,7 +157,5 @@ def get_client(mode: str = "mock", **kwargs) -> CoreClient:
     if mode == "mock":
         return MockCoreClient(**kwargs)
     if mode == "real":
-        if kwargs:
-            raise ValueError("RealCoreClient takes no constructor arguments yet.")
-        return RealCoreClient()
+        return RealCoreClient(**kwargs)
     raise ValueError(f"unknown client mode: {mode!r} (expected 'mock' or 'real')")

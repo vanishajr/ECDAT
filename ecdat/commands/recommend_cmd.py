@@ -114,8 +114,12 @@ def run(args: argparse.Namespace) -> int:
             print(f"error: scan not found: {args.scan_id}", file=sys.stderr)
             return ERROR
         findings = fstore.list_findings(conn, args.scan_id)
+        cir = sstore.get_scan_cir(conn, args.scan_id)
     finally:
         conn.close()
+
+    if cir is not None:
+        return _run_real(args, cir)
 
     recs = recommend_for_findings(findings, severity=args.severity)
 
@@ -135,4 +139,41 @@ def run(args: argparse.Namespace) -> int:
         return 0
     for r in recs:
         print(f"  {r['rule_id']} [{r['severity']}] x{r['count']}: {r['action']}")
+    return 0
+
+
+def _run_real(args: argparse.Namespace, cir: dict) -> int:
+    """Real recommendations from stored P1 records (no placeholder map)."""
+    from ecdat.adapters import migration_adapter as _migration_adapter
+
+    items = _migration_adapter.build_real_items(cir)
+    if args.severity is not None:
+        items = [i for i in items if i["severity"] == args.severity]
+    recs = [
+        {
+            "rule_id": i["rule_id"],
+            "severity": i["severity"],
+            "title": i["title"],
+            "action": i["action"],
+            "refs": i["refs"],
+            "affected_files": i["affected_files"],
+        }
+        for i in items
+    ]
+    if args.json:
+        print(
+            json.dumps(
+                {"scan_id": args.scan_id, "recommendations": recs,
+                 "source": "p1"},
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    print(f"scan_id: {args.scan_id} (p1 recommendations)")
+    if not recs:
+        print("no recommendations")
+        return 0
+    for r in recs:
+        print(f"  {r['rule_id']} [{r['severity']}] {r['title']}: {r['action']}")
     return 0

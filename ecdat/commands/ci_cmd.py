@@ -89,25 +89,37 @@ def evaluate(findings: list[dict], fail_on: str | None) -> dict:
     }
 
 
+REAL_NOTE = (
+    "Real pipeline: P2 discovery with P1 risk scoring; gate policy "
+    "evaluates stored finding severities. No PQC/accuracy claims."
+)
+
+
 def build_result(target: str, doc: dict, fail_on: str | None,
-                 sarif_path: str | None = None) -> dict:
-    """Build the deterministic machine-readable CI result. Pure, no I/O."""
-    risk = risk_from_findings(doc["findings"])
+                 sarif_path: str | None = None, mock: bool = True,
+                 risk: dict | None = None) -> dict:
+    """Build the deterministic machine-readable CI result. Pure, no I/O.
+
+    ``risk`` overrides the displayed score/level (real scans pass the
+    stored P1 posture; mock scans use Task 6 mock scoring). Gate policy
+    always evaluates finding severities, never the score.
+    """
+    shown = risk if risk is not None else risk_from_findings(doc["findings"])
     policy = evaluate(doc["findings"], fail_on)
     return {
         "tool": "ecdat-ci",
-        "mock": True,
+        "mock": mock,
         "target": target,
         "scan_id": doc["scan_id"],
         "finding_count": len(doc["findings"]),
         "by_severity": policy["by_severity"],
-        "risk": {"score": risk["score"], "level": risk["level"]},
+        "risk": {"score": shown["score"], "level": shown["level"]},
         "fail_on": fail_on,
         "verdict": "pass" if policy["passed"] else "fail",
         "triggered": policy["triggered"],
         "max_severity": policy["max_severity"],
         "sarif": sarif_path,
-        "note": MOCK_NOTE,
+        "note": MOCK_NOTE if mock else REAL_NOTE,
     }
 
 
@@ -115,14 +127,26 @@ def _summary_lines(result: dict) -> list[str]:
     counts = " ".join(
         f"{sev}={result['by_severity'].get(sev, 0)}" for sev in SEVERITIES
     )
+    pipeline = "mock pipeline" if result.get("mock", True) else "real pipeline"
+    scoring = "[mock scoring]" if result.get("mock", True) else "[p1 risk engine]"
+    engines = "(mock — no Person 1/2 engines)" if result.get("mock", True) else "(p1 risk engine)"
     return [
-        f"ci: {result['target']} (mock pipeline)",
+        f"ci: {result['target']} ({pipeline})",
         f"scan_id: {result['scan_id']}",
         f"findings: {result['finding_count']} ({counts})",
-        f"risk: {result['risk']['level']} ({result['risk']['score']}) [mock scoring]",
+        f"risk: {result['risk']['level']} ({result['risk']['score']}) {scoring}",
         f"fail-on: {result['fail_on'] if result['fail_on'] is not None else 'none (report only)'}",
-        f"verdict: {'PASS' if result['verdict'] == 'pass' else 'FAIL'} (mock — no Person 1/2 engines)",
+        f"verdict: {'PASS' if result['verdict'] == 'pass' else 'FAIL'} {engines}",
     ]
+
+
+def _real_posture(cir: dict, doc: dict) -> dict:
+    """Displayed CI risk for real scans (stored P1 posture, no mock math)."""
+    from ecdat.adapters import risk_view as _risk_view
+
+    posture = _risk_view.summarize_wire_risks(
+        cir.get("risks", []) or [], len(doc["findings"]))
+    return {"score": posture["score"], "level": posture["level"]}
 
 
 def run(args: argparse.Namespace) -> int:
@@ -132,12 +156,25 @@ def run(args: argparse.Namespace) -> int:
         return TARGET_NOT_FOUND
 
     client = get_client("real" if args.real else "mock")
-    try:
+    cir: dict | None = None
+    if args.real:
+        from typing import cast
+
+        from ecdat.adapters.pipeline import RealScanError
+
+        scan_with_cir = getattr(client, "scan_with_cir", None)
+        if not callable(scan_with_cir):
+            print("error: real client cannot produce a CIR sidecar",
+                  file=sys.stderr)
+            return ERROR
+        try:
+            pair = cast("tuple[dict, dict]", scan_with_cir(target))
+            cir, doc = pair[0], pair[1]
+        except RealScanError as exc:
+            print(f"error: real scan failed: {exc}", file=sys.stderr)
+            return ERROR
+    else:
         doc = client.scan(target)
-    except NotImplementedError as exc:
-        # RealCoreClient placeholder: clean message, no traceback.
-        print(f"error: {exc}", file=sys.stderr)
-        return ERROR
 
     try:
         validate(doc)
@@ -150,7 +187,7 @@ def run(args: argparse.Namespace) -> int:
     conn = db.open_db(db_path)
     try:
         try:
-            sstore.insert_scan(conn, doc)
+            sstore.insert_scan(conn, doc, cir)
             fstore.insert_findings_for_scan(conn, doc)
         except sqlite3.IntegrityError:
             # Fixture scan_id already stored: reuse it (same convention
@@ -176,7 +213,9 @@ def run(args: argparse.Namespace) -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(content + "\n")
 
-    result = build_result(str(target), doc, args.fail_on, sarif_path)
+    result = build_result(str(target), doc, args.fail_on, sarif_path,
+                          mock=cir is None,
+                          risk=_real_posture(cir, doc) if cir is not None else None)
 
     if args.json:
         # Pure JSON on stdout: no human lines, no logging noise.

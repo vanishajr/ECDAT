@@ -30,7 +30,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_scan.add_argument("--output", default=None, help="write canonical JSON here")
     mode = p_scan.add_mutually_exclusive_group()
     mode.add_argument("--mock", action="store_true", help="use MockCoreClient (default)")
-    mode.add_argument("--real", action="store_true", help="use RealCoreClient")
+    mode.add_argument("--real", action="store_true", help="use RealCoreClient (P2/P1 pipeline)")
+    p_scan.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default: source,dependency,binary,config,certificate)")
+    p_scan.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_scan.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_scan.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_scan.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     p_scan.set_defaults(func=scan_cmd.run)
 
     p_list = sub.add_parser("list", help="list stored scans")
