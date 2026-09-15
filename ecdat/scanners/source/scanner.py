@@ -34,8 +34,10 @@ from ecdat.core.signature_registry import (
 
 
 PYTHON_CRYPTO_PATTERNS = {
-    "cryptography.hazmat.primitives.ciphers.aead.AESGCM": ("AES-256-GCM", OperationType.ENCRYPT),
-    "cryptography.hazmat.primitives.ciphers.aead.ChaCha20Poly1305": ("ChaCha20-Poly1305", OperationType.ENCRYPT),
+    "cryptography.hazmat.primitives.ciphers.aead.AESGCM.encrypt": ("AES-256-GCM", OperationType.ENCRYPT),
+    "cryptography.hazmat.primitives.ciphers.aead.AESGCM.decrypt": ("AES-256-GCM", OperationType.DECRYPT),
+    "cryptography.hazmat.primitives.ciphers.aead.ChaCha20Poly1305.encrypt": ("ChaCha20-Poly1305", OperationType.ENCRYPT),
+    "cryptography.hazmat.primitives.ciphers.aead.ChaCha20Poly1305.decrypt": ("ChaCha20-Poly1305", OperationType.DECRYPT),
     "cryptography.hazmat.primitives.ciphers.Cipher": ("AES", OperationType.ENCRYPT),
     "cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey": ("RSA", OperationType.SIGN),
     "cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey": ("RSA", OperationType.ENCRYPT),
@@ -93,14 +95,19 @@ PYTHON_CRYPTO_PATTERNS = {
     "Crypto.Protocol.KDF.scrypt": ("scrypt", OperationType.KDF),
     "hashlib.md5": ("MD5", OperationType.HASH),
     "hashlib.sha1": ("SHA-1", OperationType.HASH),
+    "hashlib.sha224": ("SHA-256", OperationType.HASH),
     "hashlib.sha256": ("SHA-256", OperationType.HASH),
     "hashlib.sha384": ("SHA-384", OperationType.HASH),
     "hashlib.sha512": ("SHA-512", OperationType.HASH),
+    "hashlib.sha3_224": ("SHA-3-256", OperationType.HASH),
     "hashlib.sha3_256": ("SHA-3-256", OperationType.HASH),
+    "hashlib.sha3_384": ("SHA-3-512", OperationType.HASH),
     "hashlib.sha3_512": ("SHA-3-512", OperationType.HASH),
     "hashlib.blake2b": ("BLAKE2b", OperationType.HASH),
     "hashlib.blake2s": ("BLAKE2s", OperationType.HASH),
     "hashlib.pbkdf2_hmac": ("PBKDF2", OperationType.KDF),
+    "hmac.new": ("HMAC", OperationType.HASH),
+    "hmac.HMAC": ("HMAC", OperationType.HASH),
     "secrets.token_bytes": ("Random", OperationType.KEY_MANAGEMENT),
     "os.urandom": ("Random", OperationType.KEY_MANAGEMENT),
     "ssl.create_default_context": ("TLS1.2", OperationType.TLS),
@@ -121,20 +128,27 @@ IMPORT_ALIASES = {
     "ECDSA": "cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey",
     "ECDH": "cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey",
     "X25519": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey",
+    "X25519PrivateKey.generate": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey.generate",
     "X448": "cryptography.hazmat.primitives.asymmetric.x448.X448PrivateKey",
     "Ed25519": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+    "Ed25519PrivateKey.generate": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate",
     "Ed448": "cryptography.hazmat.primitives.asymmetric.ed448.Ed448PrivateKey",
     "Hash": "cryptography.hazmat.primitives.hashes.Hash",
-    "MD5": "cryptography.hazmat.primitives.hashes.MD5",
-    "SHA1": "cryptography.hazmat.primitives.hashes.SHA1",
-    "SHA256": "cryptography.hazmat.primitives.hashes.SHA256",
-    "SHA384": "cryptography.hazmat.primitives.hashes.SHA384",
-    "SHA512": "cryptography.hazmat.primitives.hashes.SHA512",
-    "SHA3_256": "cryptography.hazmat.primitives.hashes.SHA3_256",
-    "SHA3_512": "cryptography.hazmat.primitives.hashes.SHA3_512",
-    "BLAKE2b": "cryptography.hazmat.primitives.hashes.BLAKE2b",
-    "BLAKE2s": "cryptography.hazmat.primitives.hashes.BLAKE2s",
-    "PBKDF2HMAC": "cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC",
+    "MD5": "hashlib.md5",
+    "SHA1": "hashlib.sha1",
+    "SHA224": "hashlib.sha224",
+    "SHA256": "hashlib.sha256",
+    "SHA384": "hashlib.sha384",
+    "SHA512": "hashlib.sha512",
+    "SHA3_224": "hashlib.sha3_224",
+    "SHA3_256": "hashlib.sha3_256",
+    "SHA3_384": "hashlib.sha3_384",
+    "SHA3_512": "hashlib.sha3_512",
+    "BLAKE2b": "hashlib.blake2b",
+    "BLAKE2s": "hashlib.blake2s",
+    "PBKDF2_HMAC": "hashlib.pbkdf2_hmac",
+    "HMAC": "hmac.HMAC",
+    "new": "hmac.new",
     "HKDF": "cryptography.hazmat.primitives.kdf.hkdf.HKDF",
     "Scrypt": "cryptography.hazmat.primitives.kdf.scrypt.Scrypt",
     "BCrypt": "cryptography.hazmat.primitives.kdf.bcrypt.BCrypt",
@@ -231,24 +245,36 @@ class SourceScanner(Scanner[ScannerFinding]):
                         snippet=line.strip()[:200],
                     )
 
-                    finding = ScannerFinding(
-                        canonical=canonical_norm,
-                        original=original,
-                        key_size=key_size,
-                        mode=mode,
-                        library="cryptography" if "cryptography" in pattern else ("pycryptodome" if "Crypto" in pattern else "stdlib"),
-                        usage_state=UsageState.CONFIRMED,
-                        confidence=0.85,
-                        evidence=[evidence],
-                        location=Location(file=str(file_path), line=i, function=self._find_function(lines, i)),
-                        operation_type=op_type,
-                        function=self._find_function(lines, i),
-                        implementation=Implementation(
-                            library="cryptography" if "cryptography" in pattern else ("pycryptodome" if "Crypto" in pattern else "stdlib"),
-                            api=pattern,
-                        ),
-                        context=Context(exposure=Exposure.INTERNAL),
-                    )
+                    # Determine library from pattern
+                    if "cryptography" in pattern:
+                        lib = "cryptography"
+                    elif "Crypto" in pattern:
+                        lib = "pycryptodome"
+                    elif pattern.startswith("hashlib."):
+                        lib = "hashlib"
+                    elif pattern.startswith("hmac."):
+                        lib = "hmac"
+                    else:
+                        lib = "stdlib"
+                        
+                        finding = ScannerFinding(
+                            canonical=canonical_norm,
+                            original=original,
+                            key_size=key_size,
+                            mode=mode,
+                            library=lib,
+                            usage_state=UsageState.CONFIRMED,
+                            confidence=0.85,
+                            evidence=[evidence],
+                            location=Location(file=str(file_path), line=i, function=self._find_function(lines, i)),
+                            operation_type=op_type,
+                            function=self._find_function(lines, i),
+                            implementation=Implementation(
+                                library=lib,
+                                api=pattern,
+                            ),
+                            context=Context(exposure=Exposure.INTERNAL),
+                        )
                     findings.append(finding)
 
         return findings
@@ -318,31 +344,77 @@ class CryptoASTVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _check_attribute_call(self, node: ast.Call):
-        if not isinstance(node.func.value, ast.Name):
+        if not isinstance(node.func.value, ast.Attribute):
+            # Simple obj.method() call
+            if isinstance(node.func.value, ast.Name):
+                obj_name = node.func.value.id
+                method_name = node.func.attr
+                full_call = f"{obj_name}.{method_name}"
+
+                # First, try exact import alias matching (case-insensitive)
+                obj_name_lower = obj_name.lower()
+                for import_alias, full_import in self.imports.items():
+                    if obj_name_lower == import_alias.lower():
+                        # Build the expected full pattern prefix
+                        expected_prefix = full_import + "."
+                        for pattern, (canonical, op_type) in PYTHON_CRYPTO_PATTERNS.items():
+                            # Exact match on the full import path + method
+                            if pattern == expected_prefix + method_name or pattern == full_import + "." + method_name:
+                                self._create_finding(pattern, canonical, op_type, node.lineno, full_call, node)
+                                return
+                            # Fallback: pattern ends with method but also starts with the import
+                            if pattern.endswith(f".{method_name}") and pattern.startswith(full_import):
+                                self._create_finding(pattern, canonical, op_type, node.lineno, full_call, node)
+                                return
+
+                # Fallback: Heuristic matching for common EC/RSA method names on variables
+                # when relevant crypto modules are imported
+                self._check_heuristic_methods(node, obj_name, method_name, full_call)
+            elif isinstance(node.func.value, ast.Call):
+                # Constructor call: ClassName(...).method()
+                # e.g., AESGCM(key).encrypt(...) or AESGCM(key).decrypt(...)
+                constructor_call = node.func.value
+                if isinstance(constructor_call.func, ast.Name):
+                    class_name = constructor_call.func.id
+                    method_name = node.func.attr
+                    full_call = f"{class_name}(...).{method_name}"
+
+                    # Check if the class name matches an imported crypto class
+                    class_name_lower = class_name.lower()
+                    for import_alias, full_import in self.imports.items():
+                        if class_name_lower == import_alias.lower():
+                            expected_prefix = full_import + "."
+                            for pattern, (canonical, op_type) in PYTHON_CRYPTO_PATTERNS.items():
+                                if pattern == expected_prefix + method_name or pattern == full_import + "." + method_name:
+                                    self._create_finding(pattern, canonical, op_type, node.lineno, full_call, node)
+                                    return
+                                if pattern.endswith(f".{method_name}") and pattern.startswith(full_import):
+                                    self._create_finding(pattern, canonical, op_type, node.lineno, full_call, node)
+                                    return
+
+                    # Fallback: Heuristic matching
+                    self._check_heuristic_methods(node, class_name, method_name, full_call)
             return
-
-        obj_name = node.func.value.id
-        method_name = node.func.attr
-        full_call = f"{obj_name}.{method_name}"
-
-        # First, try exact import alias matching
-        for import_alias, full_import in self.imports.items():
-            if obj_name == import_alias:
-                # Build the expected full pattern prefix
-                expected_prefix = full_import + "."
-                for pattern, (canonical, op_type) in PYTHON_CRYPTO_PATTERNS.items():
-                    # Exact match on the full import path + method
-                    if pattern == expected_prefix + method_name or pattern == full_import + "." + method_name:
-                        self._create_finding(pattern, canonical, op_type, node.lineno, full_call, node)
-                        return
-                    # Fallback: pattern ends with method but also starts with the import
-                    if pattern.endswith(f".{method_name}") and pattern.startswith(full_import):
-                        self._create_finding(pattern, canonical, op_type, node.lineno, full_call, node)
-                        return
-
-        # Fallback: Heuristic matching for common EC/RSA method names on variables
-        # when relevant crypto modules are imported
-        self._check_heuristic_methods(node, obj_name, method_name, full_call)
+        
+        # Double attribute access: obj.attr.method() (e.g., self._cipher.encrypt)
+        # Traverse the attribute chain
+        attr_chain = []
+        current = node.func
+        while isinstance(current, ast.Attribute):
+            attr_chain.append(current.attr)
+            current = current.value
+        if isinstance(current, ast.Name):
+            attr_chain.append(current.id)
+        
+        if len(attr_chain) >= 2:
+            # attr_chain is [method, attr, ..., obj] in reverse
+            method_name = attr_chain[0]
+            obj_name = attr_chain[-1]
+            full_call = ".".join(reversed(attr_chain))
+            
+            # Check if this is a known crypto method on a wrapper/instance
+            self._check_wrapper_methods(node, obj_name, method_name, full_call)
+            return
 
     def _check_heuristic_methods(self, node: ast.Call, obj_name: str, method_name: str, full_call: str):
         """Heuristic matching for common crypto method names on local variables."""
@@ -431,6 +503,79 @@ class CryptoASTVisitor(ast.NodeVisitor):
                 )
                 return
 
+    def _check_wrapper_methods(self, node: ast.Call, obj_name: str, method_name: str, full_call: str):
+        """Heuristic matching for common crypto method names on wrapper/instance variables
+        (e.g., self._cipher.encrypt, cipher.decrypt, self._hash.update)."""
+        # Check if relevant crypto modules are imported
+        has_cryptography = any("cryptography" in imp for imp in self.imports.values())
+        has_pycryptodome = any("Crypto" in imp for imp in self.imports.values())
+        has_hashlib = any("hashlib" in imp for imp in self.imports.values())
+        
+        # Determine operation type from method name
+        op_type = None
+        if method_name in ("encrypt", "decrypt"):
+            op_type = OperationType.ENCRYPT if method_name == "encrypt" else OperationType.DECRYPT
+        elif method_name in ("sign", "verify"):
+            op_type = OperationType.SIGN if method_name == "sign" else OperationType.VERIFY
+        elif method_name in ("digest", "hexdigest", "update", "finalize"):
+            op_type = OperationType.HASH
+        elif method_name in ("derive", "derive_key"):
+            op_type = OperationType.KDF
+        elif method_name in ("exchange",):
+            op_type = OperationType.KEY_EXCHANGE
+        
+        if not op_type:
+            return
+        
+        # Map method to likely algorithm based on imported modules
+        if has_cryptography:
+            # Common symmetric cipher methods
+            if method_name in ("encrypt", "decrypt"):
+                # Could be AES-GCM, ChaCha20-Poly1305, etc.
+                # Default to AES-256-GCM as most common
+                self._create_finding(
+                    "cryptography.hazmat.primitives.ciphers.aead.AESGCM",
+                    "AES-256-GCM", op_type, node.lineno, full_call, node
+                )
+                return
+            elif method_name in ("sign", "verify"):
+                # Could be RSA, ECDSA, Ed25519
+                if has_pycryptodome or "rsa" in str(self.imports).lower():
+                    self._create_finding(
+                        "cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey",
+                        "RSA", op_type, node.lineno, full_call, node
+                    )
+                    return
+            elif method_name in ("digest", "hexdigest", "update", "finalize"):
+                # Hash context
+                self._create_finding(
+                    "cryptography.hazmat.primitives.hashes.Hash",
+                    "SHA-256", OperationType.HASH, node.lineno, full_call, node
+                )
+                return
+        
+        if has_pycryptodome:
+            if method_name in ("encrypt", "decrypt"):
+                self._create_finding(
+                    "Crypto.Cipher.AES",
+                    "AES", op_type, node.lineno, full_call, node
+                )
+                return
+            elif method_name in ("sign", "verify"):
+                self._create_finding(
+                    "Crypto.Signature.pkcs1_15",
+                    "RSA", op_type, node.lineno, full_call, node
+                )
+                return
+        
+        if has_hashlib:
+            if method_name in ("digest", "hexdigest", "update", "finalize"):
+                self._create_finding(
+                    "hashlib.sha256",
+                    "SHA-256", OperationType.HASH, node.lineno, full_call, node
+                )
+                return
+
     def _check_name_call(self, node: ast.Call):
         func_name = node.func.id
         for import_alias, full_import in self.imports.items():
@@ -478,13 +623,25 @@ class CryptoASTVisitor(ast.NodeVisitor):
             snippet=snippet[:200],
         )
         
+        # Determine library from pattern
+        if "cryptography" in pattern:
+            lib = "cryptography"
+        elif "Crypto" in pattern:
+            lib = "pycryptodome"
+        elif pattern.startswith("hashlib."):
+            lib = "hashlib"
+        elif pattern.startswith("hmac."):
+            lib = "hmac"
+        else:
+            lib = "stdlib"
+        
         finding = ScannerFinding(
             canonical=canonical_norm,
             original=original,
             key_size=key_size,
             mode=mode,
             curve=curve,
-            library="cryptography" if "cryptography" in pattern else ("pycryptodome" if "Crypto" in pattern else "stdlib"),
+            library=lib,
             usage_state=UsageState.CONFIRMED,
             confidence=0.92,
             evidence=[evidence],
@@ -492,7 +649,7 @@ class CryptoASTVisitor(ast.NodeVisitor):
             operation_type=op_type,
             function=self.current_function,
             implementation=Implementation(
-                library="cryptography" if "cryptography" in pattern else ("pycryptodome" if "Crypto" in pattern else "stdlib"),
+                library=lib,
                 api=call_str,
             ),
             context=Context(exposure=Exposure.INTERNAL),

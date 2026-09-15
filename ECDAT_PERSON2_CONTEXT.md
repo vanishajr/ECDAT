@@ -1,4 +1,4 @@
-# ECDAT � PERSON 2 AUTHORITATIVE CONTEXT
+﻿# ECDAT — PERSON 2 AUTHORITATIVE CONTEXT
 
 ## Role
 
@@ -16,7 +16,7 @@ Person 2 owns:
 - cloud/AWS detection
 - finding identity/correlation
 - detector evidence
-- detector ? CIR-compatible JSON handoff
+- detector → CIR-compatible JSON handoff
 
 Person 1 owns:
 
@@ -54,16 +54,16 @@ There is a known historical evaluator failure involving:
 Historical traceback:
 
     evaluate_pass2.py
-    ? run_full_evaluation
-    ? run_source_evaluation
-    ? scanner.scan
-    ? _scan_file
-    ? AST visitor
-    ? visit_FunctionDef
-    ? visit_Call
-    ? _check_name_call
-    ? _create_finding
-    ? get_key_sizes
+    → run_full_evaluation
+    → run_source_evaluation
+    → scanner.scan
+    → _scan_file
+    → AST visitor
+    → visit_FunctionDef
+    → visit_Call
+    → _check_name_call
+    → _create_finding
+    → get_key_sizes
 
 Historical failing line:
 
@@ -541,13 +541,17 @@ Before declaring Pass 2 complete:
 19. Performance measured.
 20. 100k LOC requirement explicitly evaluated.
 21. No unsupported claims made.
-22. Detector ? Person 1 CIR handoff remains contract-compatible.
+22. Detector → Person 1 CIR handoff remains contract-compatible.
 
 ---
 
 # LOCAL INVESTIGATOR RULE
 
-Repository investigation is performed directly by the main engineering agent using the available repository tools. Use repository investigation for evidence collection, not as a substitute for implementation.
+The local investigator runs:
+
+    ollama/qwen3:8b
+
+Use it for repository investigation, not implementation.
 
 The investigator must provide evidence rather than guesses.
 
@@ -570,7 +574,7 @@ The investigator should report:
 
 If evidence is insufficient:
 
-    UNKNOWN � insufficient repository evidence.
+    UNKNOWN — insufficient repository evidence.
 
 The local investigator must not modify files.
 
@@ -586,15 +590,14 @@ The remote Build agent remains responsible for:
 Preferred workflow:
 
     LOCAL QWEN
-    ? repository reconnaissance
-    ? evidence
+    → repository reconnaissance
+    → evidence
 
     REMOTE MODEL
-    ? targeted verification
-    ? implementation
-    ? testing
-    ? benchmark
-    ? final decision
+    → targeted verification
+    → implementation
+    → testing
+    → benchmark
+    → final decision
 
 Do not duplicate broad repository exploration unnecessarily.
-

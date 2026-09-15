@@ -80,19 +80,83 @@ class MockCoreClient:
 
 
 class RealCoreClient:
-    """Thin placeholder for Person 1's real Core API.
+    """Real adapter: uses DiscoveryEngine to scan and emit CIR v0.1,
+    then converts to canonical v1 dict for Person 3 platform layer."""
 
-    DO NOT implement detection here. At integration time, this class
-    becomes a small adapter that imports Person 1's finalized entry
-    point, calls it, and returns its canonical dict (validated).
-    Until then, scan() raises NotImplementedError.
-    """
+    def __init__(self, scanners: list[str] | None = None) -> None:
+        self.scanners = scanners
 
-    def scan(self, target: Path) -> dict:  # noqa: ARG002
-        raise NotImplementedError(
-            "Person 1 Core entry point not finalized. "
-            "Use get_client('mock') until the real adapter is agreed."
-        )
+    def scan(self, target: Path) -> dict:
+        target = Path(target)
+        from ecdat import create_discovery_engine
+        from ecdat.core.validate import validate
+
+        engine = create_discovery_engine(self.scanners)
+        cir = engine.scan_and_emit_cir(target, target_name=str(target))
+
+        # Convert CIR v0.1 to canonical v1 format
+        canonical = self._cir_to_canonical(cir, str(target))
+        
+        # Validate against canonical v1 schema
+        return validate(canonical)
+
+    def _cir_to_canonical(self, cir, target: str) -> dict:
+        """Convert CIRDocument to canonical v1 format."""
+        findings = []
+        
+        # Convert assets to findings
+        for asset in cir.assets:
+            finding = {
+                "rule_id": f"CRYPTO-ASSET-{asset.canonical.replace('-', '-').upper()}",
+                "title": f"Cryptographic asset detected: {asset.canonical}",
+                "severity": "info",
+                "file": asset.location.file if asset.location and asset.location.file else target,
+                "line": asset.location.line if asset.location and asset.location.line else 0,
+                "snippet": asset.evidence[0].snippet if asset.evidence else "",
+                "confidence": asset.confidence,
+                "metadata": {
+                    "asset_id": asset.asset_id,
+                    "canonical_name": asset.canonical,
+                    "key_size": asset.key_size,
+                    "mode": asset.mode,
+                    "library": asset.library,
+                    "usage_state": asset.usage_state.value if asset.usage_state else None,
+                }
+            }
+            findings.append(finding)
+        
+        # Convert operations to findings
+        for op in cir.operations:
+            finding = {
+                "rule_id": f"CRYPTO-OP-{op.operation_type.value.upper()}",
+                "title": f"Cryptographic operation detected: {op.operation_type.value}",
+                "severity": "info",
+                "file": op.location.file if op.location and op.location.file else target,
+                "line": op.location.line if op.location and op.location.line else 0,
+                "snippet": op.evidence[0].snippet if op.evidence else "",
+                "confidence": op.confidence,
+                "metadata": {
+                    "operation_id": op.operation_id,
+                    "operation_type": op.operation_type.value,
+                    "asset_id": op.asset_id,
+                    "function": op.function,
+                }
+            }
+            findings.append(finding)
+
+        return {
+            "schema_version": "1.0",
+            "scan_id": cir.scan_id,
+            "target": target,
+            "started_at": cir.started_at.isoformat() + "Z",
+            "finished_at": cir.finished_at.isoformat() + "Z",
+            "tool_versions": cir.tool_versions,
+            "findings": findings,
+            "stats": {
+                "files_scanned": 1,
+                "findings_count": len(findings)
+            }
+        }
 
 
 def get_client(mode: str = "mock", **kwargs) -> CoreClient:

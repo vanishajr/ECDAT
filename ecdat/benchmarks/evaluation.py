@@ -70,8 +70,8 @@ class ExpectedFinding:
         
         if self.location:
             if self.location.file and finding.location:
-                expected_file = self.location.file.replace('\\', '/')
-                actual_file = finding.location.file.replace('\\', '/')
+                expected_file = self.location.file.replace('\\', '/').removeprefix('ecdat/')
+                actual_file = finding.location.file.replace('\\', '/').removeprefix('ecdat/')
                 if expected_file != actual_file:
                     return False
             if self.location.line and finding.location and finding.location.line:
@@ -143,11 +143,12 @@ class EvaluationResult:
         return 2 * (self.precision * self.recall) / (self.precision + self.recall)
     
     @property
-    def false_positive_rate(self) -> float:
-        total_negatives = self.false_positives + self.true_positives
-        if total_negatives == 0:
+    def false_discovery_rate(self) -> float:
+        """False Discovery Rate = FP / (TP + FP) = 1 - Precision"""
+        total_positives = self.false_positives + self.true_positives
+        if total_positives == 0:
             return 0.0
-        return self.false_positives / total_negatives
+        return self.false_positives / total_positives
 
 
 class EvaluationEngine:
@@ -179,6 +180,27 @@ class EvaluationEngine:
                     expected.remove(exp)
                     actual.remove(act)
                     break
+        
+        # Check negative patterns: findings matching negative patterns are expected FPs
+        # and should not count against precision
+        negative_patterns = ground_truth.negative_patterns or []
+        if negative_patterns:
+            new_actual = []
+            for act in actual:
+                is_expected_fp = False
+                for pattern in negative_patterns:
+                    if pattern.lower() in act.canonical.lower() or \
+                       (act.original and pattern.lower() in act.original.lower()) or \
+                       (act.library and pattern.lower() in act.library.lower()):
+                        is_expected_fp = True
+                        result.false_positive_details.append({
+                            "actual": self._finding_to_dict(act),
+                            "reason": f"Matches negative pattern: {pattern}",
+                        })
+                        break
+                if not is_expected_fp:
+                    new_actual.append(act)
+            actual = new_actual
         
         result = EvaluationResult(
             scanner_name=scanner_name,
@@ -302,7 +324,7 @@ def export_evaluation_results(results: list[EvaluationResult], output_path: Path
             "precision": round(r.precision, 4),
             "recall": round(r.recall, 4),
             "f1": round(r.f1, 4),
-            "fpr": round(r.false_positive_rate, 4),
+            "fpr": round(r.false_discovery_rate, 4),
             "true_positives": r.true_positive_details,
             "false_positives": r.false_positive_details,
             "false_negatives": r.false_negative_details,

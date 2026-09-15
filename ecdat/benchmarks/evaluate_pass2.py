@@ -172,7 +172,7 @@ class ComprehensiveEvaluator:
         self.evaluator = EvaluationEngine(self.registry)
         self.results = []
         self.performance_data = []
-        self.fixture_base = Path("ecdat/tests/fixtures")
+        self.fixture_base = Path("tests/fixtures")
 
     def run_source_evaluation(self):
         print("\n" + "=" * 80)
@@ -198,7 +198,7 @@ class ComprehensiveEvaluator:
                 if fixture_path.name == "ground_truth.json":
                     continue
 
-                fixture_key = str(fixture_path.resolve().relative_to(Path.cwd())).replace('\\', '/')
+                fixture_key = "ecdat/" + fixture_path.resolve().relative_to(Path.cwd()).as_posix()
 
                 # Skip fixtures without ground truth
                 if not self.registry.get(fixture_key):
@@ -209,7 +209,11 @@ class ComprehensiveEvaluator:
                 tracemalloc.start()
 
                 start_time = time.perf_counter()
-                findings = scanner.scan(fixture_path)
+                try:
+                    findings = scanner.scan(fixture_path)
+                except Exception as e:
+                    print(f"    {fixture_path.name}: SCANNER ERROR - {e}")
+                    findings = []
                 end_time = time.perf_counter()
 
                 current, peak = tracemalloc.get_traced_memory()
@@ -577,7 +581,7 @@ class ComprehensiveEvaluator:
                 "precision": round(prec, 4),
                 "recall": round(rec, 4),
                 "f1": round(f1, 4),
-                "fpr": round(fp / (tp + fp) if (tp + fp) > 0 else 0.0, 4),
+                "fdr": round(fp / (tp + fp) if (tp + fp) > 0 else 0.0, 4),
                 "avg_time_ms": round(avg_time, 2),
                 "avg_memory_mb": round(avg_mem, 2),
             }
@@ -585,7 +589,7 @@ class ComprehensiveEvaluator:
             print(f"\n  {scanner_name}:")
             print(f"    Fixtures: {len(results)}")
             print(f"    TP={tp}, FP={fp}, FN={fn}")
-            print(f"    Precision={prec:.2%}, Recall={rec:.2%}, F1={f1:.2%}, FPR={fp/(tp+fp) if (tp+fp)>0 else 0:.2%}")
+            print(f"    Precision={prec:.2%}, Recall={rec:.2%}, F1={f1:.2%}, FDR={fp/(tp+fp) if (tp+fp)>0 else 0:.2%}")
             print(f"    Avg Time: {avg_time:.1f}ms, Avg Memory: {avg_mem:.1f}MB")
 
         total_tp = summary["overall"]["total_tp"]
@@ -598,10 +602,10 @@ class ComprehensiveEvaluator:
         summary["overall"]["precision"] = round(overall_prec, 4)
         summary["overall"]["recall"] = round(overall_rec, 4)
         summary["overall"]["f1"] = round(overall_f1, 4)
-        summary["overall"]["fpr"] = round(total_fp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0, 4)
+        summary["overall"]["fdr"] = round(total_fp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0, 4)
 
         print(f"\n  OVERALL:")
-        print(f"    Precision={overall_prec:.2%}, Recall={overall_rec:.2%}, F1={overall_f1:.2%}, FPR={total_fp/(total_tp+total_fp) if (total_tp+total_fp)>0 else 0:.2%}")
+        print(f"    Precision={overall_prec:.2%}, Recall={overall_rec:.2%}, F1={overall_f1:.2%}, FDR={total_fp/(total_tp+total_fp) if (total_tp+total_fp)>0 else 0:.2%}")
 
         return summary
 
@@ -610,7 +614,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Run Pass 2 comprehensive evaluation")
-    parser.add_argument("--ground-truth-dir", type=Path, default=Path("ecdat/tests/fixtures/source"),
+    parser.add_argument("--ground-truth-dir", type=Path, default=Path("tests/fixtures/source"),
                         help="Directory containing ground truth JSON")
     parser.add_argument("--output", type=Path, default=Path("evaluation_results.json"),
                         help="Output file for results")

@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sqlite3
 import subprocess
 import tarfile
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -33,10 +35,92 @@ class ContainerScanner(Scanner[ScannerFinding]):
     name = "container"
     version = "0.1.0"
 
-    def __init__(self):
+    def __init__(self, cache_db: Optional[Path] = None):
         self._has_docker = self._check_docker()
         self._has_syft = self._check_syft()
         self._layer_cache: dict[str, list[ScannerFinding]] = {}
+        self._cache_db_path = cache_db or (Path(tempfile.gettempdir()) / "ecdat_container_cache.db")
+        self._init_cache_db()
+
+    def _init_cache_db(self):
+        """Initialize SQLite cache database for layer findings."""
+        with sqlite3.connect(self._cache_db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS layer_cache (
+                    layer_digest TEXT PRIMARY KEY,
+                    findings_json TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    accessed_at REAL NOT NULL
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_layer_cache_accessed 
+                ON layer_cache(accessed_at)
+            """)
+            conn.commit()
+
+    def _get_cached_layer(self, layer_digest: str) -> Optional[list[ScannerFinding]]:
+        """Retrieve cached findings for a layer digest."""
+        # Check in-memory cache first
+        if layer_digest in self._layer_cache:
+            return self._layer_cache[layer_digest]
+        
+        # Check persistent cache
+        try:
+            with sqlite3.connect(self._cache_db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute(
+                    "SELECT findings_json FROM layer_cache WHERE layer_digest = ?",
+                    (layer_digest,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    findings_data = json.loads(row["findings_json"])
+                    findings = [ScannerFinding(**f) for f in findings_data]
+                    # Update access time
+                    conn.execute(
+                        "UPDATE layer_cache SET accessed_at = ? WHERE layer_digest = ?",
+                        (time.time(), layer_digest)
+                    )
+                    conn.commit()
+                    # Store in memory cache
+                    self._layer_cache[layer_digest] = findings
+                    return findings
+        except Exception:
+            pass
+        return None
+
+    def _cache_layer(self, layer_digest: str, findings: list[ScannerFinding]):
+        """Cache findings for a layer digest."""
+        # Store in memory cache
+        self._layer_cache[layer_digest] = findings
+        
+        # Store in persistent cache
+        try:
+            findings_data = [f.__dict__ for f in findings]
+            # Handle non-serializable fields
+            for f in findings_data:
+                if "location" in f and f["location"] and hasattr(f["location"], "__dict__"):
+                    f["location"] = f["location"].__dict__
+                if "implementation" in f and f["implementation"] and hasattr(f["implementation"], "__dict__"):
+                    f["implementation"] = f["implementation"].__dict__
+                if "context" in f and f["context"] and hasattr(f["context"], "__dict__"):
+                    f["context"] = f["context"].__dict__
+                if "evidence" in f:
+                    f["evidence"] = [e.__dict__ if hasattr(e, "__dict__") else e for e in f["evidence"]]
+            
+            findings_json = json.dumps(findings_data)
+            now = time.time()
+            with sqlite3.connect(self._cache_db_path) as conn:
+                conn.execute(
+                    """INSERT OR REPLACE INTO layer_cache 
+                       (layer_digest, findings_json, created_at, accessed_at) 
+                       VALUES (?, ?, ?, ?)""",
+                    (layer_digest, findings_json, now, now)
+                )
+                conn.commit()
+        except Exception:
+            pass
 
     def _check_docker(self) -> bool:
         try:
@@ -189,11 +273,13 @@ class ContainerScanner(Scanner[ScannerFinding]):
                             layer_digest = layer_info.get("Layers", [])[0] if layer_info.get("Layers") else ""
                             if layer_digest:
                                 layer_id = layer_digest.replace("sha256:", "")
-                                if layer_id in self._layer_cache:
-                                    findings.extend(self._layer_cache[layer_id])
+                                # Try cache first
+                                cached = self._get_cached_layer(layer_id)
+                                if cached:
+                                    findings.extend(cached)
                                 else:
                                     layer_findings = self._scan_layer(tar, layer_info, image_ref, layer_id)
-                                    self._layer_cache[layer_id] = layer_findings
+                                    self._cache_layer(layer_id, layer_findings)
                                     findings.extend(layer_findings)
 
         except Exception:

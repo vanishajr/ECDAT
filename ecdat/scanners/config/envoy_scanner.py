@@ -187,8 +187,14 @@ class EnvoyScanner(Scanner[ScannerFinding]):
     def _parse_cipher(self, cipher: str) -> tuple[str, str] | tuple[None, None]:
         cipher_upper = cipher.upper().replace("-", "_")
 
+        # Extract symmetric cipher from full TLS cipher suite strings
+        # e.g., ECDHE-RSA-AES256-GCM-SHA384 -> AES-256-GCM
         if "CHACHA20_POLY1305" in cipher_upper:
             return "ChaCha20-Poly1305", cipher
+        if "AES_256_GCM" in cipher_upper or "AES256_GCM" in cipher_upper:
+            return "AES-256-GCM", cipher
+        if "AES_128_GCM" in cipher_upper or "AES128_GCM" in cipher_upper:
+            return "AES-128-GCM", cipher
         if "AES_GCM" in cipher_upper or "AESGCM" in cipher_upper:
             if "256" in cipher_upper:
                 return "AES-256-GCM", cipher
@@ -197,6 +203,10 @@ class EnvoyScanner(Scanner[ScannerFinding]):
             return "AES-256-GCM", cipher
         if "AES_CCM" in cipher_upper or "AESCCM" in cipher_upper:
             return "AES-CCM", cipher
+        if "AES_256_CBC" in cipher_upper or "AES256_CBC" in cipher_upper:
+            return "AES-256-CBC", cipher
+        if "AES_128_CBC" in cipher_upper or "AES128_CBC" in cipher_upper:
+            return "AES-128-CBC", cipher
         if "AES_CBC" in cipher_upper or "AESCBC" in cipher_upper:
             if "256" in cipher_upper:
                 return "AES-256-CBC", cipher

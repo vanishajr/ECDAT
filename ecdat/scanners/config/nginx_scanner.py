@@ -147,8 +147,14 @@ class NginxScanner(Scanner[ScannerFinding]):
     def _parse_cipher(self, cipher: str) -> tuple[str, str] | tuple[None, None]:
         cipher_upper = cipher.upper()
 
+        # Extract symmetric cipher from full TLS cipher suite strings
+        # e.g., ECDHE-RSA-AES256-GCM-SHA384 -> AES-256-GCM
         if "CHACHA20-POLY1305" in cipher_upper or "CHACHA20_POLY1305" in cipher_upper:
             return "ChaCha20-Poly1305", cipher
+        if "AES_256_GCM" in cipher_upper or "AES-256-GCM" in cipher_upper or "AES256-GCM" in cipher_upper:
+            return "AES-256-GCM", cipher
+        if "AES_128_GCM" in cipher_upper or "AES-128-GCM" in cipher_upper or "AES128-GCM" in cipher_upper:
+            return "AES-128-GCM", cipher
         if "AES-GCM" in cipher_upper or "AES_GCM" in cipher_upper:
             if "256" in cipher_upper:
                 return "AES-256-GCM", cipher
@@ -157,6 +163,10 @@ class NginxScanner(Scanner[ScannerFinding]):
             return "AES-256-GCM", cipher
         if "AES-CCM" in cipher_upper or "AES_CCM" in cipher_upper:
             return "AES-CCM", cipher
+        if "AES_256_CBC" in cipher_upper or "AES-256-CBC" in cipher_upper or "AES256-CBC" in cipher_upper:
+            return "AES-256-CBC", cipher
+        if "AES_128_CBC" in cipher_upper or "AES-128-CBC" in cipher_upper or "AES128-CBC" in cipher_upper:
+            return "AES-128-CBC", cipher
         if "AES-CBC" in cipher_upper or "AES_CBC" in cipher_upper:
             if "256" in cipher_upper:
                 return "AES-256-CBC", cipher
@@ -173,6 +183,7 @@ class NginxScanner(Scanner[ScannerFinding]):
             return "DES", cipher
         if "RC4" in cipher_upper or "ARCFOUR" in cipher_upper:
             return "RC4", cipher
+        # Key exchange / auth algorithms - return as-is for now
         if "ECDHE" in cipher_upper and "RSA" in cipher_upper:
             return "ECDH", cipher
         if "ECDHE" in cipher_upper and "ECDSA" in cipher_upper:
