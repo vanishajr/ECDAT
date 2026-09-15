@@ -39,6 +39,64 @@ def esc(value: object) -> str:
     return html.escape(str(value), quote=True)
 
 
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+    '<rect x="2" y="2" width="28" height="28" rx="6" fill="#1D4ED8"/>'
+    '<text x="16" y="22.5" font-family="system-ui,sans-serif" '
+    'font-size="17" font-weight="700" fill="#ffffff" '
+    'text-anchor="middle">E</text></svg>'
+)
+
+
+def _legal_page(title: str, heading: str, paragraphs: list[str]) -> str:
+    """Minimal standalone page (privacy/terms). Same light theme, no assets."""
+    body = "".join(f"<p>{esc(p)}</p>" for p in paragraphs)
+    return (
+        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        '<link rel="icon" href="/favicon.svg" type="image/svg+xml">'
+        f"<title>{esc(title)} — ECDAT Local GUI</title>"
+        "<style>body{background:#F2F4F7;color:#101828;"
+        "font-family:system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;"
+        "font-size:14px;line-height:1.6;margin:0}"
+        ".wrap{max-width:720px;margin:0 auto;padding:32px 20px}"
+        ".card{background:#fff;border:1px solid #DDE1E7;border-radius:6px;"
+        "padding:24px 28px}h1{font-size:20px;margin:0 0 8px}"
+        ".meta{color:#667085;font-size:12px;margin:0 0 16px}"
+        "a{color:#1849A9}.back{display:inline-block;margin-top:16px}</style>"
+        "</head><body><main class=\"wrap\"><div class=\"card\">"
+        f"<h1>{esc(heading)}</h1>"
+        "<p class=\"meta\">ECDAT Local GUI · mock-first evaluation build</p>"
+        f"{body}"
+        "<a class=\"back\" href=\"/\">Back to dashboard</a>"
+        "</div></main></body></html>"
+    )
+
+
+PRIVACY_PARAGRAPHS = [
+    "ECDAT is a local evaluation tool. The dashboard binds to a loopback "
+    "address only (127.0.0.1) and makes no external network requests.",
+    "What stays on this machine: scan targets you enter, scan results in "
+    "the local SQLite database you choose, and reports you generate. "
+    "Demo mode seeds a fresh temporary workspace on each run.",
+    "There is no analytics, no telemetry, no advertising, no cookies, "
+    "and no account system. Nothing is uploaded anywhere.",
+    "To remove scan data, delete the database file or temporary "
+    "workspace printed in the terminal when the demo starts.",
+]
+
+TERMS_PARAGRAPHS = [
+    "ECDAT is a mock-first evaluation build. Detection, risk scoring, "
+    "graph, and migration outputs are deterministic placeholders, "
+    "labeled mock, until the real engines are integrated. Do not rely "
+    "on them for production security decisions.",
+    "The software is provided as-is, without warranty of any kind. It "
+    "runs locally only and must not be exposed to a network.",
+    "Reports and exports are generated locally from stored mock scans. "
+    "You are responsible for how you store and share them.",
+]
+
+
 def index_page(prefill_target: str = "") -> str:
     """Self-contained dashboard page. No external assets, no framework.
 
@@ -54,300 +112,245 @@ def index_page(prefill_target: str = "") -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:,">
-<title>ECDAT Local GUI (mock)</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>ECDAT Local GUI — Cryptographic Discovery and Analysis</title>
 <style>
 :root{
-color-scheme:dark;
---bg:#0B0E14; --surface:#11161F; --raised:#161D29; --border:#1E293B;
---text:#E2E8F0; --muted:#94A3B8; --faint:#64748B;
---cyan:rgb(34,211,238); --blue:#60A5FA; --violet:#A78BFA;
---crit:#F87171; --high:#FB923C; --med:#FACC15; --low:rgb(52,211,153); --info:#94A3B8;
---r-lg:10px; --r-md:8px; --r-pill:999px;
+color-scheme:light;
+--bg:#F2F4F7; --surface:#FFFFFF; --raised:#F8FAFC; --border:#DDE1E7; --border-strong:#C4CCD6;
+--text:#101828; --muted:#475467; --faint:#667085;
+--accent:#1D4ED8; --accent-dark:#1849A9; --accent-tint:#EFF4FF; --accent-border:#B2CCFF;
+--crit:#B42318; --crit-bg:#FEF3F2; --crit-border:#FECDCA;
+--high:#B54708; --high-bg:#FFF6ED; --high-border:#F9DBAF;
+--med:#A16207; --med-bg:#FFFAEB; --med-border:#FEDF89;
+--low:#027A48; --low-bg:#ECFDF3; --low-border:#ABEFC6;
+--info:#475467; --info-bg:#F2F4F7; --info-border:#DDE1E7;
+--r-lg:6px; --r-md:4px; --r-sm:3px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px;line-height:1.5;overflow-x:hidden}
-a{color:var(--blue)}
-:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:4px}
-.skip{position:absolute;left:-9999px;top:0;background:var(--cyan);color:#06202a;padding:.5em 1em;font-weight:700;z-index:99}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.5;overflow-x:hidden}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--accent);color:#fff;padding:.5em 1em;font-weight:700;z-index:99}
 .skip:focus{left:0}
 .app{display:flex;min-height:100vh}
 /* ---- sidebar ---- */
-.side{width:240px;flex:0 0 240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-.brand{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
-.brandmark{display:flex;align-items:center;gap:.6em;font-weight:800;font-size:15px;letter-spacing:.02em}
-.brandmark .gem{width:26px;height:26px;border-radius:8px;background:var(--raised);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--cyan);font-size:14px}
-.brandsub{font-size:11px;color:var(--muted);margin-top:6px}
+.side{width:232px;flex:0 0 232px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.brandmark{display:flex;align-items:center;gap:.6em;font-weight:700;font-size:15px;letter-spacing:.02em}
+.brandmark .gem{width:28px;height:28px;border-radius:var(--r-md);background:var(--accent);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.brandsub{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.45}
 .nav{display:flex;flex-direction:column;gap:2px;padding:12px 8px}
-.nav a{display:flex;align-items:center;gap:.7em;padding:.55em .8em;border-radius:8px;color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent;min-height:44px}
-.nav a .ic{width:18px;text-align:center;flex:0 0 18px}
+.nav a{display:flex;align-items:center;gap:.7em;padding:.55em .8em;border-radius:var(--r-md);color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent;min-height:36px}
 .nav a:hover{background:var(--raised);color:var(--text)}
-.nav a.active{background:var(--raised);color:var(--text);border-left-color:var(--cyan)}
+.nav a.active{background:var(--accent-tint);color:var(--accent-dark);font-weight:600;border-left-color:var(--accent)}
 .sidefoot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
 .dotlive{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--low);margin-right:.5em}
-.mockline{color:#FACC15;font-size:11px;margin-top:2px}
+.mockline{color:var(--med);font-size:11px;margin-top:2px}
 /* ---- main column ---- */
 .maincol{flex:1;min-width:0;display:flex;flex-direction:column}
-.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border)}
-.top input[type=text]{flex:1;max-width:34em;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.55em .9em;font-size:13px}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+.top input[type=text]{flex:1;max-width:34em;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-md);color:var(--text);padding:.55em .9em;font-size:13px}
 .top input::placeholder{color:var(--faint)}
-.badge{display:inline-block;font-size:11px;font-weight:700;padding:.25em .7em;border-radius:999px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.45);color:#FACC15;white-space:nowrap}
-.badge.blue{background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.45);color:var(--blue)}
-.badge.violet{background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.45);color:var(--violet)}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:.2em .6em;border-radius:var(--r-sm);background:var(--med-bg);border:1px solid var(--med-border);color:#93370D;white-space:nowrap}
+.badge.blue{background:var(--accent-tint);border-color:var(--accent-border);color:var(--accent-dark)}
+.badge.violet{background:var(--info-bg);border-color:var(--info-border);color:var(--info)}
 .topsp{flex:1}
-.iconbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:14px}
-.avatar{width:32px;height:32px;border-radius:50%;background:var(--raised);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted)}
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:24px;max-width:1400px;width:100%;margin:0 auto}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;min-width:0}
-.card h2{font-size:14px;margin:0 0 4px;letter-spacing:.01em}
+.loopnote{font-size:12px;color:var(--faint);white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:24px;max-width:1200px;width:100%;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;min-width:0}
+.card h2{font-size:14px;margin:0 0 4px;letter-spacing:.01em;font-weight:700}
 .card h3{font-size:13px;margin:14px 0 6px}
-.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin:0 0 8px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin:0 0 8px;font-weight:600}
 .note{font-size:12px;color:var(--muted)}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .span12{grid-column:span 12}.span8{grid-column:span 8}.span6{grid-column:span 6}.span4{grid-column:span 4}.span3{grid-column:span 3}
 section[id],details[id]{scroll-margin-top:76px}
-/* ---- scan bar ---- */
-.scanbar{grid-column:span 12;background:var(--raised)}
+/* ---- scan ---- */
+.scanbar{grid-column:span 12}
 .scanrow{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
 .field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px}
 .field label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:700}
-.field input[type=text],.field select{background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.6em .8em;font-size:13px;width:100%}
+.field input[type=text],.field select{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-md);color:var(--text);padding:.6em .8em;font-size:13px;width:100%}
 .btnrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-button{font-size:13px;border-radius:8px;cursor:pointer;padding:.6em 1.1em}
-button.primary{background:var(--cyan);border:1px solid var(--cyan);color:#06202a;font-weight:700}
-button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
-button.ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+button{font-size:13px;border-radius:var(--r-md);cursor:pointer;padding:.6em 1.1em}
+button.primary{background:var(--accent);border:1px solid var(--accent);color:#fff;font-weight:600}
+button.primary:hover{background:var(--accent-dark);border-color:var(--accent-dark)}
+button.ghost{background:var(--surface);border:1px solid var(--border-strong);color:var(--text)}
+button.ghost:hover{border-color:var(--accent);color:var(--accent-dark)}
 button:disabled{opacity:.55;cursor:default}
 button.small{padding:.35em .8em;font-size:12px}
 .monitor{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
-.ptrack{height:8px;background:var(--bg);border:1px solid var(--border);border-radius:999px;overflow:hidden;margin:.5em 0}
-.pfill{height:100%;background:var(--cyan);border-radius:999px;transform:scaleX(0);transform-origin:left center;transition:transform .25s ease}
-.preview{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.7em .9em;white-space:pre-wrap;font-size:12px;color:var(--muted)}
-details.disc{margin-top:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
-details.disc>summary{cursor:pointer;padding:.6em .9em;color:var(--blue);font-size:12px;list-style:none}
+.ptrack{height:8px;background:var(--info-bg);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;margin:.5em 0}
+.pfill{height:100%;background:var(--accent);border-radius:0;transform:scaleX(0);transform-origin:left center;transition:transform .25s ease}
+.preview{background:var(--raised);border:1px solid var(--border);border-radius:var(--r-md);padding:.7em .9em;white-space:pre-wrap;font-size:12px;color:var(--muted)}
+details.disc{margin-top:12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface)}
+details.disc>summary{cursor:pointer;padding:.6em .9em;color:var(--accent-dark);font-size:12px;list-style:none}
 details.disc>summary::-webkit-details-marker{display:none}
 details.disc>summary:before{content:"+ ";color:var(--faint)}
 details.disc[open]>summary:before{content:"- "}
 details.disc .discbody{padding:0 12px 12px}
 /* ---- KPIs ---- */
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;min-width:0}
-.kpi .kl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
-.kpi .kv2{font-size:28px;font-weight:800;margin:2px 0 4px}
+.kpi .kl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:600}
+.kpi .kv2{font-size:28px;font-weight:700;margin:2px 0 4px;font-variant-numeric:tabular-nums}
 .kpi .ksub{font-size:11px;color:var(--muted)}
 .kpi svg{display:block;margin-top:6px}
+.kpi .krow{display:flex;align-items:center;gap:.7em}
+.kpi .kico{width:32px;height:32px;flex:0 0 32px;border-radius:var(--r-md);display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:1px solid var(--border);background:var(--raised);color:var(--muted)}
 /* ---- risk ---- */
 .riskwrap{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
-.donutcenter{font-size:22px;font-weight:800;fill:var(--text)}
+.donutcenter{font-size:22px;font-weight:700;fill:var(--text);font-variant-numeric:tabular-nums}
 .donutsub{font-size:11px;fill:var(--muted)}
 .risklegend{display:flex;flex-direction:column;gap:6px;margin-top:4px}
-.risklegend button{display:flex;align-items:center;gap:.6em;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.45em .7em;font-size:12px;text-align:left}
-.risklegend button.active{border-color:var(--cyan)}
+.risklegend button{display:flex;align-items:center;gap:.6em;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text);padding:.45em .7em;font-size:12px;text-align:left}
+.risklegend button.active{border-color:var(--accent);background:var(--accent-tint)}
 .rdot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
 /* ---- tables ---- */
 .tblwrap{overflow-x:auto;margin:8px -4px;padding:0 4px}
 table.tbl{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}
-table.tbl th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:700;text-align:left;padding:.5em .6em;border-bottom:1px solid var(--border)}
-table.tbl td{padding:.5em .6em;border-bottom:1px solid var(--border);vertical-align:middle;height:32px}
+table.tbl th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:700;text-align:left;padding:.5em .6em;border-bottom:1px solid var(--border-strong);white-space:nowrap}
+table.tbl td{padding:.55em .6em;border-bottom:1px solid var(--border);vertical-align:middle}
 table.tbl tr:last-child td{border-bottom:none}
 tr.clickable{cursor:pointer}
 tr.clickable:hover td{background:var(--raised)}
-tr.clickable:focus-visible{outline:2px solid var(--cyan)}
-.sev{display:inline-flex;align-items:center;gap:.45em;font-weight:700;font-size:12px;border-radius:999px;padding:.15em .7em;white-space:nowrap}
+tr.clickable:focus-visible{outline:2px solid var(--accent)}
+.sev{display:inline-flex;align-items:center;gap:.45em;font-weight:700;font-size:12px;border-radius:var(--r-sm);padding:.15em .6em;white-space:nowrap;border:1px solid transparent}
 .sev:before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
-.sev-critical{background:rgba(248,113,113,.13);color:var(--crit)}
-.sev-high{background:rgba(251,146,60,.13);color:var(--high)}
-.sev-medium{background:rgba(250,204,21,.13);color:var(--med)}
-.sev-low{background:rgba(52,211,153,.13);color:var(--low)}
-.sev-info,.sev-none{background:rgba(148,163,184,.13);color:var(--info)}
+.sev-critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-border)}
+.sev-high{background:var(--high-bg);color:var(--high);border-color:var(--high-border)}
+.sev-medium{background:var(--med-bg);color:var(--med);border-color:var(--med-border)}
+.sev-low{background:var(--low-bg);color:var(--low);border-color:var(--low-border)}
+.sev-info,.sev-none{background:var(--info-bg);color:var(--info);border-color:var(--info-border)}
 .conf{display:inline-flex;align-items:center;gap:.5em}
-.confbar{width:40px;height:5px;border-radius:999px;background:var(--bg);border:1px solid var(--border);overflow:hidden;flex:0 0 40px}
-.confbar>i{display:block;height:100%;background:var(--blue);transform-origin:left center}
+.confbar{width:40px;height:5px;border-radius:var(--r-sm);background:#EAECF0;overflow:hidden;flex:0 0 40px}
+.confbar>i{display:block;height:100%;background:var(--accent);transform-origin:left center}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:.5em 0}
-.chip{background:var(--raised);border:1px solid var(--border);border-radius:999px;padding:.2em .8em;font-size:12px;color:var(--muted)}
+.chip{background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:.2em .7em;font-size:12px;color:var(--muted)}
 .tiles{display:flex;gap:8px;flex-wrap:wrap;margin:.5em 0}
-.tile{border:1px solid var(--border);background:var(--raised);border-radius:8px;padding:.45em .9em;cursor:pointer;font-size:12px;color:var(--text)}
-.tile b{display:block;font-size:16px}
-.tile.active{outline:2px solid var(--cyan)}
+.tile{border:1px solid var(--border-strong);background:var(--surface);border-radius:var(--r-md);padding:.45em .9em;cursor:pointer;font-size:12px;color:var(--text)}
+.tile b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
+.tile:hover{border-color:var(--accent)}
+.tile.active{border-color:var(--accent);background:var(--accent-tint)}
 .row{display:flex;gap:.6em;margin-top:.7em;flex-wrap:wrap;align-items:center}
 #error{color:var(--crit);font-weight:600}
 .kv{display:grid;grid-template-columns:11em 1fr;gap:.25em .8em;font-size:12px;margin:.5em 0}
 .kv dt{font-weight:600;color:var(--muted)}
 .kv dd{margin:0;overflow-wrap:anywhere}
 .avail{font-size:12px;color:var(--muted)}
-.empty{border:1px dashed var(--border);border-radius:8px;padding:18px;text-align:center;color:var(--muted);font-size:12px}
+.empty{border:1px dashed var(--border-strong);border-radius:var(--r-lg);padding:26px 18px;text-align:center;color:var(--muted);font-size:12px;background:var(--surface)}
 .empty .cta{margin-top:8px}
-.skel{border-radius:8px;background:var(--raised);border:1px solid var(--border);padding:14px;animation:skpulse 1.4s ease-in-out infinite}
-@keyframes skpulse{0%,100%{opacity:.55}50%{opacity:1}}
-code{font-size:12px;background:var(--raised);border:1px solid var(--border);padding:.1em .35em;border-radius:4px}
+.empty h4{margin:.2em 0 .3em;font-size:14px;color:var(--text)}
+.empty .esteps{list-style:none;display:flex;gap:8px;justify-content:center;margin:12px 0 0;padding:0;flex-wrap:wrap}
+.empty .esteps li{font-size:11px;color:var(--faint);border:1px solid var(--border);border-radius:var(--r-sm);padding:.25em .7em}
+.empty .esteps b{color:var(--accent-dark);font-weight:700;margin-right:.4em}
+code{font-size:12px;background:var(--raised);border:1px solid var(--border);padding:.1em .35em;border-radius:var(--r-sm)}
 /* ---- graph ---- */
-#gwrap{position:relative;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:radial-gradient(ellipse at 50% 32%,#11161F 0%,#0F1420 55%,#0B0E14 100%)}
+#gwrap{position:relative;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:#fff}
 #graph{display:block;cursor:grab;touch-action:none;width:100%;height:520px}
 #graph text{font-family:inherit;pointer-events:none}
-.govlay{position:absolute;left:10px;bottom:8px;font-size:11px;color:var(--faint);background:rgba(11,14,20,.72);border:1px solid var(--border);border-radius:999px;padding:.15em .7em;pointer-events:none}
+.govlay{position:absolute;left:10px;bottom:8px;font-size:11px;color:var(--muted);background:#fff;border:1px solid var(--border);border-radius:var(--r-sm);padding:.15em .7em;pointer-events:none}
 .gnode{cursor:pointer}
-.gnode circle.core{fill:var(--raised);stroke-width:2}
-.gnode circle.selring{fill:none;stroke:var(--violet);stroke-width:2}
-.gnode circle.tracering{fill:none;stroke:var(--cyan);stroke-width:1.5}
-.gnode text.nlabel{font-size:12px;fill:#E2E8F0;paint-order:stroke;stroke:#0B0E14;stroke-width:3px;font-weight:600}
+.gnode circle.core{fill:#fff;stroke-width:2}
+.gnode circle.selring{fill:none;stroke:var(--accent);stroke-width:2}
+.gnode circle.tracering{fill:none;stroke:var(--accent);stroke-width:1.5}
+.gnode text.nlabel{font-size:12px;fill:#101828;paint-order:stroke;stroke:#fff;stroke-width:3px;font-weight:600}
 .gnode:focus{outline:none}
-.gnode:focus-visible circle.core{stroke:var(--cyan);stroke-width:2.5}
-.gnode.dim,.gedge.dim,.glabel.dim{opacity:.1}
-.gedge{stroke:#2A3342;stroke-width:1.25;opacity:.8;cursor:pointer}
+.gnode:focus-visible circle.core{stroke:var(--accent);stroke-width:2.5}
+.gnode.dim,.gedge.dim,.glabel.dim{opacity:.15}
+.gedge{stroke:#B6BFCB;stroke-width:1.25;opacity:.9;cursor:pointer}
 .gedge.risky{stroke:var(--crit);stroke-width:1.75;opacity:.95}
-.gedge.trace{stroke:var(--cyan);stroke-width:2.75;opacity:1;filter:drop-shadow(0 0 4px rgba(34,211,238,.55))}
-.gedge.selected{stroke:var(--cyan);stroke-width:2.5}
-.gedge.dim{stroke:#2A3342;stroke-width:1.25;opacity:.45}
+.gedge.trace{stroke:var(--accent);stroke-width:2.75;opacity:1}
+.gedge.selected{stroke:var(--accent);stroke-width:2.5}
+.gedge.dim{stroke:#B6BFCB;stroke-width:1.25;opacity:.45}
 .gedge-hit{stroke:rgba(0,0,0,0);stroke-width:14;cursor:pointer}
-.glabel{font-size:10px;fill:#94A3B8}
+.glabel{font-size:10px;fill:#667085}
 #graph[data-z="out"] .eldetail{display:none}
 .glegend{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--muted)}
-.glegend .cap{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.glegend .cap{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:600}
 .glegend .li{display:flex;align-items:center;gap:.55em}
 .glegend .sw{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
-.glegend .ln{width:16px;height:0;border-top:2px solid var(--cyan);flex:0 0 16px}
-.glegend .rg{width:10px;height:10px;border-radius:50%;border:2px solid var(--violet);flex:0 0 10px;background:transparent}
+.glegend .ln{width:16px;height:0;border-top:2px solid var(--accent);flex:0 0 16px}
+.glegend .rg{width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);flex:0 0 10px;background:transparent}
 .gcontrols{display:flex;gap:6px;flex-wrap:wrap}
 label.chk{display:inline-flex;align-items:center;gap:.45em;font-size:12px;color:var(--muted);font-weight:400}
-input[type=checkbox]{accent-color:var(--cyan)}
+input[type=checkbox]{accent-color:var(--accent)}
 /* cross-link buttons */
-button.xlink{background:transparent;border:1px solid var(--violet);color:var(--violet)}
+button.xlink{background:var(--surface);border:1px solid var(--accent);color:var(--accent-dark)}
 details.graphdisc{margin-top:0}
-/* ---- signature layer: intelligence-center identity ---- */
-body{background:radial-gradient(1000px 480px at 68% -8%,rgba(34,211,238,.055),rgba(34,211,238,0) 62%),radial-gradient(880px 560px at 108% 18%,rgba(167,139,250,.055),rgba(167,139,250,0) 60%),var(--bg)}
-.side{background:rgba(17,22,31,.92);box-shadow:inset -1px 0 0 var(--border)}
-.top{background:rgba(11,14,20,.88);box-shadow:0 1px 0 var(--border)}
-.card{box-shadow:0 14px 34px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.035)}
-.card h2{font-size:15px}
-.kicker{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);margin:0 0 8px}
-.display{font-size:30px;line-height:1.12;margin:.1em 0 .25em;letter-spacing:-.01em;font-weight:800}
-/* hero */
-.hero{grid-column:span 12;position:relative;overflow:hidden;border:1px solid var(--border);border-radius:14px;padding:22px 24px 18px;background:radial-gradient(640px 300px at 82% 0%,rgba(34,211,238,.09),rgba(34,211,238,0) 65%),radial-gradient(560px 320px at 100% 30%,rgba(167,139,250,.08),rgba(167,139,250,0) 62%),var(--surface);box-shadow:0 18px 44px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.04)}
-.hero .hsub{color:var(--muted);font-size:13px;max-width:62em;margin:0 0 12px}
-.hstats{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-top:4px}
-.hstat{flex:1;min-width:150px;background:rgba(11,14,20,.55);border:1px solid var(--border);border-radius:10px;padding:.6em .9em}
-.hstat .hk{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
-.hstat .hv{font-size:15px;font-weight:700;margin-top:2px}
-.hstat .hv.mono{font-size:13px}
-.hstat.hot{border-color:rgba(34,211,238,.4)}
-.hstat.hot .hv{color:var(--cyan)}
-.hstat.warn .hv{color:var(--high)}
-.hstat.crit .hv{color:var(--crit)}
-.hero .hcta{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-/* scan command */
-.scanbar{position:relative;overflow:hidden}
-.scanbar:before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--cyan)}
+/* ---- overview header ---- */
+.kicker{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:0 0 6px;font-weight:600}
+.display{font-size:20px;line-height:1.3;margin:.1em 0 .3em;letter-spacing:0;font-weight:700}
+.hero{grid-column:span 12;border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px 18px;background:var(--surface)}
+.hero .hsub{color:var(--muted);font-size:13px;max-width:70em;margin:0 0 12px}
+.hstats{display:flex;gap:0;flex-wrap:wrap;align-items:stretch;margin-top:12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface)}
+.hstat{flex:1;min-width:150px;padding:.7em 1em;border-left:1px solid var(--border)}
+.hstat:first-child{border-left:none}
+.hstat .hk{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:600}
+.hstat .hv{font-size:15px;font-weight:700;margin-top:2px;overflow-wrap:anywhere}
+.hstat .hv.mono{font-size:13px;font-weight:600}
+.hero .hcta{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+/* scan pipeline */
 .pipe{list-style:none;display:flex;gap:0;margin:14px 0 2px;padding:0;flex-wrap:wrap}
-.pipe li{flex:1;min-width:130px;display:flex;align-items:center;gap:.55em;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);padding:.4em .2em;border-top:2px solid var(--border)}
+.pipe li{flex:1;min-width:130px;display:flex;align-items:center;gap:.55em;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);padding:.4em .2em;border-top:2px solid var(--border);font-weight:600}
 .pipe li .pd{width:9px;height:9px;border-radius:50%;border:2px solid var(--faint);flex:0 0 9px}
-.pipe li.done{color:var(--muted);border-top-color:rgba(34,211,238,.45)}
-.pipe li.done .pd{background:var(--cyan);border-color:var(--cyan)}
-.pipe li.live{color:var(--text);border-top-color:var(--cyan)}
-.pipe li.live .pd{border-color:var(--cyan);background:rgba(34,211,238,.35);box-shadow:0 0 8px rgba(34,211,238,.7)}
-/* kpis */
-.kpi{position:relative;overflow:hidden}
-.kpi:before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--faint)}
-.kpi.k-cyan:before{background:var(--cyan)}
-.kpi.k-blue:before{background:var(--blue)}
-.kpi.k-risk:before{background:var(--high)}
-.kpi.k-violet:before{background:var(--violet)}
-.kpi .kv2{font-size:34px}
+.pipe li.done{color:var(--muted);border-top-color:var(--accent)}
+.pipe li.done .pd{background:var(--accent);border-color:var(--accent)}
+.pipe li.live{color:var(--text);border-top-color:var(--accent)}
+.pipe li.live .pd{border-color:var(--accent);background:var(--accent-tint)}
 /* risk bars */
 .rbars{display:flex;flex-direction:column;gap:6px;margin:.6em 0}
-.rbar{display:flex;align-items:center;gap:.6em;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.35em .6em;font-size:12px;text-align:left;width:100%}
-.rbar:hover{border-color:var(--blue)}
-.rbar.on{border-color:var(--cyan)}
-.rbar .rl{flex:0 0 64px;color:var(--muted)}
-.rbar .rt{flex:1;height:6px;border-radius:999px;background:var(--bg);overflow:hidden}
+.rbar{display:flex;align-items:center;gap:.6em;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text);padding:.35em .6em;font-size:12px;text-align:left;width:100%}
+.rbar:hover{border-color:var(--accent)}
+.rbar.on{border-color:var(--accent);background:var(--accent-tint)}
+.rbar .rl{flex:0 0 64px;color:var(--muted);text-transform:capitalize}
+.rbar .rt{flex:1;height:6px;border-radius:var(--r-sm);background:#EAECF0;overflow:hidden}
 .rbar .rt>i{display:block;height:100%;transform-origin:left center}
-.rbar .rn{flex:0 0 30px;text-align:right;font-weight:700}
+.rbar .rn{flex:0 0 30px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 /* graph stage */
-.stage{border-radius:14px;background:radial-gradient(720px 340px at 50% 0%,rgba(34,211,238,.07),rgba(34,211,238,0) 65%),var(--surface);box-shadow:0 20px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.045)}
-.stage h2{font-size:16px}
-#graph{height:600px}
-/* empty states */
-.empty{border:1px dashed var(--border);border-radius:10px;padding:26px 18px;text-align:center;color:var(--muted);font-size:12px;background:rgba(11,14,20,.4)}
-.empty .esig{width:38px;height:38px;margin:0 auto 10px;border-radius:50%;border:1px solid rgba(34,211,238,.5);position:relative}
-.empty .esig:after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px rgba(34,211,238,.8)}
-.empty h4{margin:.2em 0 .3em;font-size:15px;color:var(--text)}
-.empty .esteps{list-style:none;display:flex;gap:8px;justify-content:center;margin:12px 0 0;padding:0;flex-wrap:wrap}
-.empty .esteps li{font-size:11px;color:var(--faint);border:1px solid var(--border);border-radius:999px;padding:.25em .8em}
-.empty .esteps b{color:var(--cyan);font-weight:700;margin-right:.4em}
-/* motion */
-button{transition:transform .15s ease,border-color .15s ease,background .15s ease,color .15s ease}
-button.primary:hover{transform:translateY(-1px)}
-button.ghost:hover{transform:translateY(-1px)}
-.tile{transition:border-color .15s ease,transform .15s ease}
-.tile:hover{border-color:var(--blue);transform:translateY(-1px)}
-tr.clickable{transition:background .12s ease}
-details.disc>summary{transition:color .15s ease}
-.nav a{transition:background .15s ease,color .15s ease}
+.stage{border-radius:var(--r-lg)}
+.stage h2{font-size:14px}
+/* motion: subtle, usability only */
+button{transition:border-color .12s ease,background .12s ease,color .12s ease}
+.nav a{transition:background .12s ease,color .12s ease}
 @media (max-width:900px){
 #graph{height:440px}
-.display{font-size:24px}
-.hero{padding:18px 16px 14px}
+.display{font-size:18px}
+.hero{padding:16px}
+.hstat{min-width:44%}
+.hstat:nth-child(3){border-left:none}
 }
-/* ---- signature v2: reference re-grid, hybrid warm + cyan ---- */
-.display{font-size:44px}
-.display .warm{color:var(--crit)}
-.hero{overflow:hidden}
-.hero .orb{position:absolute;top:-190px;right:-130px;width:430px;height:430px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(248,113,113,.16),rgba(251,146,60,.07) 42%,rgba(251,146,60,0) 68%);border:1px solid rgba(248,113,113,.14)}
-.hero .orb:after{content:"";position:absolute;inset:56px;border-radius:50%;border:1px solid rgba(248,113,113,.12)}
-.kv2,.rn,.donutcenter{font-variant-numeric:tabular-nums}
-/* jewel scan card */
-.jewel{background:radial-gradient(420px 220px at 50% 0%,rgba(248,113,113,.1),rgba(248,113,113,0) 70%),var(--surface);border-color:rgba(248,113,113,.42);box-shadow:0 0 0 1px rgba(248,113,113,.12),0 18px 50px rgba(0,0,0,.45)}
-.jewel:before{background:linear-gradient(90deg,#F87171,#DC2626)}
-.btn-warm{background:linear-gradient(135deg,#F87171,#DC2626);border:1px solid rgba(248,113,113,.7);color:#fff;font-weight:700}
-.btn-warm:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(248,113,113,.35)}
-.jewel .scanrow>.field{flex:1 1 100%;min-width:0}
-.jewel .scanrow>.field.f-opt{flex:1 1 130px}
-.jewel .btnrow{flex:1 1 100%}
-.jewel .btnrow .btn-warm{flex:1 1 auto}
+/* ---- scan form layout ---- */
 .scanrow>.field.f-target{flex:2 1 260px}
 .scanrow>.field.f-opt{flex:1 1 130px;min-width:0}
-/* kpi instruments */
-.kpi .krow{display:flex;align-items:center;gap:.7em}
-.kpi .kico{width:34px;height:34px;flex:0 0 34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border);background:var(--raised)}
-.k-cyan .kico{color:var(--cyan);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
-.k-blue .kico{color:var(--blue);border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.08)}
-.k-risk .kico{color:var(--high);border-color:rgba(251,146,60,.45);background:rgba(251,146,60,.09)}
-.k-violet .kico{color:var(--violet);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08)}
-/* activity feed */
+/* session activity feed */
 .feed{list-style:none;margin:.6em 0 0;padding:0;display:flex;flex-direction:column}
 .feed li{display:flex;gap:.7em;align-items:flex-start;padding:.55em 0;border-bottom:1px solid var(--border)}
 .feed li:last-child{border-bottom:none}
-.feed .fico{width:28px;height:28px;flex:0 0 28px;border-radius:8px;border:1px solid var(--border);background:var(--raised);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
-.feed .fkind-plan .fico{color:var(--blue)}
-.feed .fkind-scan .fico{color:var(--cyan)}
-.feed .fkind-done .fico{color:var(--low)}
-.feed .fkind-export .fico{color:var(--violet)}
-.feed .fkind-trace .fico{color:var(--cyan)}
+.feed .fico{width:28px;height:28px;flex:0 0 28px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--raised);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
 .feed .ft{flex:1;min-width:0;font-size:12px}
 .feed .ft b{display:block;font-weight:600}
 .feed .ft span{color:var(--muted);font-size:11px;overflow-wrap:anywhere}
 .feed .ftime{flex:0 0 auto;font-size:11px;color:var(--faint)}
-.feed .fpill{flex:0 0 auto;font-size:10px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:.1em .6em;color:var(--muted)}
+.feed .fpill{flex:0 0 auto;font-size:10px;font-weight:700;border:1px solid var(--border);border-radius:var(--r-sm);padding:.1em .6em;color:var(--muted)}
 /* risk rail */
 #sec-risk .riskwrap{grid-template-columns:1fr;justify-items:center}
 #sec-risk .riskwrap>div{width:100%;max-width:300px}
 #sec-risk .risklegend{width:100%}
-@media (max-width:900px){
-.display{font-size:30px}
-.hero .orb{width:300px;height:300px;top:-150px;right:-100px}
-}
-/* ---- workflow cohesion (Task 32): lightweight rail, no redesign ---- */
+/* ---- workflow rail ---- */
 .wflow{grid-column:span 12;display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin:0;padding:0;list-style:none}
-.wflow a{flex:1;min-width:140px;display:flex;gap:.6em;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.55em .8em;color:var(--muted);text-decoration:none;font-size:12px}
-.wflow a:hover{border-color:var(--blue);color:var(--text)}
-.wflow a .wn{flex:0 0 22px;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--faint)}
-.wflow a.done{border-color:rgba(34,211,238,.4)}
-.wflow a.done .wn{background:var(--cyan);border-color:var(--cyan);color:#06202a}
+.wflow a{flex:1;min-width:140px;display:flex;gap:.6em;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:.55em .8em;color:var(--muted);text-decoration:none;font-size:12px}
+.wflow a:hover{border-color:var(--accent);color:var(--text)}
+.wflow a .wn{flex:0 0 22px;width:22px;height:22px;border-radius:var(--r-sm);border:1px solid var(--border-strong);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--faint);background:var(--raised)}
+.wflow a.done{border-color:var(--accent-border)}
+.wflow a.done .wn{background:var(--accent);border-color:var(--accent);color:#fff}
 .wflow a .wt b{display:block;font-size:12px;color:var(--text);font-weight:700}
 .wflow a .wt span{font-size:11px;color:var(--faint)}
-.nextsteps{margin-top:12px;border:1px solid rgba(34,211,238,.4);border-radius:10px;padding:.7em .9em;background:rgba(34,211,238,.06)}
+.nextsteps{margin-top:12px;border:1px solid var(--accent-border);border-radius:var(--r-md);padding:.7em .9em;background:var(--accent-tint)}
 .nextsteps p{margin:.2em 0 .6em;font-size:12px;color:var(--muted)}
 .nextsteps .row{margin-top:0}
-.bridge{margin:.6em 0 0;border:1px solid var(--border);border-radius:10px;padding:.6em .8em;background:rgba(11,14,20,.45)}
+.bridge{margin:.6em 0 0;border:1px solid var(--border);border-radius:var(--r-md);padding:.6em .8em;background:var(--raised)}
 .bridge p{margin:.2em 0 .5em;font-size:12px;color:var(--muted)}
 .ctxnote{font-size:11px;color:var(--faint)}
 .fsec{margin:.7em 0 0}
@@ -357,11 +360,13 @@ details.disc>summary{transition:color .15s ease}
 .wflow a{min-width:44%}
 }
 /* ---- footer note ---- */
-.foot{grid-column:span 12;color:var(--faint);font-size:11px;padding:4px 2px 12px}
+.foot{grid-column:span 12;color:var(--faint);font-size:12px;padding:12px 2px;border-top:1px solid var(--border)}
+.foot a{color:var(--accent-dark)}
+.foot .fsep{margin:0 .6em}
 @media (max-width:1100px){.span8,.span4{grid-column:span 12}.riskwrap{grid-template-columns:1fr}.span3{grid-column:span 6}}
 @media (max-width:900px){
 .side{width:64px;flex-basis:64px}
-.brandsub,.nav a span.lbl,.sidefoot .txt{display:none}
+.brandsub,.nav a span.lbl,.sidefoot .txt,.loopnote{display:none}
 .nav a{justify-content:center;border-left:none}
 .brandmark span.t{display:none}
 .grid{padding:16px}
@@ -375,34 +380,32 @@ details.disc>summary{transition:color .15s ease}
 <div class="app">
 <aside class="side" aria-label="Primary">
 <div class="brand">
-<div class="brandmark"><span class="gem">⬢</span><span class="t">ECDAT</span></div>
-<div class="brandsub">ECDAT Local GUI<br>Enterprise Cryptographic Discovery &amp; Analysis Tool</div>
+<div class="brandmark"><span class="gem">E</span><span class="t">ECDAT</span></div>
+<div class="brandsub">Enterprise Cryptographic<br>Discovery &amp; Analysis Tool</div>
 </div>
 <nav class="nav" id="mainnav">
-<a href="#top" class="active"><span class="ic">⌂</span><span class="lbl">Overview</span></a>
-<a href="#sec-scan"><span class="ic">◎</span><span class="lbl">Scan</span></a>
-<a href="#sec-inventory"><span class="ic">▤</span><span class="lbl">Inventory</span></a>
-<a href="#sec-risk"><span class="ic">△</span><span class="lbl">Risk</span></a>
-<a href="#sec-graph"><span class="ic">⁂</span><span class="lbl">Graph</span></a>
-<a href="#sec-migration"><span class="ic">▣</span><span class="lbl">Migration</span></a>
-<a href="#sec-reports"><span class="ic">⎙</span><span class="lbl">Reports</span></a>
+<a href="#top" class="active"><span class="lbl">Overview</span></a>
+<a href="#sec-scan"><span class="lbl">Scans</span></a>
+<a href="#sec-inventory"><span class="lbl">Inventory</span></a>
+<a href="#sec-risk"><span class="lbl">Risk</span></a>
+<a href="#sec-graph"><span class="lbl">Graph</span></a>
+<a href="#sec-migration"><span class="lbl">Migration</span></a>
+<a href="#sec-reports"><span class="lbl">Reports</span></a>
 </nav>
-<div class="sidefoot"><span class="dotlive"></span><span class="txt">Local Mode<br></span><span class="mockline">Mock Data</span></div>
+<div class="sidefoot"><span class="dotlive"></span><span class="txt">Loopback only<br></span><span class="mockline">Mock data</span></div>
 </aside>
 <div class="maincol">
 <header class="top">
 <input type="text" id="globalSearch" placeholder="Search targets, findings, assets..." aria-label="Search targets, findings, assets">
 <span class="badge">MOCK / SIMULATED</span>
 <span class="topsp"></span>
-<button class="iconbtn" type="button" aria-label="Notifications" title="Notifications">♢</button>
-<span class="avatar" title="Operator">OP</span>
+<span class="loopnote mono">127.0.0.1 · loopback only</span>
 </header>
 <main class="grid" id="main">
-<section class="hero" aria-label="Posture">
-<div class="orb" aria-hidden="true"></div>
-<p class="kicker">Cryptographic intelligence · mock-first · local only</p>
-<h1 class="display">See the crypto. <span class="warm">Know the risk.</span></h1>
-<p class="hsub">Discovery &rarr; risk &rarr; dependencies &rarr; migration over local mock scans. Nothing here is real detection until Person 1 / Person 2 integrate.</p>
+<section class="hero" aria-label="Overview">
+<p class="kicker">ECDAT · local evaluation · mock data</p>
+<h1 class="display">Overview</h1>
+<p class="hsub">Discover cryptographic usage across source code, binaries, containers, certificates, and services. Run a scan to populate inventory, risk, and migration below. Nothing here is real detection until Person 1 / Person 2 integrate.</p>
 <div class="hstats">
 <div class="hstat" id="hero-scan-box"><div class="hk">Active target</div><div class="hv mono" id="hero-scan">No analysis yet</div></div>
 <div class="hstat" id="hero-risk-box"><div class="hk">Risk posture</div><div class="hv" id="hero-risk">—</div></div>
@@ -410,7 +413,7 @@ details.disc>summary{transition:color .15s ease}
 </div>
 <div class="hcta">
 <button class="primary" type="button" onclick="document.getElementById('sec-scan').scrollIntoView()">Start a scan</button>
-<span class="badge">MOCK / SIMULATED</span>
+<span class="note">Results are stored locally and feed the sections below.</span>
 </div>
 </section>
 <nav class="wflow" aria-label="Analysis workflow">
@@ -421,14 +424,14 @@ details.disc>summary{transition:color .15s ease}
 <a href="#sec-migration" data-wf="migration"><span class="wn" aria-hidden="true">5</span><span class="wt"><b>Migration</b><span>mock triage</span></span></a>
 <a href="#sec-reports" data-wf="report"><span class="wn" aria-hidden="true">6</span><span class="wt"><b>Report</b><span>export output</span></span></a>
 </nav>
-<section class="kpi span3 k-cyan"><p class="kl">Crypto Assets</p><div class="krow"><span class="kico" aria-hidden="true">⬢</span><div class="kv2" id="kpi-assets">—</div></div><div class="ksub" id="kpi-assets-sub">Run a mock scan to populate</div><svg id="spark-assets" width="120" height="28" aria-hidden="true"></svg></section>
-<section class="kpi span3 k-blue"><p class="kl">Findings</p><div class="krow"><span class="kico" aria-hidden="true">▤</span><div class="kv2" id="kpi-findings">—</div></div><div class="ksub" id="kpi-findings-sub">Run a mock scan to populate</div><svg id="spark-findings" width="120" height="28" aria-hidden="true"></svg></section>
-<section class="kpi span3 k-risk"><p class="kl">High Risk</p><div class="krow"><span class="kico" aria-hidden="true">△</span><div class="kv2" id="kpi-high">—</div></div><div class="ksub" id="kpi-high-sub">critical + high (mock)</div><svg id="spark-high" width="120" height="28" aria-hidden="true"></svg></section>
-<section class="kpi span3 k-violet"><p class="kl">Legacy Algorithms</p><div class="krow"><span class="kico" aria-hidden="true">◈</span><div class="kv2" id="kpi-legacy">—</div></div><div class="ksub" id="kpi-legacy-sub">distinct rules (mock)</div><svg id="spark-legacy" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="kpi span3"><p class="kl">Crypto Assets</p><div class="krow"><div class="kv2" id="kpi-assets">—</div></div><div class="ksub" id="kpi-assets-sub">Run a mock scan to populate</div><svg id="spark-assets" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="kpi span3"><p class="kl">Findings</p><div class="krow"><div class="kv2" id="kpi-findings">—</div></div><div class="ksub" id="kpi-findings-sub">Run a mock scan to populate</div><svg id="spark-findings" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="kpi span3"><p class="kl">High Risk</p><div class="krow"><div class="kv2" id="kpi-high">—</div></div><div class="ksub" id="kpi-high-sub">critical + high (mock)</div><svg id="spark-high" width="120" height="28" aria-hidden="true"></svg></section>
+<section class="kpi span3"><p class="kl">Legacy Algorithms</p><div class="krow"><div class="kv2" id="kpi-legacy">—</div></div><div class="ksub" id="kpi-legacy-sub">distinct rules (mock)</div><svg id="spark-legacy" width="120" height="28" aria-hidden="true"></svg></section>
 <section class="card span4" id="sec-risk" aria-label="Risk">
-<p class="eyebrow">Triage · mock scoring</p>
+<p class="eyebrow">Risk · mock scoring</p>
 <h2>Risk dashboard <span class="badge">MOCK SCORING MODEL</span></h2>
-<p class="note">Mock scoring — see model note below. Click a severity tile or rule to drill down to findings.</p>
+<p class="note">Severity-weighted mock score for the stored scan. Click a severity bar or rule to drill down to findings.</p>
 <div class="riskwrap">
 <div>
 <svg id="riskDonut" width="200" height="170" role="img" aria-label="Risk distribution donut"></svg>
@@ -449,15 +452,15 @@ details.disc>summary{transition:color .15s ease}
 </div>
 </section>
 <section class="card span4" id="sec-activity" aria-label="Activity">
-<p class="eyebrow">Session · mock</p>
-<h2>Recent activity</h2>
+<p class="eyebrow">Session</p>
+<h2>Session activity</h2>
 <p class="note">This session only — actions taken in this browser tab. No history is stored.</p>
 <ul class="feed" id="activityFeed"><li><div class="ft"><b>No session activity yet</b><span>Generate a plan or start a scan to begin.</span></div></li></ul>
 </section>
-<section class="card span4 jewel" id="sec-scan" aria-label="Scan">
-<p class="eyebrow">Analysis command · mock-first</p>
-<h2>Start a scan</h2>
-<p class="note">Mock-first slice: Select target &rarr; scan-plan preview &rarr; simulated progress &rarr; inventory. No real detection. Localhost only.</p>
+<section class="card span4" id="sec-scan" aria-label="Scans">
+<p class="eyebrow">Scan · mock-first</p>
+<h2>Scans</h2>
+<p class="note">Pick a target, preview the scan plan, then run the mock scan. No real detection is performed. Localhost only.</p>
 <div class="scanrow">
 <div class="field f-target">
 <label for="target">Select target</label>
@@ -473,7 +476,7 @@ details.disc>summary{transition:color .15s ease}
 <select id="scanDepth"><option>Normal</option><option>Shallow</option><option>Full</option></select>
 </div>
 <div class="btnrow">
-<button id="previewBtn" class="btn-warm" type="button">Generate Scan Plan →</button>
+<button id="previewBtn" class="primary" type="button">Generate scan plan</button>
 <button id="scanBtn" class="ghost" type="button">Start mock scan</button>
 </div>
 </div>
@@ -499,9 +502,9 @@ details.disc>summary{transition:color .15s ease}
 </div>
 </section>
 <section class="card span8" id="sec-inventory" aria-label="Inventory">
-<p class="eyebrow">Triage loop</p>
-<h2>Crypto inventory / results</h2>
-<p class="note">Scan results land here as discovery. Click a finding row to open its detail below. Click risk tiles or rule buttons to drill down.</p>
+<p class="eyebrow">Findings</p>
+<h2>Crypto inventory</h2>
+<p class="note">Findings for the stored scan, with algorithm, location, confidence, and evidence. Click a finding row to open its detail below. Click risk tiles or rule buttons to drill down.</p>
 <div class="row">
 <button id="invRiskBtn" class="ghost small" type="button">Open risk dashboard</button>
 <span class="ctxnote" id="invCtx">Risk reflects this inventory.</span>
@@ -510,21 +513,21 @@ details.disc>summary{transition:color .15s ease}
 <div class="row" id="filterRow" style="display:none">
 <button id="clearFilters" class="ghost small" type="button">Clear filters</button>
 </div>
-<div class="tblwrap" id="inventory"><div class="empty"><div class="esig"></div><h4>No analysis yet</h4>Select a target to begin cryptographic discovery.<ul class="esteps"><li><b>01</b>Target</li><li><b>02</b>Generate plan</li><li><b>03</b>Start scan</li></ul></div></div>
+<div class="tblwrap" id="inventory"><div class="empty"><h4>No scan data available</h4>Select a target to begin cryptographic discovery.<ul class="esteps"><li><b>01</b>Target</li><li><b>02</b>Generate plan</li><li><b>03</b>Start scan</li></ul></div></div>
 <div id="error" role="alert"></div>
 <h3>Finding detail</h3>
 <div id="detail"><p class="note">Select a finding row in the inventory to see its evidence, confidence, and provenance.</p></div>
 </section>
 <section class="card span12 stage" id="sec-graph" aria-label="Graph">
-<p class="eyebrow">Attack-path view · scan-independent</p>
+<p class="eyebrow">Dependencies · scan-independent mock topology</p>
 <h2>Crypto Knowledge Graph <span class="badge">MOCK DATASET</span></h2>
-<p class="note">Deterministic mock graph for UI development — not scan data and not Person 1 CIR. Drag to pan, scroll to zoom, click nodes and edges. Risky nodes/paths use risk ring colors.</p>
+<p class="note">Deterministic mock graph for UI development — not scan data and not Person 1 CIR. Drag to pan, scroll to zoom, click nodes and edges. Node rings use severity colors.</p>
 <p class="note ctxnote" id="graphCtx">Graph is scan-independent mock topology; inventory filters do not alter it.</p>
 <div class="row">
-<input type="text" id="gsearch" placeholder="filter: e.g. RSA, tls, aws" style="max-width:22em;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5em .7em" aria-label="Filter graph">
+<input type="text" id="gsearch" placeholder="filter: e.g. RSA, tls, aws" style="max-width:22em;background:var(--surface);border:1px solid var(--border-strong);border-radius:4px;color:var(--text);padding:.5em .7em" aria-label="Filter graph">
 <label class="chk"><input type="checkbox" id="grisky"> risky only</label>
 <button id="greset" class="ghost small" type="button">Reset view</button>
-<button id="gtrace" type="button" class="small" style="background:transparent;border:1px solid var(--cyan);color:var(--cyan)">Trace: internet → risk</button>
+<button id="gtrace" type="button" class="small" style="background:var(--surface);border:1px solid var(--accent);color:var(--accent-dark)">Trace: internet → risk</button>
 <span class="gcontrols">
 <button id="gzin" class="ghost small" type="button" aria-label="Zoom in">+</button>
 <button id="gzout" class="ghost small" type="button" aria-label="Zoom out">−</button>
@@ -542,36 +545,38 @@ details.disc>summary{transition:color .15s ease}
 </div>
 </section>
 <section class="card span4" id="sec-side" aria-label="Context">
-<p class="eyebrow">Context</p>
+<p class="eyebrow">Assets</p>
 <h2>Asset summary</h2>
-<div id="assets"><div class="empty"><div class="esig"></div><h4>No analysis yet</h4>Asset inventory appears after the first mock scan.</div></div>
+<div id="assets"><div class="empty"><h4>No scan data available</h4>Asset inventory appears after the first mock scan.</div></div>
 <div class="preview" id="graphState">Dependency edges: awaiting Person 1 edge data.</div>
 </section>
 <details class="card span12 disc" id="sec-assets">
-<summary style="cursor:pointer;color:var(--blue);font-size:13px">Crypto asset inventory + finding grouping (details)</summary>
+<summary style="cursor:pointer;color:var(--accent-dark);font-size:13px">Crypto asset inventory + finding grouping (details)</summary>
 <div class="note" style="margin:.4em 0">Flat asset inventory &mdash; relationships not available yet. Co-occurrence grouping &mdash; not a dependency graph.</div>
 <div id="assetsFull"><p class="note">Open a scan to expand grouped assets here.</p></div>
 </details>
 <section class="card span6" id="sec-migration">
+<p class="eyebrow">Migration</p>
 <h2>Migration Planner <span class="badge">MOCK / PLACEHOLDER</span></h2>
 <div class="note" style="margin:.4em 0">Severity triage of existing mock recommendations — heaviest first. This is triage by current finding severity, NOT a migration sequence.</div>
 <p class="note ctxnote" id="migrationRisk">Migration triage follows the current risk level once a scan completes.</p>
-<div id="migration"><div class="empty"><div class="esig"></div><h4>No analysis yet</h4>Migration triage appears after the first mock scan.</div></div>
+<div id="migration"><div class="empty"><h4>No migration recommendations yet</h4>Migration triage appears after the first mock scan.</div></div>
 <div class="row">
 <button id="migRepBtn" class="ghost small" type="button">Export via Reports</button>
 </div>
 <div class="preview" id="migration-missing">Not included yet: PQC target selection; migration timelines; effort estimates; phased sequencing; migration confidence; real migration state. All await Person 1 migration intelligence.</div>
 </section>
 <section class="card span6" id="sec-reports">
-<h2>10. Reports</h2>
-<div class="note" style="margin:.4em 0">Final output of the workflow: scan → discovery → risk → dependencies → migration → export. Reports render the stored mock scan through the existing report/export renderers. Nothing new is calculated here; risk/migration stay mock-labeled.</div>
-<div id="reports"><div class="empty"><div class="esig"></div><h4>No analysis yet</h4>Reports unlock after the first mock scan.</div></div>
+<p class="eyebrow">Output</p>
+<h2>Reports</h2>
+<div class="note" style="margin:.4em 0">Final output of the workflow: scan &rarr; discovery &rarr; risk &rarr; dependencies &rarr; migration &rarr; export. Card 10. Reports render the stored mock scan through the existing report/export renderers. Nothing new is calculated here; risk and migration stay mock-labeled.</div>
+<div id="reports"><div class="empty"><h4>No scan data available</h4>Reports unlock after the first mock scan.</div></div>
 <div class="row">
 <button id="repMigBtn" class="ghost small" type="button">Review migration triage</button>
 <button id="repGraphBtn" class="ghost small" type="button">Open dependency graph</button>
 </div>
 </section>
-<div class="foot">Local-only mock platform. No new analysis is performed in the GUI; all intelligence labels stay mock until Person 1 / Person 2 integrate.</div>
+<div class="foot">Local-only mock platform. No new analysis is performed in the GUI; all intelligence labels stay mock until Person 1 / Person 2 integrate.<span class="fsep">·</span><a href="/privacy">Privacy Policy</a><span class="fsep">·</span><a href="/terms">Terms and Conditions</a></div>
 </main>
 </div>
 </div>
@@ -687,7 +692,7 @@ async function poll(jobId){
   }catch(e){ if(timer){ clearInterval(timer); timer = null; } showError(String(e.message || e)); }
 }
 /* ---- KPI + donut (derived only from loaded scan payloads; no invented history) ---- */
-var SEVC = {"critical":"#F87171","high":"#FB923C","medium":"#FACC15","low":"rgb(52,211,153)","info":"#94A3B8"};
+var SEVC = {"critical":"#B42318","high":"#B54708","medium":"#A16207","low":"#027A48","info":"#667085"};
 var SEVORDER = ["critical","high","medium","low","info"];
 var PIPEIDS = ["st-target","st-plan","st-analysis","st-results"];
 function setPipe(stage){
@@ -875,10 +880,10 @@ function updateKpis(){
   if(assets!==null&&assets!==undefined){$("kpi-assets").textContent=String(assets);$("kpi-assets-sub").textContent="flat CBOM-derived assets (mock)";}
   if(highR!==null&&highR!==undefined){$("kpi-high").textContent=String(highR);$("kpi-high-sub").textContent="critical + high (mock)";}
   if(legacy!==null&&legacy!==undefined){$("kpi-legacy").textContent=String(legacy);$("kpi-legacy-sub").textContent="distinct rules (mock)";}
-  if(counts){spark("spark-findings",SEVORDER.map(function(s){return counts[s]||0;}),"#60A5FA");}
-  if(lastRisk&&lastRisk.by_rule){spark("spark-legacy",lastRisk.by_rule.map(function(r){return r.count;}),"#A78BFA");}
-  if(counts){spark("spark-high",[(counts.critical||0),(counts.high||0),(counts.medium||0),(counts.low||0)],"#FB923C");}
-  if(lastAssets&&lastAssets.groupings){spark("spark-assets",lastAssets.groupings.by_file.map(function(g){return g.count;}),"rgb(34,211,238)");}
+  if(counts){spark("spark-findings",SEVORDER.map(function(s){return counts[s]||0;}),"#1D4ED8");}
+  if(lastRisk&&lastRisk.by_rule){spark("spark-legacy",lastRisk.by_rule.map(function(r){return r.count;}),"#667085");}
+  if(counts){spark("spark-high",[(counts.critical||0),(counts.high||0),(counts.medium||0),(counts.low||0)],"#B54708");}
+  if(lastAssets&&lastAssets.groupings){spark("spark-assets",lastAssets.groupings.by_file.map(function(g){return g.count;}),"#1D4ED8");}
   updateHero();
   updateWorkflow();
 }
@@ -1380,9 +1385,9 @@ function renderActivity(){
   });
 }
 const SVGNS = document.getElementById("graph").namespaceURI;
-const GTCOLORS = {"Endpoint":"#60A5FA","Service":"rgb(34,211,238)","Container":"#A78BFA","Library":"#94A3B8","CryptoOperation":"#64748B","CryptoAsset":"#E2E8F0","CertificateKey":"#60A5FA","CloudResource":"#94A3B8"};
+const GTCOLORS = {"Endpoint":"#1D4ED8","Service":"#2E90FA","Container":"#667085","Library":"#98A2B3","CryptoOperation":"#B54708","CryptoAsset":"#101828","CertificateKey":"#0E9384","CloudResource":"#475467"};
 const GRISKY = {"high":true,"critical":true};
-const GRISKCOLOR = {"critical":"#F87171","high":"#FB923C","medium":"#FACC15","low":"rgb(52,211,153)","info":"#94A3B8","none":"#64748B"};
+const GRISKCOLOR = {"critical":"#B42318","high":"#B54708","medium":"#A16207","low":"#027A48","info":"#667085","none":"#98A2B3"};
 let GDATA = null;
 let gView = {x:0,y:0,k:1};
 let gHiddenTypes = {};
@@ -1478,12 +1483,12 @@ function buildLegend(){
     host.appendChild(d);
   }
   cap("Node ring = risk");
-  [["Critical","#F87171"],["High","#FB923C"],["Medium","#FACC15"],["Low","rgb(52,211,153)"],["Info / none","#94A3B8"]].forEach(function(p){
+  [["Critical","#B42318"],["High","#B54708"],["Medium","#A16207"],["Low","#027A48"],["Info / none","#667085"]].forEach(function(p){
     li("sw",p[1],p[0],false,false);
   });
   cap("Path");
-  li("ln","rgb(34,211,238)","Trace path",true,false);
-  li("rg","#A78BFA","Selected",false,true);
+  li("ln","#1D4ED8","Trace path",true,false);
+  li("rg","#1D4ED8","Selected",false,true);
   cap("Node color = type (filter above)");
 }
 function renderGraph(){
@@ -1495,8 +1500,8 @@ function renderGraph(){
   svg.setAttribute("data-z", zlev);
   const defs = gEl("defs", {}, svg);
   var pat=gEl("pattern",{id:"ggrid",width:"36",height:"36",patternUnits:"userSpaceOnUse"},defs);
-  gEl("path",{d:"M 36 0 L 0 0 0 36",fill:"none",stroke:"#1E293B","stroke-width":"1"},pat);
-  [["garr","#2A3342"],["garrR","#F87171"],["garrB","rgb(34,211,238)"]].forEach(function(m){
+  gEl("path",{d:"M 36 0 L 0 0 0 36",fill:"none",stroke:"#E4E7EC","stroke-width":"1"},pat);
+  [["garr","#98A2B3"],["garrR","#B42318"],["garrB","#1D4ED8"]].forEach(function(m){
     const mk = gEl("marker", {id:m[0], viewBox:"0 0 10 10", refX:"9", refY:"5",
       markerWidth:"6", markerHeight:"6", orient:"auto-start-reverse"}, defs);
     gEl("path", {d:"M 0 1 L 9 5 L 0 9 z", fill:m[1]}, mk);
@@ -1539,7 +1544,7 @@ function renderGraph(){
     var deg=gDegree(n.id);
     var cx=n.x+75, cy=n.y+28;
     var baseR=14+(deg>=6?5:(deg>=3?2:0));
-    var ring=GRISKCOLOR[n.risk]||"#64748B";
+    var ring=GRISKCOLOR[n.risk]||"#98A2B3";
     var isSel=(gSelected === n.id);
     var isTraced=!!inTrace[n.id];
     var dimmed=!vis[n.id];
@@ -1565,16 +1570,16 @@ function renderGraph(){
     }
     const title = gEl("title", {}, g);
     title.textContent = n.label + " (" + n.type + ", risk " + n.risk + ")";
-    var initials=gText(g, 0, 4, n.label.slice(0,2).toUpperCase(), 10, true, "#E2E8F0");
+    var initials=gText(g, 0, 4, n.label.slice(0,2).toUpperCase(), 10, true, "#101828");
     void initials;
     var showName = (zlev === "in") || (zlev === "mid") || priority;
     var showSub = (zlev === "in") || ((zlev === "mid") && priority);
     if(showName){
-      var lab=gText(g, 0, baseR+16, n.label.slice(0,22), 12, true, "#E2E8F0");
+      var lab=gText(g, 0, baseR+16, n.label.slice(0,22), 12, true, "#101828");
       lab.setAttribute("class","nlabel");
     }
     if(showSub){
-      var sub=gEl("text",{x:0, y:baseR+29, "font-size":10, "text-anchor":"middle", fill:"#94A3B8"},g);
+      var sub=gEl("text",{x:0, y:baseR+29, "font-size":10, "text-anchor":"middle", fill:"#667085"},g);
       sub.textContent = n.type + " · ";
       var rs=gEl("tspan",{fill:ring},sub);
       rs.textContent = n.risk;
@@ -1842,6 +1847,15 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _svg(self, body: str) -> None:
+        raw = body.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "image/svg+xml")
+        self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Cache-Control", "max-age=86400")
+        self.end_headers()
+        self.wfile.write(raw)
+
     def _bytes(self, code: int, body: bytes, content_type: str,
                filename: str) -> None:
         self.send_response(code)
@@ -1873,6 +1887,15 @@ class _Handler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query)
         if parsed.path == "/":
             self._html(index_page())
+        elif parsed.path == "/favicon.svg":
+            self._svg(FAVICON_SVG)
+        elif parsed.path == "/privacy":
+            self._html(_legal_page(
+                "Privacy Policy", "Privacy Policy", PRIVACY_PARAGRAPHS))
+        elif parsed.path == "/terms":
+            self._html(_legal_page(
+                "Terms and Conditions", "Terms and Conditions",
+                TERMS_PARAGRAPHS))
         elif parsed.path == "/api/preview":
             target = query.get("target", [""])[0]
             try:
