@@ -29,6 +29,12 @@ def _lines(report: dict) -> list[tuple[int, str]]:
             f"(files scanned: {r['files_scanned']})",
         ),
         (11, f"Risk: {r['risk']['level']} ({r['risk']['score']}) [mock scoring]"),
+    ]
+    real = report.get("real_risk")
+    if real is not None:
+        out.append(
+            (11, f"Real risk (P1): {real['level']} ({real['score']})"))
+    out += [
         (11, "Severity: "
          + (", ".join(f"{k}={v}" for k, v in sorted(r["by_severity"].items()))
             or "none")),

@@ -50,16 +50,33 @@ class AWSScanner(Scanner[ScannerFinding]):
         findings: list[ScannerFinding] = []
 
         region = kwargs.get("region", "us-east-1")
+        # ``services`` comes from the CLI cloud label
+        # (``aws:<profile>:services=kms,acm,elb``) via the pipeline.
+        # Accepted tokens: kms, acm, elb, alb (elb covers classic ELB,
+        # alb covers ALB/TLS listeners). Unknown tokens are ignored so a
+        # typo cannot silently widen the scan.
+        raw_services = kwargs.get("services", None)
+        wanted: set[str] | None = None
+        if raw_services is not None:
+            if isinstance(raw_services, str):
+                items = [s.strip().lower() for s in raw_services.split(",")]
+            else:
+                items = [str(s).strip().lower() for s in list(raw_services)]
+            wanted = {s for s in items if s} or set()
         if self._session:
             self._session = self._session._session_factory(region_name=region) if hasattr(self._session, '_session_factory') else self._session
         else:
             import boto3
             self._session = boto3.Session(region_name=region)
 
-        findings.extend(self._scan_kms(region))
-        findings.extend(self._scan_acm(region))
-        findings.extend(self._scan_elb(region))
-        findings.extend(self._scan_alb(region))
+        if wanted is None or "kms" in wanted:
+            findings.extend(self._scan_kms(region))
+        if wanted is None or "acm" in wanted:
+            findings.extend(self._scan_acm(region))
+        if wanted is None or "elb" in wanted:
+            findings.extend(self._scan_elb(region))
+        if wanted is None or "alb" in wanted:
+            findings.extend(self._scan_alb(region))
 
         normalized = [normalize_finding(f) for f in findings]
         return normalized

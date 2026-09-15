@@ -116,15 +116,42 @@ class DiscoveryEngine:
 
         all_findings: list[ScannerFinding] = []
 
-        for name, scanner in scanners_to_run.items():
-            try:
-                findings = scanner.scan(target_path, **kwargs)
-                all_findings.extend(findings)
-            except Exception as e:
-                logger.warning("Scanner %s failed: %s", name, e)
-                continue
+        # Independent scanner families run in parallel (ThreadPool, one
+        # worker per family). Findings are re-sorted deterministically
+        # after collection so output order never depends on thread timing.
+        if len(scanners_to_run) > 1:
+            from concurrent.futures import ThreadPoolExecutor
+
+            def _run(item: tuple[str, object]) -> list:
+                name, scanner = item
+                try:
+                    return list(scanner.scan(target_path, **kwargs))  # type: ignore[union-attr]
+                except Exception as e:
+                    logger.warning("Scanner %s failed: %s", name, e)
+                    return []
+
+            with ThreadPoolExecutor(max_workers=len(scanners_to_run)) as pool:
+                for findings in pool.map(_run, list(scanners_to_run.items())):
+                    all_findings.extend(findings)
+        else:
+            for name, scanner in scanners_to_run.items():
+                try:
+                    findings = scanner.scan(target_path, **kwargs)
+                    all_findings.extend(findings)
+                except Exception as e:
+                    logger.warning("Scanner %s failed: %s", name, e)
+                    continue
 
         normalized = [normalize_finding(f) for f in all_findings]
+        # Deterministic pre-correlation order: (canonical, file, line).
+        try:
+            normalized.sort(key=lambda f: (
+                str(getattr(f, "canonical", "")),
+                str(getattr(getattr(f, "location", None), "file", "") or ""),
+                int(getattr(getattr(f, "location", None), "line", 0) or 0),
+            ))
+        except Exception:
+            pass
         
         # Correlate findings from different scanners
         correlated = self._correlate_findings(normalized)

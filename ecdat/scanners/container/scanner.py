@@ -166,8 +166,23 @@ class ContainerScanner(Scanner[ScannerFinding]):
             findings.extend(self._scan_tarball(Path(target_str)))
         elif Path(target_str).is_dir():
             findings.extend(self._scan_directory(Path(target_str)))
+        elif self._looks_like_image_reference(target_str):
+            # Bare registry references (``nginx:1.25``,
+            # ``registry/org/image@sha256:...``) never exist as local
+            # files; route them to the image scanners (syft/docker) so
+            # real container scans do not silently return zero findings.
+            findings.extend(self._scan_image(target_str))
 
         return [normalize_finding(f) for f in findings]
+
+    @staticmethod
+    def _looks_like_image_reference(target_str: str) -> bool:
+        text = str(target_str or "").strip()
+        if not text or Path(text).exists():
+            return False
+        if text.startswith(("docker://", "oci://")):
+            return True
+        return (":" in text) or ("/" in text) or ("@" in text)
 
     def _scan_image(self, image_ref: str) -> list[ScannerFinding]:
         findings: list[ScannerFinding] = []

@@ -1,276 +1,157 @@
-# ECDAT - Person 2 Discovery Engine
+# ECDAT — Enterprise Cryptographic Discovery & Analysis Tool (SIH26164)
 
-Cryptographic Discovery Engine for the ECDAT (SIH26164) platform. This is the Person 2 (Discovery) component that finds cryptographic assets and emits CIR v0.1 records for handoff to Person 1 (Core Intelligence).
+Integrated product: Person 2 discovery + Person 1 intelligence + Person 3
+platform. Two modes share one store/GUI/reports surface:
 
-## Architecture
+- **Mock mode (default)**: deterministic fixtures, labeled `mock` in code,
+  CLI output, GUI badges, and tests. Offline demos and regression tests.
+- **Real mode (`--real`)**: single-pass pipeline — P2 `DiscoveryEngine`
+  scans once → CIR v0.1 validation → P1 fusion/operations/graph/risk/
+  recommendations → canonical v1 + CIR sidecar → SQLite → CLI/GUI/reports/
+  exports/CI. Never silently falls back to mock; failures raise
+  `RealScanError`.
 
-```
-DiscoveryEngine
-├── SourceScanner          # AST/Tree-sitter + Semgrep for source code
-├── DependencyScanner      # Package manifest parsing (npm, pip, cargo, go, maven, etc.)
-├── BinaryScanner          # LIEF + strings + YARA for binary analysis
-├── ContainerScanner       # Docker + Syft for container images
-├── ConfigScanner          # nginx, Apache, Envoy, OpenSSL, Kubernetes, Terraform, generic
-├── CertificateScanner     # PEM, DER, JKS, PKCS#12, SSH keys, JWK/JWKS
-├── RuntimeScanner         # TLS/SSH probing
-└── CloudScanner           # AWS KMS/ACM/ELB (Azure/GCP stubs)
-    ↓
-Finding Normalization      # Registry-based canonical naming
-    ↓
-Evidence Correlation       # Cross-scanner asset deduplication
-    ↓
-CIR Emission              # CIR v0.1 JSON output
-    ↓
-CIR Validation            # Schema validation
-```
+Data contracts: CIR v0.1 is the internal intelligence model
+(`ecdat/core/cir.schema.json`); canonical v1 is the stable
+platform-facing model (`ecdat/core/canonical_v1.json`). Adapters in
+`ecdat/adapters/` translate between them.
 
-## Installation
+## Prerequisites
 
-```bash
-# Core dependencies
-pip install -e .
+- Python 3.10+
+- Mock/demo path: `pip install -e .` (runtime dep: `jsonschema`;
+  tests need `pytest`). No network, credentials, or services required.
+- Real-scan path: `pip install -e ".[test]"` plus real deps
+  (`pydantic>=2.7`, `pyyaml>=6`, `cryptography>=42`,
+  `tomli` on Python 3.10). Optional capabilities are probed, never
+  required: Semgrep, LIEF, YARA, Docker/Syft, cloud SDKs, runtime sockets.
+  Unavailable scanners are reported explicitly, never scored as zero.
+- Container/cloud/runtime scanning is opt-in (Docker, credentials, sockets).
 
-# Development dependencies (tests, linting)
-pip install -e ".[dev]"
-
-# Benchmark dependencies
-pip install -e ".[bench]"
-
-# Optional external tools (recommended for full functionality)
-# Semgrep (multi-language source scanning)
-pip install semgrep
-
-# LIEF (binary analysis)
-pip install lief
-
-# YARA-X (binary pattern matching)
-pip install yara-x
-
-# Syft (container SBOM)
-# Install from https://github.com/anchore/syft
-
-# Trivy (container vulnerability scanning)
-# Install from https://github.com/aquasecurity/trivy
-
-# AWS credentials for cloud scanning
-aws configure
-```
-
-## Quick Start
-
-```python
-from ecdat import create_discovery_engine
-
-# Create engine with all available scanners
-engine = create_discovery_engine()
-
-# Scan a directory
-cir = engine.scan_and_emit_cir("/path/to/project", target_name="my-project")
-
-# Output CIR JSON
-print(cir.model_dump_json(indent=2))
-
-# Or save to file
-cir_file = Path("output.cir.json")
-cir_file.write_text(cir.model_dump_json(indent=2))
-```
-
-## CLI Usage
+## Validate
 
 ```bash
-# List available scanners
-ecdat-discover list-scanners
-
-# Run discovery scan
-ecdat-discover discover /path/to/project --output results.cir.json
-
-# Run with specific scanners
-ecdat-discover discover /path/to/project --scanners source,dependency,config
-
-# Validate CIR file
-ecdat-discover validate results.cir.json
+python -m pytest -q
 ```
 
-## Scanner Details
+Must report all tests passing (platform regression + P2 scanner suite +
+P1/core tests + contract tests + real integration tests).
 
-### Source Scanner
-- **Python AST Scanner**: Native Python AST analysis for direct API calls, imports, class instantiation
-- **Semgrep Scanner**: Multi-language pattern matching (Python, JS/TS, Go, Java, C/C++, Rust, etc.)
-- Detects: AES-GCM/CBC/CTR/CCM, ChaCha20-Poly1305, RSA, DSA, DH, ECDH, ECDSA, Ed25519, Ed448, X25519, X448, MD5, SHA-1/2/3, BLAKE2/3, PBKDF2, HKDF, scrypt, Argon2, TLS/SSL/SSH, PQC (ML-KEM, ML-DSA, SLH-DSA, Falcon)
-- Usage states: Confirmed (direct API calls), Probable (strong evidence), Possible (weak evidence), ProvidedOnly (imports only)
-
-### Dependency Scanner
-Parses: package.json, package-lock.json, yarn.lock, pnpm-lock.yaml, requirements.txt, pyproject.toml, poetry.lock, Cargo.toml, Cargo.lock, go.mod, go.sum, pom.xml, build.gradle, Gemfile, composer.json
-Maps packages to crypto capabilities via registry. **Never promotes dependency presence to Confirmed usage** - always ProvidedOnly.
-
-### Binary Scanner
-- **LIEF Scanner**: ELF/PE/Mach-O import/symbol/string analysis (when LIEF available)
-- **Strings Scanner**: Fallback string extraction (always available)
-- **YARA Scanner**: YARA-X pattern matching for crypto constants (when available)
-- Usage states: ProvidedOnly (library imports), Probable (symbols), Possible (strings only)
-
-### Container Scanner
-- **Docker Scanner**: Image inspection, layer analysis, Dockerfile/Compose parsing
-- **Syft Scanner**: SBOM generation for package detection in containers
-- Scans: packages, binaries, configs, certificates in container layers
-
-### Config Scanner
-- **nginx**: ssl_ciphers, ssl_protocols, ssl_certificate, ssl_certificate_key
-- **Apache**: SSLCipherSuite, SSLProtocol, SSLCertificateFile, SSLCertificateKeyFile
-- **Envoy**: transport_socket TLS context, cipher_suites, tls_params, certificates
-- **OpenSSL**: MinProtocol/MaxProtocol, CipherSuites/Ciphers, Options
-- **Kubernetes**: Secrets, Certificates (cert-manager), Ingress TLS
-- **Terraform**: aws_acm_certificate, aws_lb_listener, ssl_policy, cipher_suites
-- **Generic**: YAML/JSON/TOML/INI key-value scanning for TLS/cert/key references
-
-### Certificate Scanner
-- **PEM**: X.509 certificates, CSRs, private/public keys (RSA, ECDSA, Ed25519, Ed448, X25519, X448)
-- **DER**: Binary certificate/key parsing
-- **JKS**: Java KeyStore via keytool (when available)
-- **PKCS#12**: .p12/.pfx via cryptography/OpenSSL
-- **SSH**: Public keys (authorized_keys, known_hosts), private keys
-- **JWK/JWKS**: JSON Web Key sets
-- **Never stores private key material** - only safe metadata (algorithm, key size, curve, validity, etc.)
-
-### Runtime Scanner
-- **TLS Scanner**: SSLyze-style handshake probing for negotiated version, cipher, certificate chain
-- **SSH Scanner**: ssh-keyscan for host key algorithms
-- Optional, graceful failure handling
-
-### Cloud Scanner
-- **AWS**: KMS keys (spec, usage, origin), ACM certificates (domain, key algorithm, status), ELB/ALB listeners (TLS config, certificates, SSL policies)
-- **Azure/GCP**: Stubs for future implementation
-- Read-only, no secret extraction
-
-## CIR v0.1 Handoff
-
-All scanner output maps to the CIR v0.1 schema:
-
-```json
-{
-  "cir_version": "0.1",
-  "scan_id": "scan:abcdef1234567890",
-  "target": "my-project",
-  "started_at": "2024-01-01T00:00:00Z",
-  "finished_at": "2024-01-01T00:01:00Z",
-  "tool_versions": {"source": "source-v0.1.0(...)", "dependency": "dependency-v0.1.0"},
-  "registry_version": "2026.09.11",
-  "assets": [...],
-  "operations": [...],
-  "graph": {"nodes": [...], "edges": [...]},
-  "stats": {"asset_count": 10, "operation_count": 5, "node_count": 20, "edge_count": 15}
-}
-```
-
-### CryptoAsset Fields
-- `asset_id`: Deterministic `ast:<hash>`
-- `canonical`: Registry-normalized name (e.g., "AES-256-GCM")
-- `original`: Detector spelling (e.g., "AESGCM")
-- `key_size`, `mode`, `curve`, `protocol`: When identifiable
-- `library`: Source library/package
-- `usage_state`: Confirmed | Probable | Possible | ProvidedOnly | FalsePositiveSuppressed
-- `confidence`: 0.0 - 1.0
-- `evidence`: Array of EvidenceSignal with tool, detail, confidence, snippet (redacted)
-- `location`, `implementation`, `context`, `risk_inputs`: Optional context
-
-### CryptoOperation Fields
-- `operation_id`: Deterministic `op:<hash>`
-- `operation_type`: Encrypt | Decrypt | Sign | Verify | KeyExchange | Hash | KDF | TLS | Storage | KeyManagement
-- `asset_id`: References CryptoAsset
-- Same evidence/confidence/context as assets
-
-### Graph
-- Node kinds: asset, operation, file, service, host, library, key
-- Relationships: uses, calls, contains, derives, protects, depends_on, terminates
-- Every edge endpoint exists
-
-## Semantic Rules
-
-**CRITICAL**: Installation/import/dependency presence ≠ crypto usage proof
-
-| Evidence | Usage State |
-|----------|-------------|
-| OpenSSL installed | ProvidedOnly |
-| OpenSSL imported | Probable at most |
-| Actual AES API call | Confirmed/Probable |
-| RSA library import | Probable at most |
-| Actual RSA signing | Confirmed |
-| Container with OpenSSL | ProvidedOnly |
-
-## Running Tests
+## One-command local demo (mock)
 
 ```bash
-# Unit tests
-pytest ecdat/tests/test_core.py -v
-
-# Scanner tests
-pytest ecdat/tests/test_scanners.py -v
-
-# Integration tests
-pytest ecdat/tests/test_integration.py -v
-
-# All tests with coverage
-pytest ecdat/tests/ --cov=ecdat --cov-report=term-missing
-
-# Benchmarks
-pytest ecdat/benchmarks/benchmark.py -v --benchmark-only
+python -m ecdat.cli demo
 ```
 
-## Benchmarking
+Seeds a fresh temp workspace (two mock targets) and serves the dashboard
+at `http://127.0.0.1:8734` (loopback only; `--port 0` for an ephemeral
+port, `--db PATH` to reuse a database). Press Ctrl-C to stop.
 
 ```bash
-# Run benchmarks
-pytest ecdat/benchmarks/benchmark.py -v
-
-# Results include:
-# - Time (mean, median, stdev, min, max)
-# - Memory usage (mean)
-# - Finding counts
-# - JSON export for CI/CD
+python -m ecdat.cli demo --port 0   # avoid port clashes
+python -m ecdat.cli gui             # dashboard on your own DB (no seeding)
 ```
 
-Target benchmarks (not guarantees):
-- Source: 95% recall, <5% FP
-- Binary: 90%+
-- Config/Certificate: 95%+
-- Container: 90%+
-- 100k LOC: <60 seconds, <1 GB RAM
+## Real scans (integrated pipeline)
 
-## Security
+Default real selection is network-free:
+`source,dependency,binary,config,certificate`. Opt in explicitly for
+`container` (Docker/Syft), `cloud` (ambient credentials), `runtime`
+(TLS/SSH sockets).
 
-- **Never** prints, persists, or transmits private keys
-- **Never** sends source code to LLMs
-- **Never** uses LLMs for detection
-- Deterministic, explainable detection only
-- Evidence snippets auto-redacted (base64, PEM, passwords, tokens, keys)
+```bash
+# Source tree (real)
+python -m ecdat.cli scan ./repo --real --db .ecdat.db
+python -m ecdat.cli scan ./repo --real --cir-out cir.json --output canonical.json --db .ecdat.db
 
-## Limitations
+# Binary / container tar / rootfs / image ref
+python -m ecdat.cli scan-binary ./bin/app --real --db .ecdat.db
+python -m ecdat.cli scan-container ./image.tar --real --db .ecdat.db
+python -m ecdat.cli scan-container nginx:1.25 --real --allow-container --db .ecdat.db
 
-- Semgrep/LIEF/YARA-X not available on Windows (fallback to strings/parser)
-- JKS scanning requires keytool in PATH
-- PKCS#12 scanning requires OpenSSL CLI for fallback
-- AWS scanning requires valid credentials
-- Runtime scanning is network-dependent
-- Azure/GCP cloud scanners are stubs only
+# Cloud (label target, no local path required)
+python -m ecdat.cli scan-cloud aws --profile readonly --services kms,acm,elb --real --db .ecdat.db
 
-## Extending
+# Explicit scanner subset + opt-ins
+python -m ecdat.cli scan ./repo --real --scanners source,config,certificate --db .ecdat.db
+python -m ecdat.cli scan ./repo --real --allow-container --allow-cloud --allow-runtime --db .ecdat.db
 
-### Add New Source Language
-1. Add Semgrep rules to `SemgrepScanner.SEMGREP_RULES`
-2. Or implement new AST scanner subclassing `Scanner`
+# CI gate on real findings (P1 risk posture, severity policy)
+python -m ecdat.cli ci ./repo --real --fail-on high --summary --db .ecdat.db
 
-### Add New Package Manager
-1. Add parser to `ecdat/scanners/dependency/parsers.py`
-2. Add crypto package mappings to `ecdat/scanners/dependency/crypto_packages.py`
+# GUI over a real database
+python -m ecdat.cli gui --db .ecdat.db --port 0
+```
 
-### Add New Config Format
-1. Implement scanner subclassing `Scanner`
-2. Register in `ConfigScanner._init_scanners()`
+Real findings reach inventory, finding detail (usage state, evidence,
+confidence, locations, redacted snippets), risk dashboard (P1 Mosca
+posture), graph view (CIR projection), migration planner (P1
+recommendations), reports/exports (canonical v1), and CI gates.
 
-### Add New Certificate Format
-1. Implement scanner subclassing `Scanner`
-2. Register in `CertificateScanner.__init__()`
+## Demo workflow (dashboard cards)
 
-## License
+1. **Target** — pick a seeded demo target (or type any path).
+2. **Scan-plan preview + monitor** — read-only plan; real scans run
+   synchronously, progress is staged/estimated.
+3. **Inventory/findings** — click rows for finding detail (Card 6).
+4. **Risk dashboard** — mock severity-weight scoring in mock mode
+   (labeled); P1 risk posture for real scans.
+5. **Asset inventory + groupings** — flat CBOM-derived assets (Card 7).
+6. **Knowledge graph** — `MOCK DATASET` badge in mock mode; real CIR
+   projection for real scans (Card 8).
+7. **Migration planner** — severity triage, `MOCK / PLACEHOLDER` in mock
+   mode; P1 recommendations for real scans, still no persistent
+   migration state (Card 9).
+8. **Reports** — view/download HTML, PDF, CSV, JSON, SARIF (Card 10).
 
-MIT
+## CLI commands
+
+`scan`, `scan-binary`, `scan-container`, `scan-cloud` (each with
+`--mock`/`--real`, `--scanners`, `--allow-container/--allow-cloud/--allow-runtime`,
+`--cir-out` on real paths), `list`, `show`, `risk`, `recommend`,
+`export` (json/csv/cbom-json/cbom-xml/sarif),
+`report` (markdown/console/html/pdf),
+`ci` (`--fail-on`/`--json`/`--summary`/`--sarif`, plus real flags),
+`gui`, `demo`.
+`python -m ecdat.benchmark run|cases|suite-run|baselines` runs the benchmark harness
+(`suite-run --baseline NAME` evaluates one registered baseline).
+
+## Generated artifacts
+
+Reports: Markdown, console, HTML, PDF (stdlib-only). Exports: JSON, CSV,
+CBOM JSON/XML, SARIF 2.1.0. Benchmark: JSON results, HTML/CSV/SVG/PDF
+artifacts. GUI Card 10 serves HTML/PDF/CSV/JSON/SARIF downloads.
+Real scans also persist the enriched CIR sidecar (`scans.cir_json`,
+schema v2) alongside canonical v1; mock/legacy rows store NULL.
+
+## Mock vs real (honest boundaries)
+
+- Mock: deterministic fixtures; severity-weight risk; static-map
+  recommendations; hand-authored graph; triage-only migration; synthetic
+  benchmark labels. Labeled `mock` everywhere.
+- Real: P2 discovery (parallel scanner families, persistent container
+  layer cache, content-aware correlation); P1 Mosca risk + 17-rule
+  recommendation map; deterministic `scan:<16hex>` IDs; RFC3339
+  timestamps; asset-only findings preserved; unavailable tools reported,
+  never zero-filled. Measured P2 quality on committed fixtures is
+  ~25% recall / ~14% precision — do not claim 95%/90% targets until
+  independently reproduced on corrected ground truth.
+- Product is intentionally incomplete: persistent migration state,
+  owners/effort/timelines/sequencing, full Azure/GCP, guaranteed Docker
+  environments, external baseline comparisons, full runtime probing,
+  and production auth/remote deployment remain out of scope or
+  versioned-contract extensions.
+
+Contracts are pinned in `tests/contract/` and `docs/P1_P2_INTEGRATION_CONTRACT.md`.
+
+## Troubleshooting
+
+- Port busy: `demo --port 0` or `gui --port 0`. Non-loopback `--host`:
+  refused by design.
+- Stale DB confusion: `demo` uses a fresh temp dir each run (path printed).
+- `pytest` failures: run `python -m pytest -q`; GUI tests bind 127.0.0.1
+  ephemeral ports only.
+- Real scan missing deps: install real-scan group above; the error names
+  the missing package.
+- `pip install -e .` used to fail (setuptools discovered `referenceDocs`
+  as a package); fixed via `[tool.setuptools.packages.find]` include/exclude.

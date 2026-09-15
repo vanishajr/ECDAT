@@ -155,7 +155,24 @@ def run(args: argparse.Namespace) -> int:
         print(f"error: target not found: {target}", file=sys.stderr)
         return TARGET_NOT_FOUND
 
-    client = get_client("real" if args.real else "mock")
+    if args.real:
+        # Real mode honors the same scanner selection flags as `scan`.
+        from ecdat.core.client import RealCoreClient
+
+        arg_scanners = getattr(args, "scanners", None)
+        scanners = None
+        if arg_scanners:
+            scanners = [s.strip().lower() for s in str(arg_scanners).split(",")
+                        if s.strip()]
+        client = RealCoreClient(
+            scanners=scanners,
+            allow_container=bool(getattr(args, "allow_container", False)),
+            allow_cloud=bool(getattr(args, "allow_cloud", False)),
+            allow_runtime=bool(getattr(args, "allow_runtime", False)),
+            region=getattr(args, "region", None),
+        )
+    else:
+        client = get_client("mock")
     cir: dict | None = None
     if args.real:
         from typing import cast

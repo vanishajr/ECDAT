@@ -12,8 +12,14 @@ from ecdat.commands import recommend_cmd, risk_cmd
 TOP_FILES_LIMIT = 5
 
 
-def build_report(doc: dict) -> dict:
-    """Aggregate a canonical doc into a report dict. No I/O."""
+def build_report(doc: dict, real_risk: dict | None = None) -> dict:
+    """Aggregate a canonical doc into a report dict. No I/O.
+
+    ``real_risk`` is the stored P1 posture (``risk_view`` shape) for real
+    scans; mock-only reports pass None and render byte-identically to
+    before. Real reports carry both the canonical severity breakdown
+    (mock scoring, for format stability) and the P1 posture.
+    """
     findings = doc["findings"]
 
     by_severity: dict[str, int] = {}
@@ -60,4 +66,5 @@ def build_report(doc: dict) -> dict:
         "top_files": top_files,
         "risk": risk_cmd.risk_from_findings(findings),
         "recommendations": recommend_cmd.recommend_for_findings(findings),
+        "real_risk": dict(real_risk) if real_risk is not None else None,
     }

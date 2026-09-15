@@ -37,6 +37,8 @@ def run_real_and_store(
     allow_container = bool(getattr(args, "allow_container", False))
     allow_cloud = bool(getattr(args, "allow_cloud", False))
     allow_runtime = bool(getattr(args, "allow_runtime", False))
+    region = getattr(args, "region", None)
+    region = str(region).strip() if region else None
     arg_scanners = getattr(args, "scanners", None)
     if arg_scanners:
         scanners = [s.strip().lower() for s in str(arg_scanners).split(",")
@@ -46,9 +48,13 @@ def run_real_and_store(
         allow_container=allow_container,
         allow_cloud=allow_cloud,
         allow_runtime=allow_runtime,
+        region=region,
     )
     try:
-        cir, doc = client.scan_with_cir(Path(target))
+        # Pass the raw label through: cloud labels (``aws:...``) and
+        # container image refs (``nginx:1.25``) are not filesystem paths
+        # and must not be coerced via Path().
+        cir, doc = client.scan_with_cir(str(target))
     except RealScanError as exc:
         print(f"error: real scan failed: {exc}", file=sys.stderr)
         return ERROR

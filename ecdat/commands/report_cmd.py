@@ -51,6 +51,7 @@ def run(args: argparse.Namespace) -> int:
     conn = db.open_db(db_path)
     try:
         doc = sstore.get_scan_doc(conn, args.scan_id)
+        cir = sstore.get_scan_cir(conn, args.scan_id)
     finally:
         conn.close()
     if doc is None:
@@ -63,7 +64,23 @@ def run(args: argparse.Namespace) -> int:
         print(f"error: validation failed: {exc.message}", file=sys.stderr)
         return VALIDATION_FAILED
 
-    report = aggregate.build_report(doc)
+    real_risk: dict | None = None
+    if cir is not None:
+        try:
+            from ecdat.adapters import risk_view as _risk_view
+
+            posture = _risk_view.summarize_wire_risks(
+                cir.get("risks", []) or [], len(doc.get("findings", [])))
+            real_risk = {
+                "score": posture["score"],
+                "level": posture["level"],
+                "risk_count": posture.get("risk_count", 0),
+                "model": posture.get("model", ""),
+                "source": posture.get("source", ""),
+            }
+        except Exception:
+            real_risk = None
+    report = aggregate.build_report(doc, real_risk=real_risk)
     try:
         content = render(report, args.format)
     except ValueError as exc:

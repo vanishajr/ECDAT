@@ -60,6 +60,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_bin.add_argument("--deep", choices=["auto"], default="auto", help="deep-scan mode (reserved, mock ignores it)")
     p_bin.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_bin.add_argument("--output", default=None, help="write canonical JSON here")
+    p_bin.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default for scan-binary: binary)")
+    p_bin.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_bin.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_bin.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_bin.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_bin = p_bin.add_mutually_exclusive_group()
     mode_bin.add_argument("--mock", action="store_true", help="use mock fixture (default)")
     mode_bin.add_argument("--real", action="store_true", help="use RealCoreClient")
@@ -69,6 +79,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_ctr.add_argument("image_or_path", help="container image reference (e.g. nginx:1.25) or local path")
     p_ctr.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_ctr.add_argument("--output", default=None, help="write canonical JSON here")
+    p_ctr.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default for scan-container: container,binary,config)")
+    p_ctr.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_ctr.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_ctr.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_ctr.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_ctr = p_ctr.add_mutually_exclusive_group()
     mode_ctr.add_argument("--mock", action="store_true", help="use mock fixture (default)")
     mode_ctr.add_argument("--real", action="store_true", help="use RealCoreClient")
@@ -78,8 +98,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_cld.add_argument("provider", choices=["aws"], help="cloud provider (only aws for now)")
     p_cld.add_argument("--profile", default="default", help="cloud profile/account label")
     p_cld.add_argument("--services", default="kms,acm,elb", help="comma-separated services, e.g. kms,acm,elb")
+    p_cld.add_argument("--region", default=None, help="cloud region (real mode, forwarded to scanners)")
     p_cld.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_cld.add_argument("--output", default=None, help="write canonical JSON here")
+    p_cld.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default for scan-cloud: cloud)")
+    p_cld.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_cld.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_cld.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_cld.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_cld = p_cld.add_mutually_exclusive_group()
     mode_cld.add_argument("--mock", action="store_true", help="use mock fixture (default)")
     mode_cld.add_argument("--real", action="store_true", help="use RealCoreClient")
@@ -125,6 +156,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_ci.add_argument("--summary", action="store_true", help="print concise human summary (default output)")
     p_ci.add_argument("--json", action="store_true", help="print machine-readable JSON to stdout instead of the human summary")
     p_ci.add_argument("--sarif", default=None, metavar="PATH", help="write SARIF via the existing Task 7 exporter to PATH (stdout still carries summary/JSON)")
+    p_ci.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset (real mode)")
+    p_ci.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_ci.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_ci.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_ci.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_ci = p_ci.add_mutually_exclusive_group()
     mode_ci.add_argument("--mock", action="store_true", help="use MockCoreClient (default)")
     mode_ci.add_argument("--real", action="store_true", help="use RealCoreClient")

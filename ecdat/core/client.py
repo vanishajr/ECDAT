@@ -107,6 +107,7 @@ class RealCoreClient:
         allow_cloud: bool = False,
         allow_runtime: bool = False,
         risk_z: float = 10.0,
+        region: str | None = None,
         **kwargs,
     ) -> None:
         if kwargs:
@@ -118,6 +119,7 @@ class RealCoreClient:
         self.allow_cloud = bool(allow_cloud)
         self.allow_runtime = bool(allow_runtime)
         self.risk_z = float(risk_z)
+        self.region = str(region).strip() if region else None
 
     def scan(self, target: Path) -> dict:
         from ecdat.adapters.pipeline import RealScanError  # noqa: F401
@@ -130,6 +132,7 @@ class RealCoreClient:
             allow_cloud=self.allow_cloud,
             allow_runtime=self.allow_runtime,
             risk_z=self.risk_z,
+            region=self.region,
         )
         return canonical
 
@@ -149,6 +152,7 @@ class RealCoreClient:
             allow_cloud=self.allow_cloud,
             allow_runtime=self.allow_runtime,
             risk_z=self.risk_z,
+            region=self.region,
         )
 
 
