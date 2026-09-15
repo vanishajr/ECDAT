@@ -4,17 +4,13 @@
     "build": {
       "prompt": "{file:./BUILD_PROMPT.md}",
       "permission": {
-        "read": "deny",
-        "glob": "deny",
-        "grep": "deny",
-        "list": "deny",
-        "task": {
-          "*": "deny",
-          "local-investigator": "allow"
-        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
         "edit": "allow",
-        "bash": "allow",
-        "lsp": "allow",
+        "bash": { "*": "deny" },
+        "lsp": "deny",
         "webfetch": "deny",
         "websearch": "deny"
       }
