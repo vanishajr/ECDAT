@@ -222,62 +222,89 @@ class SourceScanner(Scanner[ScannerFinding]):
         findings: list[ScannerFinding] = []
         lines = content.splitlines()
 
+        # Build regex patterns for fallback: short_name followed by optional (...) then .method
+        import re
+        alias_patterns = []
+        for short_name, full_import in IMPORT_ALIASES.items():
+            for pattern, (canonical, op_type) in PYTHON_CRYPTO_PATTERNS.items():
+                if pattern.startswith(full_import + "."):
+                    method = pattern[len(full_import) + 1:]
+                    # Create regex: short_name followed by optional parentheses content then .method
+                    regex = rf"{re.escape(short_name)}\s*\([^)]*\)\s*\.\s*{re.escape(method)}"
+                    alias_patterns.append((regex, pattern, canonical, op_type))
+
         for i, line in enumerate(lines, 1):
             line_stripped = line.strip()
 
             if line_stripped.startswith("#") or '"""' in line_stripped or "'''" in line_stripped:
                 continue
 
+            # First try exact pattern matching
+            matched = False
             for pattern, (canonical, op_type) in PYTHON_CRYPTO_PATTERNS.items():
                 if pattern in line:
-                    canonical_norm, original = normalize_algorithm(canonical)
-                    category = get_category(canonical_norm)
+                    self._add_fallback_finding(findings, file_path, i, line, pattern, canonical, op_type, lines)
+                    matched = True
+                    break  # Only first match per line
 
-                    # Extract key_size and mode from canonical algorithm name
-                    key_sizes = get_key_sizes(canonical_norm)
-                    key_size = key_sizes[0] if key_sizes else None
-                    mode = get_mode(canonical_norm)
-
-                    evidence = create_evidence_signal(
-                        tool="source:ast",
-                        detail=f"direct source API call: {pattern} at {file_path}:{i}",
-                        confidence=0.85,
-                        snippet=line.strip()[:200],
-                    )
-
-                    # Determine library from pattern
-                    if "cryptography" in pattern:
-                        lib = "cryptography"
-                    elif "Crypto" in pattern:
-                        lib = "pycryptodome"
-                    elif pattern.startswith("hashlib."):
-                        lib = "hashlib"
-                    elif pattern.startswith("hmac."):
-                        lib = "hmac"
-                    else:
-                        lib = "stdlib"
-                        
-                        finding = ScannerFinding(
-                            canonical=canonical_norm,
-                            original=original,
-                            key_size=key_size,
-                            mode=mode,
-                            library=lib,
-                            usage_state=UsageState.CONFIRMED,
-                            confidence=0.85,
-                            evidence=[evidence],
-                            location=Location(file=str(file_path), line=i, function=self._find_function(lines, i)),
-                            operation_type=op_type,
-                            function=self._find_function(lines, i),
-                            implementation=Implementation(
-                                library=lib,
-                                api=pattern,
-                            ),
-                            context=Context(exposure=Exposure.INTERNAL),
-                        )
-                    findings.append(finding)
+            # Also check alias patterns with regex
+            if not matched:
+                for regex, pattern, canonical, op_type in alias_patterns:
+                    if re.search(regex, line):
+                        self._add_fallback_finding(findings, file_path, i, line, pattern, canonical, op_type, lines)
+                        matched = True
+                        break  # Only first match per line
 
         return findings
+
+    def _add_fallback_finding(self, findings: list, file_path: Path, line_num: int, line: str, 
+                              pattern: str, canonical: str, op_type, lines: list):
+        """Add a finding from fallback regex matching."""
+        canonical_norm, original = normalize_algorithm(canonical)
+        category = get_category(canonical_norm)
+
+        key_sizes = get_key_sizes(canonical_norm)
+        key_size = key_sizes[0] if key_sizes else None
+        mode = get_mode(canonical_norm)
+
+        evidence = create_evidence_signal(
+            tool="source:ast",
+            detail=f"direct source API call (fallback): {pattern} at {file_path}:{line_num}",
+            confidence=0.8,
+            snippet=line.strip()[:200],
+        )
+
+        # Determine library from pattern
+        if "cryptography" in pattern:
+            lib = "cryptography"
+        elif "Crypto" in pattern:
+            lib = "pycryptodome"
+        elif pattern.startswith("hashlib."):
+            lib = "hashlib"
+        elif pattern.startswith("hmac."):
+            lib = "hmac"
+        else:
+            lib = "stdlib"
+            
+        finding = ScannerFinding(
+            canonical=canonical_norm,
+            original=original,
+            key_size=key_size,
+            mode=mode,
+            library=lib,
+            usage_state=UsageState.CONFIRMED,
+            confidence=0.8,
+            evidence=[evidence],
+            location=Location(file=str(file_path), line=line_num, function=self._find_function(lines, line_num)),
+            operation_type=op_type,
+            function=self._find_function(lines, line_num),
+            implementation=Implementation(
+                library=lib,
+                api=pattern,
+            ),
+            context=Context(exposure=Exposure.INTERNAL),
+        )
+        findings.append(finding)
 
     def _find_function(self, lines: list[str], line_num: int) -> Optional[str]:
         for i in range(line_num - 1, -1, -1):

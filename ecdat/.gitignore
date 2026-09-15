@@ -146,3 +146,10 @@ cython_debug/
 # OS
 .DS_Store
 Thumbs.db
+
+# ECDAT-specific
+evaluation_results*.json
+benchmark_results*.json
+*.sqlite
+*.sqlite3
+.ecdat_cache/

@@ -106,7 +106,8 @@ class DiscoveryEngine:
         """Correlate findings from different scanners that refer to the same logical asset.
         
         Groups by (file, canonical) and merges findings from different scanners
-        that are within 5 lines of each other.
+        that are within 5 lines of each other. Also merges findings from the same
+        scanner that are within 5 lines and in the same function.
         """
         if not findings:
             return findings
@@ -136,13 +137,19 @@ class DiscoveryEngine:
                 finding_line = finding.location.line if finding.location else None
                 
                 different_scanner = self._get_scanner_name(current) != self._get_scanner_name(finding)
+                same_function = (
+                    current.location.function is not None and
+                    finding.location.function is not None and
+                    current.location.function == finding.location.function
+                )
                 nearby = (
                     current_line is not None and 
                     finding_line is not None and 
                     abs(current_line - finding_line) <= 5
                 )
                 
-                if different_scanner and nearby:
+                # Merge if: different scanners nearby, OR same scanner in same function nearby
+                if (different_scanner and nearby) or (not different_scanner and same_function and nearby):
                     # Merge findings
                     current = self._merge_findings(current, finding)
                 else:

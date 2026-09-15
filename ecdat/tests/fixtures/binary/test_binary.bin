@@ -1,0 +1,16 @@
+# This is a test binary file with embedded crypto strings
+# Using lowercase to match CRYPTO_STRINGS patterns
+aes-256-gcm
+rsa
+sha-256
+openssl
+ecdsa
+x25519
+ed25519
+chacha20-poly1305
+pbkdf2
+hkdf
+tls1.2
+ssh
+ml-kem
+ml-dsa

@@ -318,9 +318,136 @@ class DependencyScanner(Scanner[ScannerFinding]):
         return findings
 
     def _scan_js_lockfile(self, file_path: Path) -> list[ScannerFinding]:
-        return []
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            if file_path.name == "package-lock.json":
+                findings.extend(self._scan_package_lock_json(file_path, content))
+            elif file_path.name == "yarn.lock":
+                findings.extend(self._scan_yarn_lock(file_path, content))
+            elif file_path.name == "pnpm-lock.yaml":
+                findings.extend(self._scan_pnpm_lock(file_path, content))
+        except Exception:
+            pass
+        return findings
 
-    def _scan_cargo_toml(self, file_path: Path) -> list[ScannerFinding]:
+    def _scan_package_lock_json(self, file_path: Path, content: str) -> list[ScannerFinding]:
+        findings: list[ScannerFinding] = []
+        try:
+            data = json.loads(content)
+            packages = data.get("packages", {})
+            for pkg_path, pkg_info in packages.items():
+                if pkg_path == "":
+                    continue
+                name = pkg_info.get("name", "").lower()
+                version = pkg_info.get("version", "")
+                if name in CRYPTO_PACKAGES:
+                    info = CRYPTO_PACKAGES[name]
+                    canonical, original = normalize_algorithm(info["canonical"])
+                    
+                    evidence = create_evidence_signal(
+                        tool="dependency:package-lock",
+                        detail=f"dependency {name}@{version} found in package-lock.json",
+                        confidence=info["confidence"],
+                        snippet=f"{name}=={version}",
+                    )
+                    
+                    finding = ScannerFinding(
+                        canonical=canonical,
+                        original=original,
+                        library=name,
+                        usage_state=UsageState.PROVIDED_ONLY,
+                        confidence=info["confidence"],
+                        evidence=[evidence],
+                        location=Location(file=str(file_path)),
+                        implementation=Implementation(library=name, version=version),
+                        context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                        dependency_only=True,
+                    )
+                    findings.append(finding)
+        except Exception:
+            pass
+        return findings
+
+    def _scan_yarn_lock(self, file_path: Path, content: str) -> list[ScannerFinding]:
+        findings: list[ScannerFinding] = []
+        try:
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                match = re.match(r'^([^@\s]+)@([^:]+):', line)
+                if match:
+                    name = match.group(1).lower()
+                    version = match.group(2)
+                    if name in CRYPTO_PACKAGES:
+                        info = CRYPTO_PACKAGES[name]
+                        canonical, original = normalize_algorithm(info["canonical"])
+                        
+                        evidence = create_evidence_signal(
+                            tool="dependency:yarn-lock",
+                            detail=f"dependency {name}@{version} found in yarn.lock",
+                            confidence=info["confidence"],
+                            snippet=f"{name}@{version}",
+                        )
+                        
+                        finding = ScannerFinding(
+                            canonical=canonical,
+                            original=original,
+                            library=name,
+                            usage_state=UsageState.PROVIDED_ONLY,
+                            confidence=info["confidence"],
+                            evidence=[evidence],
+                            location=Location(file=str(file_path)),
+                            implementation=Implementation(library=name, version=version),
+                            context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                            dependency_only=True,
+                        )
+                        findings.append(finding)
+        except Exception:
+            pass
+        return findings
+
+    def _scan_pnpm_lock(self, file_path: Path, content: str) -> list[ScannerFinding]:
+        findings: list[ScannerFinding] = []
+        try:
+            import yaml
+            data = yaml.safe_load(content)
+            packages = data.get("packages", {})
+            for pkg_path, pkg_info in packages.items():
+                if not pkg_path or pkg_path == "/":
+                    continue
+                match = re.match(r"^/([^/]+)/(.+)$", pkg_path)
+                if match:
+                    name = match.group(1).lower()
+                    version = match.group(2)
+                    if name in CRYPTO_PACKAGES:
+                        info = CRYPTO_PACKAGES[name]
+                        canonical, original = normalize_algorithm(info["canonical"])
+                        
+                        evidence = create_evidence_signal(
+                            tool="dependency:pnpm-lock",
+                            detail=f"dependency {name}@{version} found in pnpm-lock.yaml",
+                            confidence=info["confidence"],
+                            snippet=f"{name}@{version}",
+                        )
+                        
+                        finding = ScannerFinding(
+                            canonical=canonical,
+                            original=original,
+                            library=name,
+                            usage_state=UsageState.PROVIDED_ONLY,
+                            confidence=info["confidence"],
+                            evidence=[evidence],
+                            location=Location(file=str(file_path)),
+                            implementation=Implementation(library=name, version=version),
+                            context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                            dependency_only=True,
+                        )
+                        findings.append(finding)
+        except Exception:
+            pass
+        return findings
         findings: list[ScannerFinding] = []
         try:
             content = file_path.read_text(encoding="utf-8")
@@ -362,7 +489,43 @@ class DependencyScanner(Scanner[ScannerFinding]):
         return findings
 
     def _scan_cargo_lock(self, file_path: Path) -> list[ScannerFinding]:
-        return []
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            # Cargo.lock is TOML format
+            import tomllib
+            data = tomllib.loads(content)
+            packages = data.get("package", [])
+            for pkg in packages:
+                name = pkg.get("name", "").lower()
+                version = pkg.get("version", "")
+                if name in CRYPTO_PACKAGES:
+                    info = CRYPTO_PACKAGES[name]
+                    canonical, original = normalize_algorithm(info["canonical"])
+
+                    evidence = create_evidence_signal(
+                        tool="dependency:cargo-lock",
+                        detail=f"dependency {name}@{version} found in Cargo.lock",
+                        confidence=info["confidence"],
+                        snippet=f"{name}=={version}",
+                    )
+
+                    finding = ScannerFinding(
+                        canonical=canonical,
+                        original=original,
+                        library=name,
+                        usage_state=UsageState.PROVIDED_ONLY,
+                        confidence=info["confidence"],
+                        evidence=[evidence],
+                        location=Location(file=str(file_path)),
+                        implementation=Implementation(library=name, version=version),
+                        context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                        dependency_only=True,
+                    )
+                    findings.append(finding)
+        except Exception:
+            pass
+        return findings
 
     def _scan_go_mod(self, file_path: Path) -> list[ScannerFinding]:
         findings: list[ScannerFinding] = []
@@ -408,16 +571,168 @@ class DependencyScanner(Scanner[ScannerFinding]):
         return findings
 
     def _scan_pom_xml(self, file_path: Path) -> list[ScannerFinding]:
-        return []
+        findings: list[ScannerFinding] = []
+        try:
+            import xml.etree.ElementTree as ET
+            tree = ET.parse(file_path)
+            root = tree.getroot()
+            
+            ns = {"mvn": "http://maven.apache.org/POM/4.0.0"}
+            
+            for dep in root.findall(".//mvn:dependency", ns):
+                group_id = dep.findtext("mvn:groupId", default="", namespaces=ns)
+                artifact_id = dep.findtext("mvn:artifactId", default="", namespaces=ns)
+                version = dep.findtext("mvn:version", default="", namespaces=ns)
+                
+                if group_id and artifact_id:
+                    simple_name = artifact_id.lower()
+                    if simple_name in CRYPTO_PACKAGES:
+                        info = CRYPTO_PACKAGES[simple_name]
+                        canonical, original = normalize_algorithm(info["canonical"])
+                        
+                        evidence = create_evidence_signal(
+                            tool="dependency:maven",
+                            detail=f"dependency {group_id}:{artifact_id}:{version} found in pom.xml",
+                            confidence=info["confidence"],
+                            snippet=f"{group_id}:{artifact_id}:{version}",
+                        )
+                        
+                        finding = ScannerFinding(
+                            canonical=canonical,
+                            original=original,
+                            library=simple_name,
+                            usage_state=UsageState.PROVIDED_ONLY,
+                            confidence=info["confidence"],
+                            evidence=[evidence],
+                            location=Location(file=str(file_path)),
+                            implementation=Implementation(library=simple_name, version=version),
+                            context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                            dependency_only=True,
+                        )
+                        findings.append(finding)
+        except Exception:
+            pass
+        return findings
 
     def _scan_gradle(self, file_path: Path) -> list[ScannerFinding]:
-        return []
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            dep_pattern = re.compile(r'(?:implementation|api|compile|runtimeOnly|testImplementation)\s*[\("]\s*([^:"\s]+)\s*:\s*([^:"\s]+)\s*:\s*([^:"\s]+)')
+            for match in dep_pattern.finditer(content):
+                group_id = match.group(1)
+                artifact_id = match.group(2)
+                version = match.group(3)
+                
+                simple_name = artifact_id.lower()
+                if simple_name in CRYPTO_PACKAGES:
+                    info = CRYPTO_PACKAGES[simple_name]
+                    canonical, original = normalize_algorithm(info["canonical"])
+                    
+                    evidence = create_evidence_signal(
+                        tool="dependency:gradle",
+                        detail=f"dependency {group_id}:{artifact_id}:{version} found in {file_path.name}",
+                        confidence=info["confidence"],
+                        snippet=f"{group_id}:{artifact_id}:{version}",
+                    )
+                    
+                    finding = ScannerFinding(
+                        canonical=canonical,
+                        original=original,
+                        library=simple_name,
+                        usage_state=UsageState.PROVIDED_ONLY,
+                        confidence=info["confidence"],
+                        evidence=[evidence],
+                        location=Location(file=str(file_path)),
+                        implementation=Implementation(library=simple_name, version=version),
+                        context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                        dependency_only=True,
+                    )
+                    findings.append(finding)
+        except Exception:
+            pass
+        return findings
 
     def _scan_gemfile(self, file_path: Path) -> list[ScannerFinding]:
-        return []
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                match = re.match(r"gem\s+['\"]([^'\"]+)['\"]\s*(?:,\s*['\"]([^'\"]+)['\"])?", line)
+                if match:
+                    name = match.group(1).lower()
+                    version = match.group(2) if match.group(2) else ""
+                    if name in CRYPTO_PACKAGES:
+                        info = CRYPTO_PACKAGES[name]
+                        canonical, original = normalize_algorithm(info["canonical"])
+                        
+                        evidence = create_evidence_signal(
+                            tool="dependency:gemfile",
+                            detail=f"gem {name}@{version} found in Gemfile",
+                            confidence=info["confidence"],
+                            snippet=f"gem '{name}', '{version}'",
+                        )
+                        
+                        finding = ScannerFinding(
+                            canonical=canonical,
+                            original=original,
+                            library=name,
+                            usage_state=UsageState.PROVIDED_ONLY,
+                            confidence=info["confidence"],
+                            evidence=[evidence],
+                            location=Location(file=str(file_path)),
+                            implementation=Implementation(library=name, version=version),
+                            context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                            dependency_only=True,
+                        )
+                        findings.append(finding)
+        except Exception:
+            pass
+        return findings
 
     def _scan_composer_json(self, file_path: Path) -> list[ScannerFinding]:
-        return []
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            data = json.loads(content)
+            
+            all_deps = {}
+            for key in ["require", "require-dev", "require-optional"]:
+                if key in data:
+                    all_deps.update(data[key])
+            
+            for pkg_name, version in all_deps.items():
+                normalized = pkg_name.lower().split("/")[-1]
+                if normalized in CRYPTO_PACKAGES:
+                    info = CRYPTO_PACKAGES[normalized]
+                    canonical, original = normalize_algorithm(info["canonical"])
+                    
+                    evidence = create_evidence_signal(
+                        tool="dependency:composer",
+                        detail=f"dependency {pkg_name}@{version} found in composer.json",
+                        confidence=info["confidence"],
+                        snippet=f'"{pkg_name}": "{version}"',
+                    )
+                    
+                    finding = ScannerFinding(
+                        canonical=canonical,
+                        original=original,
+                        library=pkg_name,
+                        usage_state=UsageState.PROVIDED_ONLY,
+                        confidence=info["confidence"],
+                        evidence=[evidence],
+                        location=Location(file=str(file_path)),
+                        implementation=Implementation(library=pkg_name, version=version.lstrip("^~")),
+                        context=Context(exposure=Exposure.INTERNAL, notes="Dependency-only; no confirmed crypto operation"),
+                        dependency_only=True,
+                    )
+                    findings.append(finding)
+        except Exception:
+            pass
+        return findings
 
     def _scan_python_imports(self, target_path: Path) -> list[ScannerFinding]:
         findings: list[ScannerFinding] = []
