@@ -76,7 +76,7 @@ class ContainerScanner(Scanner[ScannerFinding]):
                 row = cursor.fetchone()
                 if row:
                     findings_data = json.loads(row["findings_json"])
-                    findings = [self._deserialize_finding(f) for f in findings_data]
+                    findings = [ScannerFinding(**f) for f in findings_data]
                     # Update access time
                     conn.execute(
                         "UPDATE layer_cache SET accessed_at = ? WHERE layer_digest = ?",
@@ -89,43 +89,6 @@ class ContainerScanner(Scanner[ScannerFinding]):
         except Exception:
             pass
         return None
-
-    def _deserialize_finding(self, data: dict) -> ScannerFinding:
-        """Deserialize a ScannerFinding from cached dict, reconstructing nested dataclasses."""
-        from ecdat.core.cir_models import Location, Implementation, Context, UsageState, Exposure, EvidenceSignal, OperationType
-        
-        # Create copies to avoid mutating cached data
-        data = dict(data)
-        
-        # Reconstruct nested dataclasses
-        if data.get("location") and isinstance(data["location"], dict):
-            data["location"] = Location(**data["location"])
-        
-        if data.get("implementation") and isinstance(data["implementation"], dict):
-            data["implementation"] = Implementation(**data["implementation"])
-        
-        if data.get("context") and isinstance(data["context"], dict):
-            data["context"] = Context(**data["context"])
-        
-        if data.get("evidence"):
-            data["evidence"] = [
-                EvidenceSignal(**e) if isinstance(e, dict) else e
-                for e in data["evidence"]
-            ]
-        
-        # Convert usage_state string back to enum
-        if data.get("usage_state") and isinstance(data["usage_state"], str):
-            data["usage_state"] = UsageState(data["usage_state"])
-        
-        # Convert operation_type string back to enum
-        if data.get("operation_type") and isinstance(data["operation_type"], str):
-            data["operation_type"] = OperationType(data["operation_type"])
-        
-        # Convert exposure string back to enum (inside context)
-        if data.get("context") and hasattr(data["context"], "exposure") and isinstance(data["context"].exposure, str):
-            data["context"].exposure = Exposure(data["context"].exposure)
-        
-        return ScannerFinding(**data)
 
     def _cache_layer(self, layer_digest: str, findings: list[ScannerFinding]):
         """Cache findings for a layer digest."""

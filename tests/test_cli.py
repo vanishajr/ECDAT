@@ -91,8 +91,21 @@ def test_scan_target_not_found(tmp_path, capsys):
 
 
 def test_scan_real_placeholder_is_clean(tmp_path, capsys):
+    # Integrated real mode: --real runs the P2/P1 pipeline (rc 0) and
+    # real failures stay loud without tracebacks (see
+    # test_scan_real_invalid_scanners_fail_clean).
     target = _target(tmp_path)
     rc = main(["scan", str(target), "--db", _db(tmp_path), "--real"])
+    assert rc == 0
+    out, err = capsys.readouterr()
+    assert "Traceback" not in out + err
+    assert out.strip().startswith("scan:")
+
+
+def test_scan_real_invalid_scanners_fail_clean(tmp_path, capsys):
+    target = _target(tmp_path)
+    rc = main(["scan", str(target), "--db", _db(tmp_path), "--real",
+               "--scanners", "bogus-scanner"])
     assert rc == 1
     out, err = capsys.readouterr()
     assert "Traceback" not in out + err

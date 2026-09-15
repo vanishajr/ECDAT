@@ -57,27 +57,55 @@ def _deterministic_hash(value: str, prefix: str, length: int = 16) -> str:
 
 class DiscoveryEngine:
     def __init__(self, enabled_scanners: Optional[list[str]] = None) -> None:
-        self._all_scanners = {
-            "source": SourceScanner(),
-            "dependency": DependencyScanner(),
-            "binary": BinaryScanner(),
-            "container": ContainerScanner(),
-            "config": ConfigScanner(),
-            "certificate": CertificateScanner(),
-            "runtime": RuntimeScanner(),
-            "cloud": CloudScanner(),
+        # P3 integration note: construct ONLY explicitly enabled scanners.
+        # P2 constructed all eight families up front, which fires an AWS
+        # STS identity call (the cloud availability probe) at
+        # construction time — network I/O as a constructor side effect.
+        # enabled_scanners=None now means the P3 safe local default
+        # (source/dependency/binary/config/certificate), never the
+        # network-capable families (container/cloud/runtime), which are
+        # constructed solely on explicit request.
+        if enabled_scanners is None:
+            from ecdat.adapters.scanner_policy import DEFAULT_SCANNERS
+            enabled_scanners = list(DEFAULT_SCANNERS)
+        factories = {
+            "source": SourceScanner,
+            "dependency": DependencyScanner,
+            "binary": BinaryScanner,
+            "container": ContainerScanner,
+            "config": ConfigScanner,
+            "certificate": CertificateScanner,
+            "runtime": RuntimeScanner,
+            "cloud": CloudScanner,
         }
-
-        if enabled_scanners:
-            self._scanners = {name: self._all_scanners[name] for name in enabled_scanners if name in self._all_scanners}
-        else:
-            self._scanners = {name: scanner for name, scanner in self._all_scanners.items() if scanner.is_available()}
+        self._all_scanners = {}
+        for name in enabled_scanners:
+            factory = factories.get(str(name).strip().lower())
+            if factory is not None and name not in self._all_scanners:
+                self._all_scanners[str(name).strip().lower()] = factory()
+        self._scanners = dict(self._all_scanners)
 
     def get_available_scanners(self) -> list[str]:
         return [name for name, scanner in self._all_scanners.items() if scanner.is_available()]
 
     def get_enabled_scanners(self) -> list[str]:
         return list(self._scanners.keys())
+
+    def availability(self) -> dict[str, bool]:
+        """P3 integration addition: availability of ENABLED scanners.
+
+        Public probe so orchestrators can warn loudly when an
+        explicitly requested family cannot run (missing tool, daemon,
+        or credentials) instead of silently yielding zero findings.
+        Note: probing the cloud family may use ambient credentials.
+        """
+        report: dict[str, bool] = {}
+        for name, scanner in self._scanners.items():
+            try:
+                report[name] = bool(scanner.is_available())
+            except Exception:
+                report[name] = False
+        return report
 
     def scan(self, target: Path | str, scanner_names: Optional[list[str]] = None, **kwargs) -> list[ScannerFinding]:
         target_path = Path(target) if not isinstance(target, str) or Path(target).exists() else target

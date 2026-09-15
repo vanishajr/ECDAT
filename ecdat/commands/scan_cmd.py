@@ -1,8 +1,11 @@
 """ecdat scan <path> [--db PATH] [--output JSON] [--mock | --real].
 
 Flow: CoreClient.scan() -> validate() -> SQLite insert. Prints scan_id.
-Default client is mock. Exit codes: 0 ok, 1 error (incl. real-mode
-placeholder, duplicate scan), 2 target not found, 3 validation failure.
+Default client is mock. --real runs the integrated P2/P1 pipeline
+(explicit scanner subset; opt-in families via --allow-*) and stores
+the canonical document plus the CIR sidecar. Exit codes: 0 ok,
+1 error (incl. real-mode failure, duplicate scan), 2 target not
+found, 3 validation failure.
 """
 
 from __future__ import annotations
@@ -29,13 +32,13 @@ def run(args: argparse.Namespace) -> int:
         print(f"error: target not found: {target}", file=sys.stderr)
         return TARGET_NOT_FOUND
 
-    client = get_client("real" if args.real else "mock")
-    try:
-        doc = client.scan(target)
-    except NotImplementedError as exc:
-        # RealCoreClient placeholder: clean message, no traceback.
-        print(f"error: {exc}", file=sys.stderr)
-        return ERROR
+    if args.real:
+        from ecdat.commands._real_scan import run_real_and_store
+
+        return run_real_and_store(args, target)
+
+    client = get_client("mock")
+    doc = client.scan(target)
 
     try:
         validate(doc)

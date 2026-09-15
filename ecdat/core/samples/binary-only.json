@@ -1,0 +1,476 @@
+{
+  "assets": [
+    {
+      "asset_id": "ast:0a882c22ced70e11",
+      "canonical": "RSA",
+      "confidence": 0.8,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage RSA; data_lifetime_years=6; migration_years=3"
+      },
+      "evidence": [
+        {
+          "confidence": 0.8,
+          "detail": "binary-symbol crypto-rsa-strings in samples/agent.bin @0x4a2f0",
+          "snippet": "strings: RSA_public_encrypt referenced at 0x4a2f0",
+          "tool": "yara-x"
+        }
+      ],
+      "implementation": {
+        "api": "RSA_public_encrypt",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "key_size": 2048,
+      "library": "openssl",
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x4a2f0"
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Probable"
+      },
+      "usage_state": "Probable"
+    },
+    {
+      "asset_id": "ast:f8cd9b4375d7bf2d",
+      "canonical": "DH",
+      "confidence": 0.75,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage DH; data_lifetime_years=6; migration_years=3"
+      },
+      "evidence": [
+        {
+          "confidence": 0.75,
+          "detail": "binary-import crypto-dh-import in samples/agent.bin",
+          "snippet": "import: DH_compute_key (libcrypto)",
+          "tool": "lief"
+        }
+      ],
+      "implementation": {
+        "api": "DH_compute_key",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "key_size": 2048,
+      "library": "openssl",
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x4b110"
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Probable"
+      },
+      "usage_state": "Probable"
+    },
+    {
+      "asset_id": "ast:cf26ab1c4ee0d69c",
+      "canonical": "SHA-1",
+      "confidence": 0.7,
+      "context": {
+        "data_classification": "internal",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage SHA-1; data_lifetime_years=4; migration_years=2"
+      },
+      "evidence": [
+        {
+          "confidence": 0.7,
+          "detail": "crypto-constant crypto-sha1-const in samples/agent.bin",
+          "snippet": "SHA-1 round constants + SHA1_Init at 0x2c008",
+          "tool": "yara-x"
+        }
+      ],
+      "implementation": {
+        "api": "SHA1_Init",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "library": "openssl",
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x2c008"
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": false,
+        "usage_state": "Probable"
+      },
+      "usage_state": "Probable"
+    },
+    {
+      "asset_id": "ast:5b55b3093c408d8f",
+      "canonical": "HMAC-SHA256",
+      "confidence": 0.88,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage HMAC-SHA256; data_lifetime_years=5; migration_years=2"
+      },
+      "evidence": [
+        {
+          "confidence": 0.88,
+          "detail": "binary-import crypto-hmac-import in samples/agent.bin",
+          "snippet": "import: HMAC (libcrypto) at 0x2d400",
+          "tool": "lief"
+        },
+        {
+          "confidence": 0.8,
+          "detail": "binary-strings crypto-hmac-strings in samples/agent.bin",
+          "snippet": "strings: HMAC(EVP_sha256() ...) call site",
+          "tool": "floss"
+        }
+      ],
+      "implementation": {
+        "api": "HMAC",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "library": "openssl",
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x2d400"
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    }
+  ],
+  "cir_version": "0.1",
+  "finished_at": "2026-09-10T11:00:04Z",
+  "graph": {
+    "edges": [
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:5b55b3093c408d8f"
+      },
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:cf26ab1c4ee0d69c"
+      },
+      {
+        "from": "lib:openssl@3.0.13",
+        "relationship": "derives",
+        "to": "ast:f8cd9b4375d7bf2d"
+      },
+      {
+        "from": "op:702d875564d1f4be",
+        "relationship": "derives",
+        "to": "ast:0a882c22ced70e11"
+      },
+      {
+        "from": "op:702d875564d1f4be",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "op:83c541e575b3c166",
+        "relationship": "derives",
+        "to": "ast:5b55b3093c408d8f"
+      },
+      {
+        "from": "op:83c541e575b3c166",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "op:d38208e00b886b36",
+        "relationship": "derives",
+        "to": "ast:f8cd9b4375d7bf2d"
+      },
+      {
+        "from": "op:d38208e00b886b36",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "op:fb7d0af6974ae67f",
+        "relationship": "derives",
+        "to": "ast:cf26ab1c4ee0d69c"
+      },
+      {
+        "from": "op:fb7d0af6974ae67f",
+        "relationship": "depends_on",
+        "to": "lib:openssl@3.0.13"
+      },
+      {
+        "from": "owner:team-embedded",
+        "relationship": "contains",
+        "to": "svc:legacy-agent"
+      },
+      {
+        "from": "svc:legacy-agent",
+        "relationship": "uses",
+        "to": "op:702d875564d1f4be"
+      },
+      {
+        "from": "svc:legacy-agent",
+        "relationship": "uses",
+        "to": "op:83c541e575b3c166"
+      },
+      {
+        "from": "svc:legacy-agent",
+        "relationship": "uses",
+        "to": "op:d38208e00b886b36"
+      },
+      {
+        "from": "svc:legacy-agent",
+        "relationship": "uses",
+        "to": "op:fb7d0af6974ae67f"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "ast:0a882c22ced70e11",
+        "kind": "asset",
+        "label": "RSA",
+        "ref": "ast:0a882c22ced70e11"
+      },
+      {
+        "id": "ast:5b55b3093c408d8f",
+        "kind": "asset",
+        "label": "HMAC-SHA256",
+        "ref": "ast:5b55b3093c408d8f"
+      },
+      {
+        "id": "ast:cf26ab1c4ee0d69c",
+        "kind": "asset",
+        "label": "SHA-1",
+        "ref": "ast:cf26ab1c4ee0d69c"
+      },
+      {
+        "id": "ast:f8cd9b4375d7bf2d",
+        "kind": "asset",
+        "label": "DH",
+        "ref": "ast:f8cd9b4375d7bf2d"
+      },
+      {
+        "id": "lib:openssl@3.0.13",
+        "kind": "library",
+        "label": "openssl@3.0.13",
+        "ref": "lib:openssl@3.0.13"
+      },
+      {
+        "id": "op:702d875564d1f4be",
+        "kind": "operation",
+        "label": "RSA [op:702d875564d1f4be]",
+        "ref": "op:702d875564d1f4be"
+      },
+      {
+        "id": "op:83c541e575b3c166",
+        "kind": "operation",
+        "label": "HMAC-SHA256 [op:83c541e575b3c166]",
+        "ref": "op:83c541e575b3c166"
+      },
+      {
+        "id": "op:d38208e00b886b36",
+        "kind": "operation",
+        "label": "DH [op:d38208e00b886b36]",
+        "ref": "op:d38208e00b886b36"
+      },
+      {
+        "id": "op:fb7d0af6974ae67f",
+        "kind": "operation",
+        "label": "SHA-1 [op:fb7d0af6974ae67f]",
+        "ref": "op:fb7d0af6974ae67f"
+      },
+      {
+        "id": "owner:team-embedded",
+        "kind": "service",
+        "label": "team-embedded",
+        "ref": "owner:team-embedded"
+      },
+      {
+        "id": "svc:legacy-agent",
+        "kind": "service",
+        "label": "legacy-agent",
+        "ref": "svc:legacy-agent"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "asset_id": "ast:0a882c22ced70e11",
+      "confidence": 0.8,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage RSA; data_lifetime_years=6; migration_years=3"
+      },
+      "evidence": [
+        {
+          "confidence": 0.8,
+          "detail": "binary-symbol crypto-rsa-strings in samples/agent.bin @0x4a2f0",
+          "snippet": "strings: RSA_public_encrypt referenced at 0x4a2f0",
+          "tool": "yara-x"
+        }
+      ],
+      "implementation": {
+        "api": "RSA_public_encrypt",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x4a2f0"
+      },
+      "operation_id": "op:702d875564d1f4be",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Probable"
+      }
+    },
+    {
+      "asset_id": "ast:f8cd9b4375d7bf2d",
+      "confidence": 0.75,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage DH; data_lifetime_years=6; migration_years=3"
+      },
+      "evidence": [
+        {
+          "confidence": 0.75,
+          "detail": "binary-import crypto-dh-import in samples/agent.bin",
+          "snippet": "import: DH_compute_key (libcrypto)",
+          "tool": "lief"
+        }
+      ],
+      "implementation": {
+        "api": "DH_compute_key",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x4b110"
+      },
+      "operation_id": "op:d38208e00b886b36",
+      "operation_type": "KeyExchange",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Probable"
+      }
+    },
+    {
+      "asset_id": "ast:cf26ab1c4ee0d69c",
+      "confidence": 0.7,
+      "context": {
+        "data_classification": "internal",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage SHA-1; data_lifetime_years=4; migration_years=2"
+      },
+      "evidence": [
+        {
+          "confidence": 0.7,
+          "detail": "crypto-constant crypto-sha1-const in samples/agent.bin",
+          "snippet": "SHA-1 round constants + SHA1_Init at 0x2c008",
+          "tool": "yara-x"
+        }
+      ],
+      "implementation": {
+        "api": "SHA1_Init",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x2c008"
+      },
+      "operation_id": "op:fb7d0af6974ae67f",
+      "operation_type": "Sign",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": false,
+        "usage_state": "Probable"
+      }
+    },
+    {
+      "asset_id": "ast:5b55b3093c408d8f",
+      "confidence": 0.88,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "staging",
+        "exposure": "internal",
+        "notes": "service legacy-agent; usage HMAC-SHA256; data_lifetime_years=5; migration_years=2"
+      },
+      "evidence": [
+        {
+          "confidence": 0.88,
+          "detail": "binary-import crypto-hmac-import in samples/agent.bin",
+          "snippet": "import: HMAC (libcrypto) at 0x2d400",
+          "tool": "lief"
+        },
+        {
+          "confidence": 0.8,
+          "detail": "binary-strings crypto-hmac-strings in samples/agent.bin",
+          "snippet": "strings: HMAC(EVP_sha256() ...) call site",
+          "tool": "floss"
+        }
+      ],
+      "implementation": {
+        "api": "HMAC",
+        "library": "openssl",
+        "version": "3.0.13"
+      },
+      "location": {
+        "file": "samples/agent.bin",
+        "uri": "binary-offset:0x2d400"
+      },
+      "operation_id": "op:83c541e575b3c166",
+      "operation_type": "Sign",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    }
+  ],
+  "registry_version": "2026.09.11",
+  "scan_id": "scan:sample-binary-001",
+  "started_at": "2026-09-10T11:00:00Z",
+  "stats": {
+    "asset_count": 4,
+    "edge_count": 17,
+    "node_count": 11,
+    "operation_count": 4
+  },
+  "target": "samples/agent.bin",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  }
+}

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from ecdat import create_discovery_engine
+from ecdat.scanners.discovery import create_discovery_engine
 from ecdat.scanners.source import SourceScanner
 from ecdat.scanners.dependency import DependencyScanner
 from ecdat.scanners.config import ConfigScanner

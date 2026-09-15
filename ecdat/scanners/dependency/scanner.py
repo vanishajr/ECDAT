@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import tomllib
+try:
+    import tomllib
+except ImportError:  # Python 3.10: stdlib tomllib is 3.11+
+    import tomli as tomllib
 from pathlib import Path
 from typing import Any, Optional
 

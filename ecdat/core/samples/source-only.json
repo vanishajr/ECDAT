@@ -1,0 +1,646 @@
+{
+  "assets": [
+    {
+      "asset_id": "ast:ffa252efe9e1e624",
+      "canonical": "RSA",
+      "confidence": 0.95,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service auth-service; usage RSA; data_lifetime_years=8; migration_years=3; key local:key:auth-session-01"
+      },
+      "evidence": [
+        {
+          "confidence": 0.95,
+          "detail": "source-api-call crypto-rsa-1024 at samples/app-src/auth.py:42",
+          "snippet": "rsa.generate_private_key(key_size=1024)  # session key",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "rsa.generate_private_key",
+        "library": "cryptography",
+        "version": "44.0.0"
+      },
+      "key_size": 1024,
+      "library": "cryptography",
+      "location": {
+        "file": "samples/app-src/auth.py",
+        "function": "create_session_key",
+        "line": 42
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:43666eeb8d40ff8f",
+      "canonical": "ECDSA",
+      "confidence": 0.9,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service auth-service; usage ECDSA; data_lifetime_years=5; migration_years=2; key local:key:token-sign-01"
+      },
+      "curve": "P-256",
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "detail": "source-api-call crypto-ecdsa at samples/app-src/sign.py:17",
+          "snippet": "SigningKey.from_secret_exponent(curve=NIST256p)",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "SigningKey.sign",
+        "library": "ecdsa",
+        "version": "0.19.0"
+      },
+      "library": "ecdsa",
+      "location": {
+        "file": "samples/app-src/sign.py",
+        "function": "verify_token",
+        "line": 17
+      },
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:4b4866f6816f2251",
+      "canonical": "AES-256-GCM",
+      "confidence": 0.97,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service auth-service; usage AES-256-GCM; data_lifetime_years=3; migration_years=2; key local:key:data-enc-01"
+      },
+      "evidence": [
+        {
+          "confidence": 0.97,
+          "detail": "source-api-call crypto-aes-gcm at samples/app-src/crypto.py:15",
+          "snippet": "AESGCM(key).encrypt(nonce, record, aad)",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "AESGCM.encrypt",
+        "library": "cryptography",
+        "version": "44.0.0"
+      },
+      "key_size": 256,
+      "library": "cryptography",
+      "location": {
+        "file": "samples/app-src/crypto.py",
+        "function": "encrypt_record",
+        "line": 15
+      },
+      "mode": "GCM",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:ed31b807963deab2",
+      "canonical": "AES-128-ECB",
+      "confidence": 0.93,
+      "context": {
+        "data_classification": "internal",
+        "environment": "production",
+        "exposure": "third-party",
+        "notes": "service auth-service; usage AES-128-ECB; data_lifetime_years=7; migration_years=2; key local:key:legacy-01"
+      },
+      "evidence": [
+        {
+          "confidence": 0.93,
+          "detail": "source-api-call crypto-aes-ecb at samples/app-src/crypto.py:88",
+          "snippet": "AES.new(key, AES.MODE_ECB)  # legacy path",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "AES.new/MODE_ECB",
+        "library": "pycryptodome",
+        "version": "3.20.0"
+      },
+      "key_size": 128,
+      "library": "pycryptodome",
+      "location": {
+        "file": "samples/app-src/crypto.py",
+        "function": "legacy_encrypt",
+        "line": 88
+      },
+      "mode": "ECB",
+      "risk_inputs": {
+        "exposure": "third-party",
+        "external_dependency": false,
+        "sensitive_data": false,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    },
+    {
+      "asset_id": "ast:53098eba6e646c72",
+      "canonical": "MD5",
+      "confidence": 0.92,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service auth-service; usage MD5; data_lifetime_years=10; migration_years=1"
+      },
+      "evidence": [
+        {
+          "confidence": 0.92,
+          "detail": "source-api-call crypto-md5-password at samples/app-src/auth.py:88",
+          "snippet": "hashlib.md5(password.encode())  # security use",
+          "tool": "semgrep"
+        }
+      ],
+      "implementation": {
+        "api": "hashlib.md5",
+        "library": "hashlib"
+      },
+      "library": "hashlib",
+      "location": {
+        "file": "samples/app-src/auth.py",
+        "function": "check_password",
+        "line": 88
+      },
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      },
+      "usage_state": "Confirmed"
+    }
+  ],
+  "cir_version": "0.1",
+  "finished_at": "2026-09-10T10:00:05Z",
+  "graph": {
+    "edges": [
+      {
+        "from": "key:local:key:auth-session-01",
+        "relationship": "protects",
+        "to": "op:8943b1f62e707f83"
+      },
+      {
+        "from": "key:local:key:data-enc-01",
+        "relationship": "protects",
+        "to": "op:6ade0fc5a7e7b903"
+      },
+      {
+        "from": "key:local:key:legacy-01",
+        "relationship": "protects",
+        "to": "op:9651bfdad469947a"
+      },
+      {
+        "from": "key:local:key:token-sign-01",
+        "relationship": "protects",
+        "to": "op:054fce3c54fbd2ef"
+      },
+      {
+        "from": "lib:cryptography@44.0.0",
+        "relationship": "derives",
+        "to": "ast:4b4866f6816f2251"
+      },
+      {
+        "from": "lib:cryptography@44.0.0",
+        "relationship": "derives",
+        "to": "ast:ffa252efe9e1e624"
+      },
+      {
+        "from": "lib:ecdsa@0.19.0",
+        "relationship": "derives",
+        "to": "ast:43666eeb8d40ff8f"
+      },
+      {
+        "from": "lib:hashlib",
+        "relationship": "derives",
+        "to": "ast:53098eba6e646c72"
+      },
+      {
+        "from": "lib:pycryptodome@3.20.0",
+        "relationship": "derives",
+        "to": "ast:ed31b807963deab2"
+      },
+      {
+        "from": "op:054fce3c54fbd2ef",
+        "relationship": "derives",
+        "to": "ast:43666eeb8d40ff8f"
+      },
+      {
+        "from": "op:054fce3c54fbd2ef",
+        "relationship": "depends_on",
+        "to": "lib:ecdsa@0.19.0"
+      },
+      {
+        "from": "op:6ade0fc5a7e7b903",
+        "relationship": "derives",
+        "to": "ast:4b4866f6816f2251"
+      },
+      {
+        "from": "op:6ade0fc5a7e7b903",
+        "relationship": "depends_on",
+        "to": "lib:cryptography@44.0.0"
+      },
+      {
+        "from": "op:8943b1f62e707f83",
+        "relationship": "derives",
+        "to": "ast:ffa252efe9e1e624"
+      },
+      {
+        "from": "op:8943b1f62e707f83",
+        "relationship": "depends_on",
+        "to": "lib:cryptography@44.0.0"
+      },
+      {
+        "from": "op:95f01716a2a3bcf1",
+        "relationship": "derives",
+        "to": "ast:53098eba6e646c72"
+      },
+      {
+        "from": "op:95f01716a2a3bcf1",
+        "relationship": "depends_on",
+        "to": "lib:hashlib"
+      },
+      {
+        "from": "op:9651bfdad469947a",
+        "relationship": "derives",
+        "to": "ast:ed31b807963deab2"
+      },
+      {
+        "from": "op:9651bfdad469947a",
+        "relationship": "depends_on",
+        "to": "lib:pycryptodome@3.20.0"
+      },
+      {
+        "from": "owner:team-identity",
+        "relationship": "contains",
+        "to": "svc:auth-service"
+      },
+      {
+        "from": "svc:auth-service",
+        "relationship": "uses",
+        "to": "op:054fce3c54fbd2ef"
+      },
+      {
+        "from": "svc:auth-service",
+        "relationship": "uses",
+        "to": "op:6ade0fc5a7e7b903"
+      },
+      {
+        "from": "svc:auth-service",
+        "relationship": "uses",
+        "to": "op:8943b1f62e707f83"
+      },
+      {
+        "from": "svc:auth-service",
+        "relationship": "uses",
+        "to": "op:95f01716a2a3bcf1"
+      },
+      {
+        "from": "svc:auth-service",
+        "relationship": "uses",
+        "to": "op:9651bfdad469947a"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "ast:43666eeb8d40ff8f",
+        "kind": "asset",
+        "label": "ECDSA",
+        "ref": "ast:43666eeb8d40ff8f"
+      },
+      {
+        "id": "ast:4b4866f6816f2251",
+        "kind": "asset",
+        "label": "AES-256-GCM",
+        "ref": "ast:4b4866f6816f2251"
+      },
+      {
+        "id": "ast:53098eba6e646c72",
+        "kind": "asset",
+        "label": "MD5",
+        "ref": "ast:53098eba6e646c72"
+      },
+      {
+        "id": "ast:ed31b807963deab2",
+        "kind": "asset",
+        "label": "AES-128-ECB",
+        "ref": "ast:ed31b807963deab2"
+      },
+      {
+        "id": "ast:ffa252efe9e1e624",
+        "kind": "asset",
+        "label": "RSA",
+        "ref": "ast:ffa252efe9e1e624"
+      },
+      {
+        "id": "key:local:key:auth-session-01",
+        "kind": "key",
+        "label": "local:key:auth-session-01",
+        "ref": "key:local:key:auth-session-01"
+      },
+      {
+        "id": "key:local:key:data-enc-01",
+        "kind": "key",
+        "label": "local:key:data-enc-01",
+        "ref": "key:local:key:data-enc-01"
+      },
+      {
+        "id": "key:local:key:legacy-01",
+        "kind": "key",
+        "label": "local:key:legacy-01",
+        "ref": "key:local:key:legacy-01"
+      },
+      {
+        "id": "key:local:key:token-sign-01",
+        "kind": "key",
+        "label": "local:key:token-sign-01",
+        "ref": "key:local:key:token-sign-01"
+      },
+      {
+        "id": "lib:cryptography@44.0.0",
+        "kind": "library",
+        "label": "cryptography@44.0.0",
+        "ref": "lib:cryptography@44.0.0"
+      },
+      {
+        "id": "lib:ecdsa@0.19.0",
+        "kind": "library",
+        "label": "ecdsa@0.19.0",
+        "ref": "lib:ecdsa@0.19.0"
+      },
+      {
+        "id": "lib:hashlib",
+        "kind": "library",
+        "label": "hashlib",
+        "ref": "lib:hashlib"
+      },
+      {
+        "id": "lib:pycryptodome@3.20.0",
+        "kind": "library",
+        "label": "pycryptodome@3.20.0",
+        "ref": "lib:pycryptodome@3.20.0"
+      },
+      {
+        "id": "op:054fce3c54fbd2ef",
+        "kind": "operation",
+        "label": "ECDSA [op:054fce3c54fbd2ef]",
+        "ref": "op:054fce3c54fbd2ef"
+      },
+      {
+        "id": "op:6ade0fc5a7e7b903",
+        "kind": "operation",
+        "label": "AES-256-GCM [op:6ade0fc5a7e7b903]",
+        "ref": "op:6ade0fc5a7e7b903"
+      },
+      {
+        "id": "op:8943b1f62e707f83",
+        "kind": "operation",
+        "label": "RSA [op:8943b1f62e707f83]",
+        "ref": "op:8943b1f62e707f83"
+      },
+      {
+        "id": "op:95f01716a2a3bcf1",
+        "kind": "operation",
+        "label": "MD5 [op:95f01716a2a3bcf1]",
+        "ref": "op:95f01716a2a3bcf1"
+      },
+      {
+        "id": "op:9651bfdad469947a",
+        "kind": "operation",
+        "label": "AES-128-ECB [op:9651bfdad469947a]",
+        "ref": "op:9651bfdad469947a"
+      },
+      {
+        "id": "owner:team-identity",
+        "kind": "service",
+        "label": "team-identity",
+        "ref": "owner:team-identity"
+      },
+      {
+        "id": "svc:auth-service",
+        "kind": "service",
+        "label": "auth-service",
+        "ref": "svc:auth-service"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "asset_id": "ast:ffa252efe9e1e624",
+      "confidence": 0.95,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service auth-service; usage RSA; data_lifetime_years=8; migration_years=3; key local:key:auth-session-01"
+      },
+      "evidence": [
+        {
+          "confidence": 0.95,
+          "detail": "source-api-call crypto-rsa-1024 at samples/app-src/auth.py:42",
+          "snippet": "rsa.generate_private_key(key_size=1024)  # session key",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "create_session_key",
+      "implementation": {
+        "api": "rsa.generate_private_key",
+        "library": "cryptography",
+        "version": "44.0.0"
+      },
+      "location": {
+        "file": "samples/app-src/auth.py",
+        "function": "create_session_key",
+        "line": 42
+      },
+      "operation_id": "op:8943b1f62e707f83",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:43666eeb8d40ff8f",
+      "confidence": 0.9,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service auth-service; usage ECDSA; data_lifetime_years=5; migration_years=2; key local:key:token-sign-01"
+      },
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "detail": "source-api-call crypto-ecdsa at samples/app-src/sign.py:17",
+          "snippet": "SigningKey.from_secret_exponent(curve=NIST256p)",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "verify_token",
+      "implementation": {
+        "api": "SigningKey.sign",
+        "library": "ecdsa",
+        "version": "0.19.0"
+      },
+      "location": {
+        "file": "samples/app-src/sign.py",
+        "function": "verify_token",
+        "line": 17
+      },
+      "operation_id": "op:054fce3c54fbd2ef",
+      "operation_type": "Sign",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:4b4866f6816f2251",
+      "confidence": 0.97,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internal",
+        "notes": "service auth-service; usage AES-256-GCM; data_lifetime_years=3; migration_years=2; key local:key:data-enc-01"
+      },
+      "evidence": [
+        {
+          "confidence": 0.97,
+          "detail": "source-api-call crypto-aes-gcm at samples/app-src/crypto.py:15",
+          "snippet": "AESGCM(key).encrypt(nonce, record, aad)",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "encrypt_record",
+      "implementation": {
+        "api": "AESGCM.encrypt",
+        "library": "cryptography",
+        "version": "44.0.0"
+      },
+      "location": {
+        "file": "samples/app-src/crypto.py",
+        "function": "encrypt_record",
+        "line": 15
+      },
+      "operation_id": "op:6ade0fc5a7e7b903",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "internal",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:ed31b807963deab2",
+      "confidence": 0.93,
+      "context": {
+        "data_classification": "internal",
+        "environment": "production",
+        "exposure": "third-party",
+        "notes": "service auth-service; usage AES-128-ECB; data_lifetime_years=7; migration_years=2; key local:key:legacy-01"
+      },
+      "evidence": [
+        {
+          "confidence": 0.93,
+          "detail": "source-api-call crypto-aes-ecb at samples/app-src/crypto.py:88",
+          "snippet": "AES.new(key, AES.MODE_ECB)  # legacy path",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "legacy_encrypt",
+      "implementation": {
+        "api": "AES.new/MODE_ECB",
+        "library": "pycryptodome",
+        "version": "3.20.0"
+      },
+      "location": {
+        "file": "samples/app-src/crypto.py",
+        "function": "legacy_encrypt",
+        "line": 88
+      },
+      "operation_id": "op:9651bfdad469947a",
+      "operation_type": "Encrypt",
+      "risk_inputs": {
+        "exposure": "third-party",
+        "external_dependency": false,
+        "sensitive_data": false,
+        "usage_state": "Confirmed"
+      }
+    },
+    {
+      "asset_id": "ast:53098eba6e646c72",
+      "confidence": 0.92,
+      "context": {
+        "data_classification": "confidential",
+        "environment": "production",
+        "exposure": "internet-facing",
+        "notes": "service auth-service; usage MD5; data_lifetime_years=10; migration_years=1"
+      },
+      "evidence": [
+        {
+          "confidence": 0.92,
+          "detail": "source-api-call crypto-md5-password at samples/app-src/auth.py:88",
+          "snippet": "hashlib.md5(password.encode())  # security use",
+          "tool": "semgrep"
+        }
+      ],
+      "function": "check_password",
+      "implementation": {
+        "api": "hashlib.md5",
+        "library": "hashlib"
+      },
+      "location": {
+        "file": "samples/app-src/auth.py",
+        "function": "check_password",
+        "line": 88
+      },
+      "operation_id": "op:95f01716a2a3bcf1",
+      "operation_type": "Hash",
+      "risk_inputs": {
+        "exposure": "internet-facing",
+        "external_dependency": false,
+        "sensitive_data": true,
+        "usage_state": "Confirmed"
+      }
+    }
+  ],
+  "registry_version": "2026.09.11",
+  "scan_id": "scan:sample-source-001",
+  "started_at": "2026-09-10T10:00:00Z",
+  "stats": {
+    "asset_count": 5,
+    "edge_count": 25,
+    "node_count": 20,
+    "operation_count": 5
+  },
+  "target": "samples/app-src",
+  "tool_versions": {
+    "ecdat": "0.1.0"
+  }
+}

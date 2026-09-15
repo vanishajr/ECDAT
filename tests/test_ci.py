@@ -261,11 +261,13 @@ def test_ci_target_not_found(tmp_path, capsys):
 
 
 def test_ci_real_placeholder_is_clean_error(tmp_path, capsys):
+    # Integrated real mode: --real gates the P2/P1 pipeline (rc 0 on a
+    # clean target) and stays loud without tracebacks on bad input.
     rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path), "--real"])
-    assert rc == 1
+    assert rc == 0
     out, err = capsys.readouterr()
     assert "Traceback" not in out + err
-    assert err.strip() != ""
+    assert "real pipeline" in out
 
 
 def test_ci_validation_failure(tmp_path, capsys, monkeypatch):

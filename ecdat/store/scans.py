@@ -16,6 +16,7 @@ __all__ = [
     "insert_scan",
     "get_scan",
     "get_scan_doc",
+    "get_scan_cir",
     "list_scans",
     "delete_scan",
     "count_scans",
@@ -26,18 +27,27 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def insert_scan(conn: sqlite3.Connection, doc: dict) -> str:
-    """Insert one validated canonical scan doc. Returns its scan id."""
+def insert_scan(
+    conn: sqlite3.Connection, doc: dict, cir: dict | None = None
+) -> str:
+    """Insert one validated canonical scan doc. Returns its scan id.
+
+    ``cir`` is the optional enriched CIR sidecar (real scans only);
+    it is stored verbatim under the same scan ID. None means a
+    mock/legacy scan with no CIR.
+    """
     scan_id = doc["scan_id"]
     conn.execute(
-        "INSERT INTO scans (id, target, started_at, finished_at, raw_json, created_at)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO scans (id, target, started_at, finished_at, raw_json,"
+        " cir_json, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             scan_id,
             doc["target"],
             doc["started_at"],
             doc["finished_at"],
             json.dumps(doc, sort_keys=True),
+            json.dumps(cir, sort_keys=True) if cir is not None else None,
             _utcnow(),
         ),
     )
@@ -57,6 +67,20 @@ def get_scan_doc(conn: sqlite3.Connection, scan_id: str) -> dict | None:
         "SELECT raw_json FROM scans WHERE id = ?", (scan_id,)
     ).fetchone()
     return json.loads(row["raw_json"]) if row is not None else None
+
+
+def get_scan_cir(conn: sqlite3.Connection, scan_id: str) -> dict | None:
+    """Return the stored enriched CIR sidecar, or None.
+
+    None means the scan is mock/legacy (no CIR was stored) or the scan
+    is unknown. Callers must not treat None as an empty CIR.
+    """
+    row = conn.execute(
+        "SELECT cir_json FROM scans WHERE id = ?", (scan_id,)
+    ).fetchone()
+    if row is None or row["cir_json"] is None:
+        return None
+    return json.loads(row["cir_json"])
 
 
 def list_scans(conn: sqlite3.Connection, limit: int = 100) -> list[dict]:

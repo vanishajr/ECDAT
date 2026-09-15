@@ -265,7 +265,7 @@ class CryptoASTVisitor(ast.NodeVisitor):
         category = get_category(canonical)
 
         has_direct = True
-        confidence = 0.92
+        confidence = 0.85
         usage_state = UsageState.CONFIRMED
 
         snippet = self._get_snippet(lineno)

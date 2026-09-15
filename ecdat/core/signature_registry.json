@@ -1,294 +1,127 @@
 {
-  "version": "2026.09.11",
-  "algorithms": {
-    "RSA": {
-      "canonical": "RSA",
-      "aliases": ["RSA", "rsa", "RSA_public_encrypt", "RSA_private_decrypt", "rsa.encrypt", "rsa.decrypt", "rsa.sign", "rsa.verify"],
-      "key_sizes": [1024, 2048, 3072, 4096],
-      "category": "asymmetric"
+  "registry_version": "2026.09.11",
+  "description": "Person-1 owned. Canonical signature registry. CIR is the source of truth; scanners canonicalize through this file only.",
+  "aliases": {
+    "AES256": "AES-256-GCM",
+    "AES-256": "AES-256-GCM",
+    "AES256-GCM": "AES-256-GCM",
+    "EVP_aes_256_gcm": "AES-256-GCM",
+    "AES128": "AES-128-GCM",
+    "AES-128": "AES-128-GCM",
+    "EVP_aes_128_gcm": "AES-128-GCM",
+    "AES256-CBC": "AES-256-CBC",
+    "AES128-CBC": "AES-128-CBC",
+    "AES-ECB": "AES-ECB",
+    "SHA1": "SHA-1",
+    "SHA-1": "SHA-1",
+    "SHA256": "SHA-256",
+    "SHA384": "SHA-384",
+    "SHA512": "SHA-512",
+    "MD5": "MD5",
+    "DES": "DES",
+    "DESEDE": "3DES",
+    "3DES": "3DES",
+    "RC4": "RC4",
+    "RSA": "RSA",
+    "RSA2048": "RSA",
+    "RSA-ECB": "RSA",
+    "ECDSA": "ECDSA",
+    "ECDSA_P256": "ECDSA",
+    "EdDSA": "EdDSA",
+    "ED25519": "Ed25519",
+    "Ed25519": "Ed25519",
+    "DH": "DH",
+    "DiffieHellman": "DH",
+    "ECDH": "ECDH",
+    "X25519": "X25519",
+    "X448": "X448",
+    "ChaCha20": "ChaCha20-Poly1305",
+    "CHACHA20-POLY1305": "ChaCha20-Poly1305",
+    "EVP_chacha20_poly1305": "ChaCha20-Poly1305",
+    "TLS1.2": "TLS1.2",
+    "TLS12": "TLS1.2",
+    "TLS1.3": "TLS1.3",
+    "TLS13": "TLS1.3",
+    "P-256": "P-256",
+    "PRIME256V1": "P-256",
+    "SECP256R1": "P-256",
+    "P-384": "P-384",
+    "SECP384R1": "P-384",
+    "HMAC-SHA256": "HMAC-SHA256",
+    "HMACSHA256": "HMAC-SHA256",
+    "PBKDF2": "PBKDF2",
+    "HKDF": "HKDF"
+  },
+  "oids": {
+    "1.2.840.113549.1.1.1": "RSA",
+    "1.2.840.113549.1.1.11": "SHA-256-with-RSA",
+    "1.2.840.10045.2.1": "EC-Public-Key",
+    "1.2.840.10045.3.1.7": "P-256",
+    "1.3.132.0.34": "P-384",
+    "1.3.101.110": "X25519",
+    "1.3.101.111": "X448",
+    "1.3.101.112": "Ed25519",
+    "1.3.101.113": "Ed448",
+    "2.16.840.1.101.3.4.2.1": "SHA-256",
+    "2.16.840.1.101.3.4.2.2": "SHA-384",
+    "2.16.840.1.101.3.4.2.3": "SHA-512",
+    "1.3.14.3.2.26": "SHA-1",
+    "1.2.840.113549.2.5": "MD5"
+  },
+  "libraries": {
+    "openssl": {
+      "capabilities": ["AES-256-GCM", "AES-128-GCM", "ChaCha20-Poly1305", "RSA", "ECDSA", "ECDH", "DH", "X25519", "SHA-2", "TLS1.2", "TLS1.3"]
     },
-    "DSA": {
-      "canonical": "DSA",
-      "aliases": ["DSA", "dsa"],
-      "key_sizes": [1024, 2048, 3072],
-      "category": "asymmetric"
+    "BouncyCastle": {
+      "capabilities": ["AES-256-GCM", "RSA", "ECDSA", "ECDH", "SHA-2", "TLS1.2", "TLS1.3"]
     },
-    "DH": {
-      "canonical": "DH",
-      "aliases": ["DH", "dh", "DiffieHellman", "diffie-hellman"],
-      "key_sizes": [1024, 2048, 3072, 4096],
-      "category": "key_exchange"
+    "libsodium": {
+      "capabilities": ["ChaCha20-Poly1305", "X25519", "Ed25519", "BLAKE2b"]
     },
-    "ECDH": {
-      "canonical": "ECDH",
-      "aliases": ["ECDH", "ecdh", "ECDH_key_agreement"],
-      "curves": ["P-256", "P-384", "P-521", "secp256k1"],
-      "category": "key_exchange"
+    "Tink": {
+      "capabilities": ["AES-256-GCM", "ChaCha20-Poly1305", "RSA", "ECDSA", "Ed25519", "HKDF"]
     },
-    "ECDSA": {
-      "canonical": "ECDSA",
-      "aliases": ["ECDSA", "ecdsa", "ECDSA_sign", "ECDSA_verify", "ECDSA/ECDH", "ECDH/ECDSA"],
-      "curves": ["P-256", "P-384", "P-521", "secp256k1"],
-      "category": "asymmetric"
+    "Botan": {
+      "capabilities": ["AES-256-GCM", "RSA", "ECDSA", "ECDH", "SHA-2", "TLS1.2", "TLS1.3"]
     },
-    "X25519": {
-      "canonical": "X25519",
-      "aliases": ["X25519", "x25519", "Curve25519", "curve25519"],
-      "category": "key_exchange"
+    "wolfSSL": {
+      "capabilities": ["AES-256-GCM", "ChaCha20-Poly1305", "RSA", "ECDSA", "X25519", "TLS1.2", "TLS1.3"]
     },
-    "X448": {
-      "canonical": "X448",
-      "aliases": ["X448", "x448", "Curve448"],
-      "category": "key_exchange"
+    "mbedTLS": {
+      "capabilities": ["AES-256-GCM", "RSA", "ECDSA", "ECDH", "SHA-2", "TLS1.2", "TLS1.3"]
     },
-    "Ed25519": {
-      "canonical": "Ed25519",
-      "aliases": ["Ed25519", "ed25519", "EdDSA"],
-      "category": "asymmetric"
-    },
-    "Ed448": {
-      "canonical": "Ed448",
-      "aliases": ["Ed448", "ed448"],
-      "category": "asymmetric"
-    },
-    "AES-256-GCM": {
-      "canonical": "AES-256-GCM",
-      "aliases": ["AESGCM", "AES-256-GCM", "AES_256_GCM", "aes-gcm", "AES.GCM"],
-      "key_size": 256,
-      "mode": "GCM",
-      "category": "symmetric"
-    },
-    "AES-128-GCM": {
-      "canonical": "AES-128-GCM",
-      "aliases": ["AES-128-GCM", "AES_128_GCM"],
-      "key_size": 128,
-      "mode": "GCM",
-      "category": "symmetric"
-    },
-    "AES-256-CBC": {
-      "canonical": "AES-256-CBC",
-      "aliases": ["AES-CBC", "AES-256-CBC", "AES_256_CBC", "aes-cbc"],
-      "key_size": 256,
-      "mode": "CBC",
-      "category": "symmetric"
-    },
-    "AES-128-CBC": {
-      "canonical": "AES-128-CBC",
-      "aliases": ["AES-128-CBC", "AES_128_CBC"],
-      "key_size": 128,
-      "mode": "CBC",
-      "category": "symmetric"
-    },
-    "AES-CTR": {
-      "canonical": "AES-CTR",
-      "aliases": ["AES-CTR", "AES_CTR", "aes-ctr"],
-      "key_sizes": [128, 192, 256],
-      "mode": "CTR",
-      "category": "symmetric"
-    },
-    "AES-CCM": {
-      "canonical": "AES-CCM",
-      "aliases": ["AES-CCM", "AES_CCM", "aes-ccm"],
-      "key_sizes": [128, 192, 256],
-      "mode": "CCM",
-      "category": "symmetric"
-    },
-    "DES": {
-      "canonical": "DES",
-      "aliases": ["DES", "des"],
-      "key_size": 56,
-      "category": "symmetric"
-    },
-    "3DES": {
-      "canonical": "3DES",
-      "aliases": ["3DES", "DES3", "DES-EDE3", "triple-des", "3des"],
-      "key_size": 168,
-      "category": "symmetric"
-    },
-    "RC4": {
-      "canonical": "RC4",
-      "aliases": ["RC4", "rc4", "ARC4", "arcfour"],
-      "category": "symmetric"
-    },
-    "ChaCha20-Poly1305": {
-      "canonical": "ChaCha20-Poly1305",
-      "aliases": ["ChaCha20-Poly1305", "chacha20-poly1305", "CHACHA20_POLY1305", "ChaChaPoly"],
-      "category": "symmetric"
-    },
-    "ChaCha20": {
-      "canonical": "ChaCha20",
-      "aliases": ["ChaCha20", "chacha20", "CHACHA20"],
-      "category": "symmetric"
-    },
-    "MD5": {
-      "canonical": "MD5",
-      "aliases": ["MD5", "md5", "MessageDigest5"],
-      "category": "hash"
-    },
-    "SHA-1": {
-      "canonical": "SHA-1",
-      "aliases": ["SHA-1", "SHA1", "sha1", "SHA-1"],
-      "category": "hash"
-    },
-    "SHA-256": {
-      "canonical": "SHA-256",
-      "aliases": ["SHA-256", "SHA256", "sha256", "SHA-256"],
-      "category": "hash"
-    },
-    "SHA-384": {
-      "canonical": "SHA-384",
-      "aliases": ["SHA-384", "SHA384", "sha384"],
-      "category": "hash"
-    },
-    "SHA-512": {
-      "canonical": "SHA-512",
-      "aliases": ["SHA-512", "SHA512", "sha512"],
-      "category": "hash"
-    },
-    "SHA-3-256": {
-      "canonical": "SHA-3-256",
-      "aliases": ["SHA3-256", "SHA3_256", "sha3-256", "Keccak-256"],
-      "category": "hash"
-    },
-    "SHA-3-512": {
-      "canonical": "SHA-3-512",
-      "aliases": ["SHA3-512", "SHA3_512", "sha3-512", "Keccak-512"],
-      "category": "hash"
-    },
-    "BLAKE2b": {
-      "canonical": "BLAKE2b",
-      "aliases": ["BLAKE2b", "blake2b", "BLAKE2B"],
-      "category": "hash"
-    },
-    "BLAKE2s": {
-      "canonical": "BLAKE2s",
-      "aliases": ["BLAKE2s", "blake2s", "BLAKE2S"],
-      "category": "hash"
-    },
-    "BLAKE3": {
-      "canonical": "BLAKE3",
-      "aliases": ["BLAKE3", "blake3"],
-      "category": "hash"
-    },
-    "PBKDF2": {
-      "canonical": "PBKDF2",
-      "aliases": ["PBKDF2", "pbkdf2", "PBKDF2-HMAC-SHA256", "PBKDF2-HMAC-SHA512"],
-      "category": "kdf"
-    },
-    "HKDF": {
-      "canonical": "HKDF",
-      "aliases": ["HKDF", "hkdf", "HKDF-SHA256", "HKDF-SHA512", "HKDF-Expand", "HKDF-Extract"],
-      "category": "kdf"
-    },
-    "scrypt": {
-      "canonical": "scrypt",
-      "aliases": ["scrypt", "Scrypt"],
-      "category": "kdf"
-    },
-    "bcrypt": {
-      "canonical": "bcrypt",
-      "aliases": ["bcrypt", "Bcrypt"],
-      "category": "kdf"
-    },
-    "Argon2": {
-      "canonical": "Argon2",
-      "aliases": ["Argon2", "argon2", "Argon2id", "Argon2i", "Argon2d"],
-      "category": "kdf"
-    },
-    "TLS1.2": {
-      "canonical": "TLS1.2",
-      "aliases": ["TLS1.2", "TLS 1.2", "tls12", "TLSv1.2"],
-      "category": "protocol"
-    },
-    "TLS1.3": {
-      "canonical": "TLS1.3",
-      "aliases": ["TLS1.3", "TLS 1.3", "tls13", "TLSv1.3"],
-      "category": "protocol"
-    },
-    "SSL": {
-      "canonical": "SSL",
-      "aliases": ["SSL", "ssl", "SSLv2", "SSLv3"],
-      "category": "protocol"
-    },
-    "SSH": {
-      "canonical": "SSH",
-      "aliases": ["SSH", "ssh", "SSH-2"],
-      "category": "protocol"
-    },
-    "ML-KEM": {
-      "canonical": "ML-KEM",
-      "aliases": ["ML-KEM", "ml-kem", "Kyber", "kyber", "Kyber512", "Kyber768", "Kyber1024"],
-      "category": "pqc_kem"
-    },
-    "ML-DSA": {
-      "canonical": "ML-DSA",
-      "aliases": ["ML-DSA", "ml-dsa", "Dilithium", "dilithium", "Dilithium2", "Dilithium3", "Dilithium5"],
-      "category": "pqc_sig"
-    },
-    "SLH-DSA": {
-      "canonical": "SLH-DSA",
-      "aliases": ["SLH-DSA", "slh-dsa", "SPHINCS+", "sphincs+", "SPHINCSplus"],
-      "category": "pqc_sig"
-    },
-    "Falcon": {
-      "canonical": "Falcon",
-      "aliases": ["Falcon", "falcon", "Falcon-512", "Falcon-1024"],
-      "category": "pqc_sig"
-    },
-    "OpenSSL": {
-      "canonical": "OpenSSL",
-      "aliases": ["OpenSSL", "openssl", "libcrypto", "libssl"],
-      "category": "library"
-    },
-    "BoringSSL": {
-      "canonical": "BoringSSL",
-      "aliases": ["BoringSSL", "boringssl"],
-      "category": "library"
-    },
-    "LibreSSL": {
-      "canonical": "LibreSSL",
-      "aliases": ["LibreSSL", "libressl"],
-      "category": "library"
+    "pyca": {
+      "capabilities": ["AES-256-GCM", "RSA", "ECDSA", "ECDH", "SHA-2", "HKDF", "PBKDF2"]
     },
     "cryptography": {
-      "canonical": "cryptography",
-      "aliases": ["cryptography", "cryptography.io"],
-      "category": "library"
+      "capabilities": ["AES-256-GCM", "RSA", "ECDSA", "ECDH", "SHA-2", "HKDF", "PBKDF2"]
     },
-    "pyca/cryptography": {
-      "canonical": "cryptography",
-      "aliases": ["pyca/cryptography"],
-      "category": "library"
+    "RustCrypto": {
+      "capabilities": ["AES-256-GCM", "ChaCha20-Poly1305", "RSA", "ECDSA", "Ed25519", "SHA-2"]
     },
-    "crypto": {
-      "canonical": "crypto",
-      "aliases": ["crypto"],
-      "category": "library"
-    },
-    "crypto-js": {
-      "canonical": "crypto-js",
-      "aliases": ["crypto-js"],
-      "category": "library"
-    },
-    "jsonwebtoken": {
-      "canonical": "jsonwebtoken",
-      "aliases": ["jsonwebtoken"],
-      "category": "library"
-    },
-    "jose": {
-      "canonical": "jose",
-      "aliases": ["jose"],
-      "category": "library"
-    },
-    "authlib": {
-      "canonical": "authlib",
-      "aliases": ["authlib"],
-      "category": "library"
-    },
-    "pyjwt": {
-      "canonical": "pyjwt",
-      "aliases": ["pyjwt"],
-      "category": "library"
+    "liboqs": {
+      "capabilities": ["ML-KEM", "ML-DSA", "Falcon", "SPHINCS+", "X25519+ML-KEM-768"]
     }
+  },
+  "weak": {
+    "algorithms": ["MD5", "SHA-1", "DES", "3DES", "RC4"],
+    "modes": ["ECB"],
+    "min_rsa": 2048
+  },
+  "pqc_map": {
+    "RSA-encryption": "ML-KEM-768",
+    "RSA-signature": "ML-DSA-65",
+    "ECDSA": "ML-DSA-65",
+    "EdDSA": "ML-DSA-65",
+    "Ed25519": "ML-DSA-65",
+    "ECDH": "X25519+ML-KEM-768",
+    "DH": "X25519+ML-KEM-768",
+    "X25519": "X25519+ML-KEM-768"
+  },
+  "recommendation_rules": {
+    "weak_algorithm": "Replace weak algorithm with an approved primitive (AES-256-GCM or ChaCha20-Poly1305 for encryption; SHA-256/SHA-384 for hashing).",
+    "ecb_mode": "Do not use ECB mode; migrate to an authenticated mode (GCM or ChaCha20-Poly1305).",
+    "short_rsa_key": "Use RSA keys of at least 2048 bits, or migrate signatures to ML-DSA and key establishment to ML-KEM.",
+    "pqc_migration": "Plan PQC migration per pqc_map targets (RSA-enc to ML-KEM, RSA/ECDSA/EdDSA signatures to ML-DSA, ECDH/DH/X25519 to hybrid X25519+ML-KEM)."
   }
 }

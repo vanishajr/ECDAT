@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from ecdat import create_discovery_engine, load_cir_json, validate_cir_json
+from ecdat.scanners.discovery import create_discovery_engine
+from ecdat.core.cir_models import load_cir_json, validate_cir_json
 from ecdat.core.cir_models import CIRDocument
 
 
