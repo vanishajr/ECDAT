@@ -83,4 +83,4 @@ def to_pdf_bytes(report: dict) -> bytes:
         f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R "
         f"/Producer ({PRODUCER}) >>\nstartxref\n{xref_at}\n%%EOF\n"
     ).encode("ascii")
-    return bytes(pdf)
+    return bytes(pdf).replace(b"\n", b"\r\n")

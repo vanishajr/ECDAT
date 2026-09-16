@@ -9,7 +9,7 @@ from ecdat.commands import ERROR
 from ecdat.web.server import LOOPBACK_HOSTS, make_server
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8765
+DEFAULT_PORT = 8734
 
 
 def run(args: argparse.Namespace) -> int:

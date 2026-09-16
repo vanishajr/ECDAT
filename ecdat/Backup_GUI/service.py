@@ -430,7 +430,7 @@ class GuiService:
             counts[sev] = counts.get(sev, 0) + 1
         return {
             "scan_id": doc["scan_id"],
-            "target": doc["target"],
+            "target": str(doc["target"]).replace("\\", "/"),
             "started_at": doc["started_at"],
             "finished_at": doc["finished_at"],
             "tool_versions": dict(doc["tool_versions"]),

@@ -146,7 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_gui = sub.add_parser("gui", help="launch local API for the React GUI (127.0.0.1 only)")
     p_gui.add_argument("--db", default=DEFAULT_DB, help="unused compatibility option")
     p_gui.add_argument("--host", default="127.0.0.1", help="loopback host to bind (default: 127.0.0.1)")
-    p_gui.add_argument("--port", type=int, default=8765, help="API port to bind (0 = OS selects)")
+    p_gui.add_argument("--port", type=int, default=8734, help="API port to bind (0 = OS selects)")
     p_gui.set_defaults(func=gui_cmd.run)
 
     p_ci = sub.add_parser("ci", help="mock-first CI gate: scan a target and enforce a severity threshold")

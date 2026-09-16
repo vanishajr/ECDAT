@@ -20,6 +20,7 @@ from pathlib import Path
 
 from ecdat.commands import ERROR
 from ecdat.commands.gui_cmd import DEFAULT_HOST, DEFAULT_PORT
+from ecdat.gui.server import make_server
 from ecdat.web.server import LOOPBACK_HOSTS
 
 _SEED_FILES = {
@@ -74,8 +75,6 @@ def prepare_demo_db(db_path: str | Path, base_dir: str | Path) -> dict:
 
 
 def run(args: argparse.Namespace) -> int:
-    from ecdat.Backup_GUI.server import make_server
-
     host = str(args.host)
     if host not in LOOPBACK_HOSTS:
         print(f"error: refusing non-loopback GUI host {host!r}: "
