@@ -1,21 +1,83 @@
-[build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "ecdat"
 version = "0.1.0"
-description = "Enterprise Cryptographic Discovery and Analysis Tool (Person 3 platform layer)"
+description = "ECDAT - Cryptographic Discovery, Inventory, Analysis, and Migration-Readiness Platform (Person 2: Discovery Engine)"
+readme = "README.md"
 requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "ECDAT Team"}]
+keywords = ["cryptography", "discovery", "inventory", "scanner", "cir", "pqc"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
 dependencies = [
-    "jsonschema>=4.18,<5",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "pyyaml>=6.0",
+    "tomli>=2.0",
+    "tomli-w>=1.0",
+    "jsonschema>=4.21",
+    "semgrep>=1.0.0; sys_platform != 'win32'",
+    "lief>=0.14; sys_platform != 'win32'",
+    "yara-x>=1.0; sys_platform != 'win32'",
+    "cryptography>=42.0",
+    "requests>=2.31",
+    "boto3>=1.34",
+    "docker>=7.0",
+    "pyopenssl>=24.0",
+    "truststore>=0.8",
+    "rich>=13.0",
+    "typer>=0.9",
 ]
 
 [project.optional-dependencies]
-test = [
-    "pytest>=8,<10",
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "pytest-mock>=3.12",
+    "ruff>=0.5",
+    "mypy>=1.9",
+    "pre-commit>=3.6",
+]
+bench = [
+    "pytest-benchmark>=4.0",
 ]
 
+[project.entry-points]
+console_scripts = { "ecdat-discover" = "ecdat.cli:app" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "I", "N", "UP", "W", "C90", "PTH", "T20", "SIM", "RET"]
+ignore = ["S101", "PTH123", "T201"]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["ecdat/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"

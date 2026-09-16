@@ -1,0 +1,194 @@
+{
+  "cir_version": "0.1",
+  "scan_id": "scan:fe21eae6ef1c4fcd",
+  "target": "C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py",
+  "started_at": "2026-09-13T21:49:08.603208",
+  "finished_at": "2026-09-13T21:49:08.603215",
+  "tool_versions": {
+    "source": "0.1.0",
+    "dependency": "0.1.0",
+    "binary": "binary-v0.1.0(strings-builtin)",
+    "config": "config-v0.1.0",
+    "certificate": "certificate-v0.1.0",
+    "runtime": "runtime-v0.1.0"
+  },
+  "registry_version": "2026.09.11",
+  "assets": [
+    {
+      "asset_id": "ast:bf40ecdaa803f76d",
+      "canonical": "AES-256-GCM",
+      "original": "AES-256-GCM",
+      "library": "cryptography",
+      "usage_state": "Confirmed",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "tool": "source:ast",
+          "detail": "direct source API call: AESGCM at C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py:4",
+          "confidence": 0.92,
+          "snippet": "aesgcm = AESGCM(key)"
+        }
+      ],
+      "location": {
+        "file": "C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py",
+        "line": 4,
+        "function": "encrypt_data"
+      },
+      "implementation": {
+        "library": "cryptography",
+        "api": "AESGCM"
+      },
+      "context": {
+        "exposure": "internal"
+      },
+      "risk_inputs": {
+        "usage_state": "Confirmed",
+        "exposure": "internal",
+        "sensitive_data": false,
+        "external_dependency": true
+      }
+    }
+  ],
+  "operations": [
+    {
+      "operation_id": "op:914be7fc4afe1dec",
+      "operation_type": "Encrypt",
+      "asset_id": "ast:bf40ecdaa803f76d",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "tool": "source:ast",
+          "detail": "direct source API call: AESGCM at C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py:4",
+          "confidence": 0.92,
+          "snippet": "aesgcm = AESGCM(key)"
+        }
+      ],
+      "function": "encrypt_data",
+      "location": {
+        "file": "C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py",
+        "line": 4,
+        "function": "encrypt_data"
+      },
+      "implementation": {
+        "library": "cryptography",
+        "api": "AESGCM"
+      },
+      "context": {
+        "exposure": "internal"
+      },
+      "risk_inputs": {
+        "usage_state": "Confirmed",
+        "exposure": "internal",
+        "sensitive_data": false,
+        "external_dependency": true
+      }
+    },
+    {
+      "operation_id": "op:135d089293ec107e",
+      "operation_type": "Encrypt",
+      "asset_id": "ast:bf40ecdaa803f76d",
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "tool": "source:ast",
+          "detail": "direct source API call: AESGCM at C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py:8",
+          "confidence": 0.92,
+          "snippet": "aesgcm = AESGCM(key)"
+        }
+      ],
+      "function": "decrypt_data",
+      "location": {
+        "file": "C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py",
+        "line": 8,
+        "function": "decrypt_data"
+      },
+      "implementation": {
+        "library": "cryptography",
+        "api": "AESGCM"
+      },
+      "context": {
+        "exposure": "internal"
+      },
+      "risk_inputs": {
+        "usage_state": "Confirmed",
+        "exposure": "internal",
+        "sensitive_data": false,
+        "external_dependency": true
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "ast:bf40ecdaa803f76d",
+        "kind": "asset",
+        "label": "AES-256-GCM",
+        "ref": "ast:bf40ecdaa803f76d"
+      },
+      {
+        "id": "file:41819150",
+        "kind": "file",
+        "label": "C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py",
+        "ref": "C:\\Users\\Shubh Mehta\\Documents\\Default Project\\ecdat\\tests\\fixtures\\source\\aes_gcm.py"
+      },
+      {
+        "id": "library:c596d11",
+        "kind": "library",
+        "label": "cryptography",
+        "ref": "cryptography"
+      },
+      {
+        "id": "op:914be7fc4afe1dec",
+        "kind": "operation",
+        "label": "Encrypt",
+        "ref": "op:914be7fc4afe1dec"
+      },
+      {
+        "id": "op:135d089293ec107e",
+        "kind": "operation",
+        "label": "Encrypt",
+        "ref": "op:135d089293ec107e"
+      }
+    ],
+    "edges": [
+      {
+        "from": "file:41819150",
+        "to": "ast:bf40ecdaa803f76d",
+        "relationship": "contains"
+      },
+      {
+        "from": "ast:bf40ecdaa803f76d",
+        "to": "library:c596d11",
+        "relationship": "uses"
+      },
+      {
+        "from": "op:914be7fc4afe1dec",
+        "to": "ast:bf40ecdaa803f76d",
+        "relationship": "uses"
+      },
+      {
+        "from": "file:41819150",
+        "to": "op:914be7fc4afe1dec",
+        "relationship": "contains"
+      },
+      {
+        "from": "op:135d089293ec107e",
+        "to": "ast:bf40ecdaa803f76d",
+        "relationship": "uses"
+      },
+      {
+        "from": "file:41819150",
+        "to": "op:135d089293ec107e",
+        "relationship": "contains"
+      }
+    ]
+  },
+  "stats": {
+    "asset_count": 1,
+    "operation_count": 2,
+    "node_count": 5,
+    "edge_count": 6
+  },
+  "risks": [],
+  "recommendations": []
+}

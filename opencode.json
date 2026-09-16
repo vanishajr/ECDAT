@@ -1,0 +1,23 @@
+﻿{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "build": {
+      "prompt": "{file:./BUILD_PROMPT.md}",
+      "permission": {
+        "read": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "task": {
+          "*": "deny",
+          "local-investigator": "allow"
+        },
+        "edit": "allow",
+        "bash": "allow",
+        "lsp": "allow",
+        "webfetch": "deny",
+        "websearch": "deny"
+      }
+    }
+  }
+}

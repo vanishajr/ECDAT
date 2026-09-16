@@ -1,34 +1,47 @@
-# Python bytecode / caches
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
-
-# Test / coverage artifacts
 .pytest_cache/
 .coverage
-coverage.xml
 htmlcov/
-*.cover
 
 # Virtual environments
 .venv/
 venv/
 env/
-ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs
+*.log
 
 # Build / packaging
 build/
 dist/
-*.egg-info/
 *.egg
+*.egg-info/
 
-# Editors / OS
+# OpenCode dependencies / generated runtime files
+.opencode/node_modules/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
-*.swp
-.DS_Store
 
-# Local ECDAT runtime artifacts (default DB / outputs)
-*.db
-*.db-journal
-.ecdat/
+# Temporary/debug outputs
+output.json
+output_full.json
+opencode.json.backup
+
+# Temporary OpenCode investigation artifacts
+.opencode/parallel-test/
