@@ -269,7 +269,7 @@ class SourceScanner(Scanner[ScannerFinding]):
 
         evidence = create_evidence_signal(
             tool="source:ast",
-            detail=f"direct source API call (fallback): {pattern} at {file_path}:{line_num}",
+            detail=f"direct source API call (regex fallback): {pattern} at {file_path}:{line_num}",
             confidence=0.8,
             snippet=line.strip()[:200],
         )
@@ -645,7 +645,7 @@ class CryptoASTVisitor(ast.NodeVisitor):
         snippet = self.lines[line_no - 1].strip() if line_no <= len(self.lines) else ""
         evidence = create_evidence_signal(
             tool="source:ast",
-            detail=f"direct source API call: {call_str} at {self.file_path}:{line_no}",
+            detail=f"direct source API call (AST-verified): {call_str} at {self.file_path}:{line_no}",
             confidence=0.92,
             snippet=snippet[:200],
         )

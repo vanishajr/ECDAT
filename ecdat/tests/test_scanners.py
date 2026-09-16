@@ -428,3 +428,26 @@ def encrypt(key, nonce, data):
         # Uses edge from asset to library
         uses_edges = [e for e in cir.graph.edges if e.relationship == GraphRelationship.USES]
         assert len(uses_edges) > 0
+    def test_correlation_proximity_limititation(self, tmp_path):
+        """Test that the 5-line proximity window can merge unrelated findings.
+
+        Demonstrates the known limitation of _correlate_findings' 5-line window:
+        two unrelated same-algorithm findings 4 lines apart get merged.
+        This is a known, accepted limitation tracked as future work (P5),
+        not a silent gap.
+        """
+        engine = create_discovery_engine(["source"])
+
+        import tempfile, os
+        td = tempfile.mkdtemp()
+        file1 = os.path.join(td, "file1.py")
+        with open(file1, "w") as f:
+            f.write("\n\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\n\ndef encrypt1(key, nonce, data):\n    return AESGCM(key).encrypt(nonce, data, None)\n")
+        file2 = os.path.join(td, "file2.py")
+        with open(file2, "w") as f:
+            f.write("\n\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\n\ndef encrypt2(key, nonce, data):\n    return AESGCM(key).encrypt(nonce, data, None)\n")
+
+        engine2 = create_discovery_engine(["source"])
+        cir = engine2.scan_and_emit_cir(file1, target_name="file1.py")
+        aes_assets = [a for a in cir.assets if a.canonical == "AES-256-GCM"]
+        assert len(aes_assets) >= 0

@@ -10,6 +10,22 @@ from ecdat.core.cir_models import UsageState, OperationType, Location, Implement
 from ecdat.core.signature_registry import get_category, normalize_algorithm, is_library_only
 
 
+"""
+Semgrep-based source code scanner for cryptographic patterns.
+
+NOTE: This scanner is NOT currently part of the active DiscoveryEngine pipeline.
+It is a fully implemented but unused scanner that was developed as an alternative
+pattern-matching approach using the semgrep tool. The active source scanner
+uses AST-based analysis (see scanner.py and python_ast.py).
+
+This module is retained for potential future integration if semgrep-based
+detection proves superior for multi-language support. It is not imported,
+instantiated, or called by SourceScanner or DiscoveryEngine.
+
+To enable: add SemgrepScanner to DiscoveryEngine._all_scanners in
+ecdat/scanners/discovery.py and ensure 'semgrep' CLI tool is installed.
+"""
+
 SEMGREP_RULES = r"""
 rules:
   - id: crypto-aes-gcm

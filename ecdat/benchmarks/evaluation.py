@@ -70,8 +70,15 @@ class ExpectedFinding:
         
         if self.location:
             if self.location.file and finding.location:
-                expected_file = self.location.file.replace('\\', '/').removeprefix('ecdat/')
-                actual_file = finding.location.file.replace('\\', '/').removeprefix('ecdat/')
+                def normalize_path(path: str) -> str:
+                    path = path.replace('\\', '/')
+                    idx = path.find('ecdat/')
+                    if idx >= 0:
+                        return path[idx + len('ecdat/'):]
+                    return path
+                
+                expected_file = normalize_path(self.location.file)
+                actual_file = normalize_path(finding.location.file)
                 if expected_file != actual_file:
                     return False
             if self.location.line and finding.location and finding.location.line:
