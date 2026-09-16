@@ -5,6 +5,7 @@ from __future__ import annotations
 
 def to_markdown(report: dict) -> str:
     r = report
+    real = r.get("real_risk")
     lines = [
         f"# ECDAT Report: {r['scan_id']}",
         "",
@@ -14,6 +15,12 @@ def to_markdown(report: dict) -> str:
         f"- Findings: {r['finding_count']} "
         f"(files scanned: {r['files_scanned']})",
         f"- Risk: {r['risk']['level']} ({r['risk']['score']}) [mock scoring]",
+    ]
+    if real is not None:
+        lines.append(
+            f"- Real risk (P1): {real['level']} ({real['score']}) "
+            f"[{real.get('model', 'p1')}]")
+    lines += [
         f"- Rules affected: {len(r['by_rule'])}",
         "",
         "## Scan Information",

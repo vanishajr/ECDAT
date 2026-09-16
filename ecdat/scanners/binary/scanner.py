@@ -7,6 +7,7 @@ from ecdat.scanners.base import Scanner, ScannerFinding, ScannerRegistry
 from ecdat.scanners.binary.lief_scanner import LIEFScanner
 from ecdat.scanners.binary.strings_scanner import StringsScanner
 from ecdat.scanners.binary.yara_scanner import YARAScanner
+from ecdat.scanners.path_policy import iter_project_files
 
 
 class BinaryScanner(Scanner[ScannerFinding]):
@@ -60,8 +61,10 @@ class BinaryScanner(Scanner[ScannerFinding]):
         return all_findings
 
     def _is_binary_file(self, path: Path) -> bool:
-        if path.suffix in {".exe", ".dll", ".so", ".dylib", ".bin", ".elf", ".o", ".a", ".lib"}:
+        if path.suffix.lower() in {".exe", ".dll", ".so", ".dylib", ".bin", ".elf", ".o", ".a", ".lib"}:
             return True
+        if path.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".otf", ".zip", ".tar", ".gz", ".pdf"}:
+            return False
         try:
             with open(path, "rb") as f:
                 chunk = f.read(1024)
@@ -73,8 +76,8 @@ class BinaryScanner(Scanner[ScannerFinding]):
 
     def _find_binary_files(self, root: Path) -> list[Path]:
         binaries: list[Path] = []
-        for path in root.rglob("*"):
-            if path.is_file() and self._is_binary_file(path):
+        for path in iter_project_files(root):
+            if self._is_binary_file(path):
                 binaries.append(path)
         return binaries
 

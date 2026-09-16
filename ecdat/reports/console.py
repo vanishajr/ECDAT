@@ -5,11 +5,17 @@ from __future__ import annotations
 
 def to_console(report: dict) -> str:
     r = report
+    real = r.get("real_risk")
     lines = [
         f"ECDAT report: {r['scan_id']}",
         f"target:   {r['target']}",
         f"findings: {r['finding_count']} (files scanned: {r['files_scanned']})",
         f"risk:     {r['risk']['level']} ({r['risk']['score']}) [mock scoring]",
+    ]
+    if real is not None:
+        lines.append(
+            f"real risk (P1): {real['level']} ({real['score']})")
+    lines += [
         "",
         "by severity:",
     ]

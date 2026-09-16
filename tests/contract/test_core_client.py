@@ -5,8 +5,6 @@ later. Real-client conformance = passes these tests. No CLI/DB/exports
 here — canonical conformance only.
 """
 
-from pathlib import Path
-
 import pytest
 
 from ecdat.core.client import (
@@ -111,6 +109,32 @@ def test_factory_modes():
         get_client("bogus")
 
 
-def test_real_placeholder_raises(tmp_path):
-    with pytest.raises(NotImplementedError):
-        get_client("real").scan(Path(tmp_path) / "x.py")
+def test_real_conforms_to_canonical(tmp_path):
+    pytest.importorskip("pydantic")
+    from ecdat.core.client import RealCoreClient
+
+    target = tmp_path / "real_app.py"
+    target.write_text(
+        "import hashlib\n"
+        "from cryptography.hazmat.primitives.asymmetric import rsa\n"
+        "key = rsa.generate_private_key(public_exponent=65537, key_size=1024)\n"
+        "h = hashlib.md5(b'x').hexdigest()\n"
+    )
+    doc = RealCoreClient().scan(target)
+    assert_canonical(doc)
+    # Deterministic rerun: same target -> same scan_id, no uuid4.
+    again = RealCoreClient().scan(target)
+    assert again["scan_id"] == doc["scan_id"]
+    assert doc["scan_id"].startswith("scan:")
+    assert doc["target"] == str(target)
+
+
+def test_real_rejects_unknown_scanners(tmp_path):
+    pytest.importorskip("pydantic")
+    from ecdat.adapters.pipeline import RealScanError
+    from ecdat.core.client import RealCoreClient
+
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+    with pytest.raises(RealScanError):
+        RealCoreClient(scanners=["bogus-scanner"]).scan(target)

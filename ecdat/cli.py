@@ -30,7 +30,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_scan.add_argument("--output", default=None, help="write canonical JSON here")
     mode = p_scan.add_mutually_exclusive_group()
     mode.add_argument("--mock", action="store_true", help="use MockCoreClient (default)")
-    mode.add_argument("--real", action="store_true", help="use RealCoreClient")
+    mode.add_argument("--real", action="store_true", help="use RealCoreClient (P2/P1 pipeline)")
+    p_scan.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default: source,dependency,binary,config,certificate)")
+    p_scan.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_scan.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_scan.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_scan.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     p_scan.set_defaults(func=scan_cmd.run)
 
     p_list = sub.add_parser("list", help="list stored scans")
@@ -50,6 +60,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_bin.add_argument("--deep", choices=["auto"], default="auto", help="deep-scan mode (reserved, mock ignores it)")
     p_bin.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_bin.add_argument("--output", default=None, help="write canonical JSON here")
+    p_bin.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default for scan-binary: binary)")
+    p_bin.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_bin.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_bin.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_bin.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_bin = p_bin.add_mutually_exclusive_group()
     mode_bin.add_argument("--mock", action="store_true", help="use mock fixture (default)")
     mode_bin.add_argument("--real", action="store_true", help="use RealCoreClient")
@@ -59,6 +79,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_ctr.add_argument("image_or_path", help="container image reference (e.g. nginx:1.25) or local path")
     p_ctr.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_ctr.add_argument("--output", default=None, help="write canonical JSON here")
+    p_ctr.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default for scan-container: container,binary,config)")
+    p_ctr.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_ctr.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_ctr.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_ctr.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_ctr = p_ctr.add_mutually_exclusive_group()
     mode_ctr.add_argument("--mock", action="store_true", help="use mock fixture (default)")
     mode_ctr.add_argument("--real", action="store_true", help="use RealCoreClient")
@@ -68,8 +98,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_cld.add_argument("provider", choices=["aws"], help="cloud provider (only aws for now)")
     p_cld.add_argument("--profile", default="default", help="cloud profile/account label")
     p_cld.add_argument("--services", default="kms,acm,elb", help="comma-separated services, e.g. kms,acm,elb")
+    p_cld.add_argument("--region", default=None, help="cloud region (real mode, forwarded to scanners)")
     p_cld.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_cld.add_argument("--output", default=None, help="write canonical JSON here")
+    p_cld.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset "
+                             "(default for scan-cloud: cloud)")
+    p_cld.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_cld.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_cld.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_cld.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_cld = p_cld.add_mutually_exclusive_group()
     mode_cld.add_argument("--mock", action="store_true", help="use mock fixture (default)")
     mode_cld.add_argument("--real", action="store_true", help="use RealCoreClient")
@@ -102,10 +143,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_rep.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
     p_rep.set_defaults(func=report_cmd.run)
 
-    p_gui = sub.add_parser("gui", help="launch local mock GUI dashboard (127.0.0.1 only)")
-    p_gui.add_argument("--db", default=DEFAULT_DB, help="SQLite DB path")
+    p_gui = sub.add_parser("gui", help="launch local API for the React GUI (127.0.0.1 only)")
+    p_gui.add_argument("--db", default=DEFAULT_DB, help="unused compatibility option")
     p_gui.add_argument("--host", default="127.0.0.1", help="loopback host to bind (default: 127.0.0.1)")
-    p_gui.add_argument("--port", type=int, default=8734, help="port to bind (0 = OS selects)")
+    p_gui.add_argument("--port", type=int, default=8734, help="API port to bind (0 = OS selects)")
     p_gui.set_defaults(func=gui_cmd.run)
 
     p_ci = sub.add_parser("ci", help="mock-first CI gate: scan a target and enforce a severity threshold")
@@ -115,13 +156,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_ci.add_argument("--summary", action="store_true", help="print concise human summary (default output)")
     p_ci.add_argument("--json", action="store_true", help="print machine-readable JSON to stdout instead of the human summary")
     p_ci.add_argument("--sarif", default=None, metavar="PATH", help="write SARIF via the existing Task 7 exporter to PATH (stdout still carries summary/JSON)")
+    p_ci.add_argument("--scanners", default=None,
+                        help="comma-separated real scanner subset (real mode)")
+    p_ci.add_argument("--allow-container", action="store_true",
+                        help="opt in to container scanning (local docker/syft)")
+    p_ci.add_argument("--allow-cloud", action="store_true",
+                        help="opt in to cloud scanning (may use ambient credentials)")
+    p_ci.add_argument("--allow-runtime", action="store_true",
+                        help="opt in to runtime TLS/SSH probing (network)")
+    p_ci.add_argument("--cir-out", default=None, help="write CIR JSON here (real mode)")
     mode_ci = p_ci.add_mutually_exclusive_group()
     mode_ci.add_argument("--mock", action="store_true", help="use MockCoreClient (default)")
     mode_ci.add_argument("--real", action="store_true", help="use RealCoreClient")
     p_ci.set_defaults(func=ci_cmd.run)
 
-    p_demo = sub.add_parser("demo", help="seed a demo workspace and launch the local mock GUI")
-    p_demo.add_argument("--db", default=None, help="SQLite DB path (default: fresh temp demo workspace)")
+    p_demo = sub.add_parser("demo", help="compatibility alias for the local React GUI API")
+    p_demo.add_argument("--db", default=None, help="unused compatibility option")
     p_demo.add_argument("--host", default="127.0.0.1", help="loopback host to bind (default: 127.0.0.1)")
     p_demo.add_argument("--port", type=int, default=8734, help="port to bind (0 = OS selects)")
     p_demo.set_defaults(func=demo_cmd.run)

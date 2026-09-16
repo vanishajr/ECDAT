@@ -11,6 +11,10 @@ def _e(value: object) -> str:
 
 def to_html(report: dict) -> str:
     r = report
+    real = r.get("real_risk")
+    real_item = (
+        f"\n<li>Real risk (P1): {_e(real['level'])} ({real['score']})</li>"
+        if real is not None else "")
     sev_rows = "".join(
         f"<tr><td>{_e(sev)}</td><td>{count}</td></tr>"
         for sev, count in sorted(r["by_severity"].items())
@@ -42,7 +46,7 @@ def to_html(report: dict) -> str:
 <ul>
 <li>Target: {_e(r['target'])}</li>
 <li>Findings: {r['finding_count']} (files scanned: {r['files_scanned']})</li>
-<li>Risk: {_e(r['risk']['level'])} ({r['risk']['score']}) [mock scoring]</li>
+<li>Risk: {_e(r['risk']['level'])} ({r['risk']['score']}) [mock scoring]</li>{real_item}
 </ul>
 <h2>Scan Information</h2>
 <ul>

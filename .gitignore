@@ -6,6 +6,8 @@ __pycache__/
 .coverage
 htmlcov/
 
+node_modules/
+
 # Virtual environments
 .venv/
 venv/
@@ -37,6 +39,12 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+
+# Local ECDAT runtime artifacts
+*.db
+*.db-journal
+.ecdat/
 
 # Temporary/debug outputs
 output.json

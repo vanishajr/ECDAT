@@ -1,44 +1,45 @@
+"""Person-1 ownership. CIR is the source of truth for all downstream stages.
+
+JSON Schema (draft 2020-12) validation entry points for CIR v0.1.
+Uses jsonschema only (already a dependency). No business logic.
+"""
+
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
-from typing import Any
 
 import jsonschema
 from jsonschema import Draft202012Validator
 
-from ecdat.core.cir_models import CIRDocument
-
-_SCHEMA_PATH = Path(__file__).parent / "cir.schema.json"
-_SCHEMA_CACHE: dict[str, Any] | None = None
+_SCHEMA_PATH = Path(__file__).with_name("cir.schema.json")
 
 
-def _load_schema() -> dict[str, Any]:
-    global _SCHEMA_CACHE
-    if _SCHEMA_CACHE is not None:
-        return _SCHEMA_CACHE
-    with open(_SCHEMA_PATH) as f:
-        _SCHEMA_CACHE = json.load(f)
-    return _SCHEMA_CACHE
+@lru_cache(maxsize=1)
+def load_cir_schema() -> dict:
+    """Load and cache the CIR v0.1 JSON Schema document."""
+    with open(_SCHEMA_PATH, "r", encoding="utf-8") as fh:
+        return json.load(fh)
 
 
-def validate_cir_document(doc: CIRDocument) -> tuple[bool, list[str]]:
-    schema = _load_schema()
+def validate_cir(doc: dict) -> dict:
+    """Validate a CIR dict against cir.schema.json.
+
+    Returns the same dict unchanged on success; raises
+    jsonschema.ValidationError on the first schema violation.
+    """
+    schema = load_cir_schema()
     validator = Draft202012Validator(schema)
-    errors = list(validator.iter_errors(doc.model_dump(mode="json", exclude_none=True)))
-    if not errors:
-        return True, []
-    return False, [f"{e.json_path}: {e.message}" for e in errors]
+    errors = sorted(validator.iter_errors(doc), key=lambda e: list(e.path))
+    if errors:
+        raise errors[0]
+    return doc
 
 
-def load_cir_json(path: str | Path) -> CIRDocument:
-    with open(path) as f:
-        data = json.load(f)
-    return CIRDocument.model_validate(data)
-
-
-def validate_cir_json_file(path: str | Path) -> tuple[bool, list[str]]:
-    with open(path) as f:
-        data = json.load(f)
-    doc = CIRDocument.model_validate(data)
-    return validate_cir_document(doc)
+def load_cir_json(path: str | Path) -> dict:
+    """Load a CIR JSON file, validate it, and return the dict."""
+    with open(path, "r", encoding="utf-8") as fh:
+        doc = json.load(fh)
+    validate_cir(doc)
+    return doc

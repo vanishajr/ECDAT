@@ -13,6 +13,7 @@ from ecdat.scanners.base import (
     create_evidence_signal,
     normalize_finding,
 )
+from ecdat.scanners.path_policy import iter_project_files_matching
 from ecdat.core.cir_models import (
     Location,
     Implementation,
@@ -173,7 +174,7 @@ class SourceScanner(Scanner[ScannerFinding]):
         if target_path.is_file():
             findings.extend(self._scan_file(target_path))
         elif target_path.is_dir():
-            for file_path in target_path.rglob("*.py"):
+            for file_path in iter_project_files_matching(target_path, {".py"}):
                 if self._should_skip(file_path):
                     continue
                 findings.extend(self._scan_file(file_path))
@@ -269,7 +270,7 @@ class SourceScanner(Scanner[ScannerFinding]):
 
         evidence = create_evidence_signal(
             tool="source:ast",
-            detail=f"direct source API call (regex fallback): {pattern} at {file_path}:{line_num}",
+            detail=f"direct source API call (fallback): {pattern} at {file_path}:{line_num}",
             confidence=0.8,
             snippet=line.strip()[:200],
         )
@@ -645,7 +646,7 @@ class CryptoASTVisitor(ast.NodeVisitor):
         snippet = self.lines[line_no - 1].strip() if line_no <= len(self.lines) else ""
         evidence = create_evidence_signal(
             tool="source:ast",
-            detail=f"direct source API call (AST-verified): {call_str} at {self.file_path}:{line_no}",
+            detail=f"direct source API call: {call_str} at {self.file_path}:{line_no}",
             confidence=0.92,
             snippet=snippet[:200],
         )

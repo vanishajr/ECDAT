@@ -71,9 +71,15 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ecdat*"]
+exclude = ["referenceDocs*", ".venv-p1*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["ecdat/tests"]
+testpaths = ["tests", "ecdat/tests"]
+pythonpath = ["."]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"

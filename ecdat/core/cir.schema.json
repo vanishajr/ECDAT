@@ -1,7 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-2020-12/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ecdat.local/schemas/cir/v0.1/cir.schema.json",
-  "title": "CIR v0.1 - Cryptographic Inventory Record",
+  "title": "CIR v0.1 — Cryptographic Inventory Record",
+  "description": "Person-1 owned. CIR is the source of truth for all downstream stages (risk, recommendations, reports, exports). Forward-compat discipline: all record objects use additionalProperties:false; extensions require a version bump (cir_version), never silent extra fields. REDACTION: never store raw key material — evidence snippets must be redacted excerpts only, never keys, passwords, or secrets.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -19,213 +20,97 @@
   ],
   "properties": {
     "cir_version": {
-      "type": "string",
-      "const": "0.1"
+      "const": "0.1",
+      "description": "CIR format version. Must be exactly 0.1 for this schema."
     },
     "scan_id": {
       "type": "string",
-      "pattern": "^scan:[0-9a-f]{16}$"
+      "minLength": 1,
+      "description": "Deterministic-or-random scan identifier, e.g. scan:<blake2s-hex>."
     },
     "target": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "Scan target identifier (path, repo URL, container tag, host)."
     },
     "started_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Scan start timestamp (RFC 3339)."
     },
     "finished_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Scan finish timestamp (RFC 3339)."
     },
     "tool_versions": {
       "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
+      "description": "Map of producer tool name -> version string. String map (not a record), so additionalProperties is intentionally open with string values.",
+      "additionalProperties": { "type": "string" }
     },
     "registry_version": {
       "type": "string",
-      "pattern": "^\\d{4}\\.\\d{2}\\.\\d{2}$"
+      "minLength": 1,
+      "description": "signature_registry.json version used during canonicalization."
     },
     "assets": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/CryptoAsset"
-      }
+      "items": { "$ref": "#/$defs/CryptoAsset" }
     },
     "operations": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/CryptoOperation"
-      }
+      "items": { "$ref": "#/$defs/CryptoOperation" }
     },
     "graph": {
       "type": "object",
-      "required": ["nodes", "edges"],
       "additionalProperties": false,
+      "required": ["nodes", "edges"],
       "properties": {
         "nodes": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/GraphNode"
-          }
+          "items": { "$ref": "#/$defs/GraphNode" }
         },
         "edges": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/GraphEdge"
-          }
+          "items": { "$ref": "#/$defs/GraphEdge" }
         }
       }
     },
     "stats": {
       "type": "object",
-      "required": ["asset_count", "operation_count", "node_count", "edge_count"],
       "additionalProperties": false,
       "properties": {
-        "asset_count": {"type": "integer", "minimum": 0},
-        "operation_count": {"type": "integer", "minimum": 0},
-        "node_count": {"type": "integer", "minimum": 0},
-        "edge_count": {"type": "integer", "minimum": 0}
+        "asset_count": { "type": "integer", "minimum": 0 },
+        "operation_count": { "type": "integer", "minimum": 0 },
+        "node_count": { "type": "integer", "minimum": 0 },
+        "edge_count": { "type": "integer", "minimum": 0 },
+        "risk_count": { "type": "integer", "minimum": 0 },
+        "recommendation_count": { "type": "integer", "minimum": 0 }
       }
     },
     "risks": {
       "type": "array",
-      "items": {"type": "object"}
+      "description": "Downstream-produced only (risk engine). Optional in CIR v0.1 producer output.",
+      "items": { "$ref": "#/$defs/RiskRecord" }
     },
     "recommendations": {
       "type": "array",
-      "items": {"type": "object"}
+      "description": "Downstream-produced only (recommendation engine). Optional in CIR v0.1 producer output.",
+      "items": { "$ref": "#/$defs/Recommendation" }
     }
   },
   "$defs": {
-    "CryptoAsset": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["asset_id", "canonical", "usage_state", "confidence", "evidence"],
-      "properties": {
-        "asset_id": {
-          "type": "string",
-          "pattern": "^ast:[0-9a-f]{16}$"
-        },
-        "canonical": {
-          "type": "string",
-          "minLength": 1
-        },
-        "original": {
-          "type": "string"
-        },
-        "key_size": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "mode": {
-          "type": "string"
-        },
-        "curve": {
-          "type": "string"
-        },
-        "protocol": {
-          "type": "string"
-        },
-        "library": {
-          "type": "string"
-        },
-        "usage_state": {
-          "type": "string",
-          "enum": ["Confirmed", "Probable", "Possible", "ProvidedOnly", "FalsePositiveSuppressed"]
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/EvidenceSignal"
-          }
-        },
-        "location": {
-          "$ref": "#/$defs/Location"
-        },
-        "implementation": {
-          "$ref": "#/$defs/Implementation"
-        },
-        "context": {
-          "$ref": "#/$defs/Context"
-        },
-        "risk_inputs": {
-          "$ref": "#/$defs/RiskInputs"
-        }
-      }
-    },
-    "CryptoOperation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["operation_id", "operation_type", "asset_id", "confidence", "evidence"],
-      "properties": {
-        "operation_id": {
-          "type": "string",
-          "pattern": "^op:[0-9a-f]{16}$"
-        },
-        "operation_type": {
-          "type": "string",
-          "enum": ["Encrypt", "Decrypt", "Sign", "Verify", "KeyExchange", "Hash", "KDF", "TLS", "Storage", "KeyManagement"]
-        },
-        "asset_id": {
-          "type": "string",
-          "pattern": "^ast:[0-9a-f]{16}$"
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/EvidenceSignal"
-          }
-        },
-        "function": {
-          "type": "string"
-        },
-        "location": {
-          "$ref": "#/$defs/Location"
-        },
-        "implementation": {
-          "$ref": "#/$defs/Implementation"
-        },
-        "context": {
-          "$ref": "#/$defs/Context"
-        },
-        "risk_inputs": {
-          "$ref": "#/$defs/RiskInputs"
-        }
-      }
-    },
     "EvidenceSignal": {
       "type": "object",
       "additionalProperties": false,
       "required": ["tool", "detail"],
       "properties": {
-        "tool": {
-          "type": "string",
-          "minLength": 1
-        },
-        "detail": {
-          "type": "string",
-          "minLength": 1
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
+        "tool": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
         "snippet": {
-          "type": "string"
+          "type": "string",
+          "description": "Redacted code excerpt. MUST NOT contain raw key material, passwords, or secrets."
         }
       }
     },
@@ -233,11 +118,11 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "file": {"type": "string"},
-        "line": {"type": "integer", "minimum": 1},
-        "column": {"type": "integer", "minimum": 1},
-        "function": {"type": "string"},
-        "uri": {"type": "string"}
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "function": { "type": "string" },
+        "uri": { "type": "string" }
       }
     },
     "Implementation": {
@@ -245,10 +130,10 @@
       "additionalProperties": false,
       "required": ["library"],
       "properties": {
-        "library": {"type": "string", "minLength": 1},
-        "version": {"type": "string"},
-        "provider": {"type": "string"},
-        "api": {"type": "string"}
+        "library": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "provider": { "type": "string" },
+        "api": { "type": "string" }
       }
     },
     "Context": {
@@ -260,9 +145,9 @@
           "type": "string",
           "enum": ["internet-facing", "internal", "offline", "cloud", "third-party"]
         },
-        "environment": {"type": "string"},
-        "data_classification": {"type": "string"},
-        "notes": {"type": "string"}
+        "environment": { "type": "string" },
+        "data_classification": { "type": "string" },
+        "notes": { "type": "string" }
       }
     },
     "RiskInputs": {
@@ -278,8 +163,67 @@
           "type": "string",
           "enum": ["internet-facing", "internal", "offline", "cloud", "third-party"]
         },
-        "sensitive_data": {"type": "boolean"},
-        "external_dependency": {"type": "boolean"}
+        "sensitive_data": { "type": "boolean" },
+        "external_dependency": { "type": "boolean" }
+      }
+    },
+    "CryptoAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "canonical", "usage_state", "confidence", "evidence"],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "pattern": "^ast:[0-9a-f]{16}$",
+          "description": "Deterministic id: ast:<blake2s(canonical|key_size|mode|curve|protocol, 8 bytes) hex>."
+        },
+        "canonical": { "type": "string", "minLength": 1 },
+        "original": { "type": "string" },
+        "key_size": { "type": "integer", "minimum": 0 },
+        "mode": { "type": "string" },
+        "curve": { "type": "string" },
+        "protocol": { "type": "string" },
+        "library": { "type": "string" },
+        "usage_state": {
+          "type": "string",
+          "enum": ["Confirmed", "Probable", "Possible", "ProvidedOnly", "FalsePositiveSuppressed"]
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceSignal" }
+        },
+        "location": { "$ref": "#/$defs/Location" },
+        "implementation": { "$ref": "#/$defs/Implementation" },
+        "context": { "$ref": "#/$defs/Context" },
+        "risk_inputs": { "$ref": "#/$defs/RiskInputs" }
+      }
+    },
+    "CryptoOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_id", "operation_type", "asset_id", "confidence", "evidence"],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^op:[0-9a-f]{16}$",
+          "description": "Deterministic id: op:<blake2s(operation_type|asset_id|function|location, 8 bytes) hex>."
+        },
+        "operation_type": {
+          "type": "string",
+          "enum": ["Encrypt", "Decrypt", "Sign", "Verify", "KeyExchange", "Hash", "KDF", "TLS", "Storage", "KeyManagement"]
+        },
+        "asset_id": { "type": "string", "minLength": 1 },
+        "function": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceSignal" }
+        },
+        "location": { "$ref": "#/$defs/Location" },
+        "implementation": { "$ref": "#/$defs/Implementation" },
+        "context": { "$ref": "#/$defs/Context" },
+        "risk_inputs": { "$ref": "#/$defs/RiskInputs" }
       }
     },
     "GraphNode": {
@@ -287,13 +231,13 @@
       "additionalProperties": false,
       "required": ["id", "kind"],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
+        "id": { "type": "string", "minLength": 1 },
         "kind": {
           "type": "string",
           "enum": ["asset", "operation", "file", "service", "host", "library", "key"]
         },
-        "label": {"type": "string"},
-        "ref": {"type": "string"}
+        "ref": { "type": "string" },
+        "label": { "type": "string" }
       }
     },
     "GraphEdge": {
@@ -301,12 +245,50 @@
       "additionalProperties": false,
       "required": ["from", "to", "relationship"],
       "properties": {
-        "from": {"type": "string", "minLength": 1},
-        "to": {"type": "string", "minLength": 1},
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
         "relationship": {
           "type": "string",
           "enum": ["uses", "calls", "contains", "derives", "protects", "depends_on", "terminates"]
         }
+      }
+    },
+    "RiskRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["risk_id", "class", "title", "confidence"],
+      "properties": {
+        "risk_id": { "type": "string", "minLength": 1 },
+        "asset_id": { "type": "string" },
+        "operation_id": { "type": "string" },
+        "class": {
+          "type": "string",
+          "enum": ["Critical", "High", "Medium", "Low", "Informational"]
+        },
+        "score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rationale": { "type": "string" }
+      }
+    },
+    "Recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recommendation_id", "title"],
+      "properties": {
+        "recommendation_id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "priority": {
+          "type": "string",
+          "enum": ["Critical", "High", "Medium", "Low", "Informational"]
+        },
+        "asset_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pqc_target": { "type": "string" }
       }
     }
   }

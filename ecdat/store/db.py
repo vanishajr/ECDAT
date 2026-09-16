@@ -1,7 +1,18 @@
-"""SQLite connection + v1 schema (Person 3 platform layer).
+"""SQLite connection + schema (Person 3 platform layer).
 
 stdlib sqlite3 only — no ORM. WAL mode enabled per architecture.
 Tables: scans, findings (+ index on findings(scan_id, severity)).
+
+Schema versions:
+  v1: scans(id, target, started_at, finished_at, raw_json, created_at)
+      + findings (+ severity index).
+  v2: adds scans.cir_json (nullable TEXT). NULL means a mock/legacy
+      scan with no CIR sidecar; non-NULL is the full enriched CIR JSON
+      for a real (P2/P1) scan stored under the same scan ID.
+
+No second normalized asset/operation model: the canonical document
+stays the queryable index and the CIR sidecar preserves full fidelity
+(risk, recommendations, graph, evidence) for the GUI providers.
 
 This module owns DDL only. Row CRUD lives in scans.py / findings.py.
 Callers must pass validated canonical docs (see ecdat.core.validate);
@@ -15,7 +26,7 @@ from pathlib import Path
 
 __all__ = ["connect", "init_schema", "open_db", "SCHEMA_VERSION"]
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS scans (
@@ -41,6 +52,11 @@ CREATE INDEX IF NOT EXISTS idx_findings_scan_severity
     ON findings(scan_id, severity);
 """
 
+_MIGRATIONS = {
+    # version -> SQL applied when stored user_version is lower.
+    2: "ALTER TABLE scans ADD COLUMN cir_json TEXT",
+}
+
 
 def connect(path: str | Path | None = None) -> sqlite3.Connection:
     """Open a SQLite connection with FK enforcement and WAL mode.
@@ -57,9 +73,28 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _stored_version(conn: sqlite3.Connection) -> int:
+    row = conn.execute("PRAGMA user_version;").fetchone()
+    try:
+        return int(row[0])
+    except (TypeError, ValueError, IndexError):
+        return 0
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
-    """Create v1 tables + index. Idempotent; safe to call on every open."""
+    """Create tables + index, then apply additive migrations. Idempotent."""
     conn.executescript(_SCHEMA_SQL)
+    stored = _stored_version(conn)
+    for version in sorted(_MIGRATIONS):
+        if stored < version:
+            try:
+                conn.execute(_MIGRATIONS[version])
+            except sqlite3.OperationalError as exc:
+                # ADD COLUMN is not idempotent on its own; a repeated run
+                # against an already-migrated DB reports "duplicate column
+                # name", which is the desired end state, not a failure.
+                if "duplicate column name" not in str(exc).lower():
+                    raise
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION};")
     conn.commit()
 

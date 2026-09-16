@@ -9,7 +9,11 @@ from ecdat.core.cir_models import UsageState
 
 _REGISTRY: dict[str, Any] | None = None
 _REGISTRY_LOCK = threading.Lock()
-_REGISTRY_PATH = Path(__file__).parent / "signature_registry.json"
+# P3 integration note: P2's registry file is vendored as
+# p2_signature_registry.json to avoid colliding with P1's
+# signature_registry.json (different schema, same version string).
+# P2 scanners canonicalize through this module only.
+_REGISTRY_PATH = Path(__file__).parent / "p2_signature_registry.json"
 
 
 def load_registry() -> dict[str, Any]:

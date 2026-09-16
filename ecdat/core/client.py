@@ -1,16 +1,17 @@
 """CoreClient interface + mock/real implementations (Person 3 platform layer).
 
-Person 1 (Core Intelligence) owns real detection. This module defines the
+Person 1 (Core Intelligence) owns real analysis and Person 2
+(Discovery) owns real detection. This module defines the
 decoupling contract Person 3 codes against:
 
     CoreClient.scan(target: Path) -> dict   # canonical v1 JSON dict
 
-- MockCoreClient: deterministic, fixture-backed, no real scanning. Used
-  until Person 1's entry point is finalized. Output is validated with
-  ecdat.core.validate.validate() before return.
-- RealCoreClient: thin placeholder adapter. scan() raises
-  NotImplementedError until Person 1's import path + function signature
-  are agreed. Only this class changes at integration time.
+- MockCoreClient: deterministic, fixture-backed, no real scanning.
+  Output is validated with ecdat.core.validate.validate() before return.
+- RealCoreClient: integrated adapter. scan() runs the single logical
+  real scan (P2 DiscoveryEngine -> CIR v0.1 -> P1 validate/enrich/convert
+  -> P3 normalization -> validated canonical). Failures raise
+  RealScanError; there is no mock fallback.
 - get_client(mode): factory for "mock" / "real".
 """
 
@@ -80,83 +81,79 @@ class MockCoreClient:
 
 
 class RealCoreClient:
-    """Real adapter: uses DiscoveryEngine to scan and emit CIR v0.1,
-    then converts to canonical v1 dict for Person 3 platform layer."""
+    """Integrated real adapter: ONE logical scan, no mock fallback.
 
-    def __init__(self, scanners: list[str] | None = None) -> None:
-        self.scanners = scanners
+    scan() runs the P3-owned pipeline (``ecdat.adapters.pipeline``):
+    P2 DiscoveryEngine scans the target exactly once into CIR v0.1,
+    P1 validates/scores/recommends/converts that CIR, P3 normalizes
+    (deterministic scan ID, RFC3339 timestamps, real files_scanned,
+    asset-only findings) and validates the canonical document.
+
+    P1's ``api.scan()`` is deliberately never called — it performs its
+    own discovery and would scan the target a second time. P2's naive
+    ``_cir_to_canonical`` is likewise unused; conversion is P1's
+    ``to_canonical``.
+
+    Constructor options (all optional): ``scanners`` (explicit list —
+    the default safe subset applies when omitted), ``allow_container``,
+    ``allow_cloud``, ``allow_runtime`` (opt-in families), ``risk_z``.
+    Every failure raises ``RealScanError`` (never mock data).
+    """
+
+    def __init__(
+        self,
+        scanners: list[str] | tuple[str, ...] | None = None,
+        allow_container: bool = False,
+        allow_cloud: bool = False,
+        allow_runtime: bool = False,
+        risk_z: float = 10.0,
+        region: str | None = None,
+        **kwargs,
+    ) -> None:
+        if kwargs:
+            raise ValueError(
+                f"unknown RealCoreClient option(s): {sorted(kwargs)}"
+            )
+        self.scanners = list(scanners) if scanners is not None else None
+        self.allow_container = bool(allow_container)
+        self.allow_cloud = bool(allow_cloud)
+        self.allow_runtime = bool(allow_runtime)
+        self.risk_z = float(risk_z)
+        self.region = str(region).strip() if region else None
 
     def scan(self, target: Path) -> dict:
-        target = Path(target)
-        from ecdat import create_discovery_engine
-        from ecdat.core.validate import validate
+        from ecdat.adapters.pipeline import RealScanError  # noqa: F401
+        from ecdat.adapters.pipeline import run_real_scan
 
-        engine = create_discovery_engine(self.scanners)
-        cir = engine.scan_and_emit_cir(target, target_name=str(target))
+        _enriched, canonical = run_real_scan(
+            target,
+            scanners=self.scanners,
+            allow_container=self.allow_container,
+            allow_cloud=self.allow_cloud,
+            allow_runtime=self.allow_runtime,
+            risk_z=self.risk_z,
+            region=self.region,
+        )
+        return canonical
 
-        # Convert CIR v0.1 to canonical v1 format
-        canonical = self._cir_to_canonical(cir, str(target))
-        
-        # Validate against canonical v1 schema
-        return validate(canonical)
+    def scan_with_cir(self, target: Path) -> tuple[dict, dict]:
+        """Scan and return ``(cir_dict, canonical_doc)``.
 
-    def _cir_to_canonical(self, cir, target: str) -> dict:
-        """Convert CIRDocument to canonical v1 format."""
-        findings = []
-        
-        # Convert assets to findings
-        for asset in cir.assets:
-            finding = {
-                "rule_id": f"CRYPTO-ASSET-{asset.canonical.replace('-', '-').upper()}",
-                "title": f"Cryptographic asset detected: {asset.canonical}",
-                "severity": "info",
-                "file": asset.location.file if asset.location and asset.location.file else target,
-                "line": asset.location.line if asset.location and asset.location.line else 0,
-                "snippet": asset.evidence[0].snippet if asset.evidence else "",
-                "confidence": asset.confidence,
-                "metadata": {
-                    "asset_id": asset.asset_id,
-                    "canonical_name": asset.canonical,
-                    "key_size": asset.key_size,
-                    "mode": asset.mode,
-                    "library": asset.library,
-                    "usage_state": asset.usage_state.value if asset.usage_state else None,
-                }
-            }
-            findings.append(finding)
-        
-        # Convert operations to findings
-        for op in cir.operations:
-            finding = {
-                "rule_id": f"CRYPTO-OP-{op.operation_type.value.upper()}",
-                "title": f"Cryptographic operation detected: {op.operation_type.value}",
-                "severity": "info",
-                "file": op.location.file if op.location and op.location.file else target,
-                "line": op.location.line if op.location and op.location.line else 0,
-                "snippet": op.evidence[0].snippet if op.evidence else "",
-                "confidence": op.confidence,
-                "metadata": {
-                    "operation_id": op.operation_id,
-                    "operation_type": op.operation_type.value,
-                    "asset_id": op.asset_id,
-                    "function": op.function,
-                }
-            }
-            findings.append(finding)
+        The CIR sidecar is what the platform persists next to the
+        canonical document (risk, recommendations, graph). Same
+        single-scan semantics and failure behavior as ``scan``.
+        """
+        from ecdat.adapters.pipeline import run_real_scan
 
-        return {
-            "schema_version": "1.0",
-            "scan_id": cir.scan_id,
-            "target": target,
-            "started_at": cir.started_at.isoformat() + "Z",
-            "finished_at": cir.finished_at.isoformat() + "Z",
-            "tool_versions": cir.tool_versions,
-            "findings": findings,
-            "stats": {
-                "files_scanned": 1,
-                "findings_count": len(findings)
-            }
-        }
+        return run_real_scan(
+            target,
+            scanners=self.scanners,
+            allow_container=self.allow_container,
+            allow_cloud=self.allow_cloud,
+            allow_runtime=self.allow_runtime,
+            risk_z=self.risk_z,
+            region=self.region,
+        )
 
 
 def get_client(mode: str = "mock", **kwargs) -> CoreClient:
@@ -164,7 +161,5 @@ def get_client(mode: str = "mock", **kwargs) -> CoreClient:
     if mode == "mock":
         return MockCoreClient(**kwargs)
     if mode == "real":
-        if kwargs:
-            raise ValueError("RealCoreClient takes no constructor arguments yet.")
-        return RealCoreClient()
+        return RealCoreClient(**kwargs)
     raise ValueError(f"unknown client mode: {mode!r} (expected 'mock' or 'real')")
