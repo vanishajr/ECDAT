@@ -15,7 +15,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import tempfile
 import threading
 import uuid
@@ -31,10 +30,11 @@ from urllib.request import Request, urlopen
 
 from ecdat.adapters.graph_adapter import adapt_cir_graph
 from ecdat.adapters.risk_view import summarize_wire_risks
-from ecdat.adapters.scanner_policy import DEFAULT_SCANNERS, OPT_IN_SCANNERS
+from ecdat.adapters.scanner_policy import DEFAULT_SCANNERS, OPT_IN_SCANNERS, PROJECT_SCANNERS
 from ecdat.adapters.pipeline import RealScanError, run_real_scan
 from ecdat.exports import cbom, csv_gen, sarif
 from ecdat.reports import aggregate, html, markdown, pdf
+from ecdat.scanners.path_policy import iter_project_files
 
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 MAX_UPLOAD_BYTES = 250 * 1024 * 1024
@@ -136,7 +136,7 @@ def _architecture(paths: list[Path]) -> str:
 
 
 def _inspect(root: Path, label: str) -> dict[str, Any]:
-    files = [p for p in root.rglob("*") if p.is_file()]
+    files = list(iter_project_files(root))
     extensions = sorted({p.suffix.lower() for p in files if p.suffix})[:16]
     languages = []
     mapping = {".py": "Python", ".js": "JavaScript", ".ts": "TypeScript", ".java": "Java", ".go": "Go", ".rs": "Rust", ".c": "C", ".cpp": "C++", ".cs": "C#"}
@@ -210,9 +210,9 @@ def _profile_scanners(profile: str, requested: list[str] | None) -> list[str]:
         return requested
     profile = profile.lower()
     if profile == "quick":
-        return ["source", "dependency", "config", "certificate"]
+        return list(PROJECT_SCANNERS)
     if profile in {"standard", "deep"}:
-        return list(DEFAULT_SCANNERS)
+        return list(PROJECT_SCANNERS)
     raise ValueError("profile must be quick, standard, or deep")
 
 
@@ -320,7 +320,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"ok": True, "time": _now()})
             return
         if path == "/api/scanner-capabilities":
-            self._json(200, {"default": list(DEFAULT_SCANNERS), "optional": OPT_IN_SCANNERS, "github_oauth": bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))})
+            self._json(200, {"default": list(PROJECT_SCANNERS), "optional": {"binary": "explicit executable/library analysis", **OPT_IN_SCANNERS}, "github_oauth": bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))})
             return
         if path.startswith("/api/jobs/"):
             job_id = path.rsplit("/", 1)[-1]
@@ -473,11 +473,36 @@ class Handler(BaseHTTPRequestHandler):
         if not re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+(?:\.git)?/?", url):
             raise ValueError("enter a valid public GitHub repository URL")
         data = STATE.new_input()
+        match = re.fullmatch(r"https://github\.com/([\w.-]+)/([\w.-]+)(?:\.git)?/?", url)
+        assert match is not None
+        owner, repo = match.groups()
         target = Path(data["directory"]) / "repository"
-        completed = subprocess.run(["git", "clone", "--depth", "1", url, str(target)], capture_output=True, text=True, timeout=180, check=False)
-        if completed.returncode:
+        archive_path = Path(data["directory"]) / "repository.tar.gz"
+        try:
+            request = Request(
+                f"https://codeload.github.com/{owner}/{repo}/tar.gz/HEAD",
+                headers={"User-Agent": "ECDAT-local"},
+            )
+            with urlopen(request, timeout=180) as response, archive_path.open("wb") as output:
+                total = 0
+                while chunk := response.read(1024 * 1024):
+                    total += len(chunk)
+                    if total > MAX_UPLOAD_BYTES:
+                        raise ValueError("repository archive exceeds the 250 MB limit")
+                    output.write(chunk)
+            target.mkdir(parents=True, exist_ok=True)
+            _safe_extract_tar(archive_path, target)
+            top_level = [child for child in target.iterdir() if child.is_dir()]
+            if len(top_level) == 1:
+                extracted_root = top_level[0]
+                for child in extracted_root.iterdir():
+                    child.replace(target / child.name)
+                extracted_root.rmdir()
+        except Exception as exc:
             STATE.remove_input(data["input_id"])
-            raise ValueError(completed.stderr.strip() or "could not clone repository")
+            if isinstance(exc, ValueError):
+                raise
+            raise ValueError("could not download the selected GitHub repository") from exc
         data["target"] = target
         data["label"] = url.rstrip("/").split("/")[-1].removesuffix(".git")
         self._json(201, {"input_id": data["input_id"], **_inspect(target, data["label"])})

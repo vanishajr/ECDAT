@@ -193,7 +193,6 @@ export default function App() {
   const [selected, setSelected] = useState<string[]>([
     "source",
     "dependency",
-    "binary",
     "config",
     "certificate",
   ]);

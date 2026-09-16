@@ -24,6 +24,15 @@ DEFAULT_SCANNERS: tuple[str, ...] = (
     "certificate",
 )
 
+# Safer default for uploaded/GitHub source repositories. Binary analysis
+# remains available through the explicit binary profile and CLI commands.
+PROJECT_SCANNERS: tuple[str, ...] = (
+    "source",
+    "dependency",
+    "config",
+    "certificate",
+)
+
 #: Opt-in families and what they may touch (documented for operators).
 OPT_IN_SCANNERS: dict[str, str] = {
     "container": "runs local docker/syft subprocesses when present",

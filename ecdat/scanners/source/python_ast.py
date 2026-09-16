@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from ecdat.scanners.base import Scanner, ScannerFinding, create_evidence_signal, normalize_finding
+from ecdat.scanners.path_policy import iter_project_files_matching
 from ecdat.core.signature_registry import get_category, normalize_algorithm
 from ecdat.core.cir_models import UsageState, OperationType, Location, Implementation, Context, Exposure
 
@@ -109,7 +110,7 @@ class PythonASTScanner(Scanner[ScannerFinding]):
             if self.can_scan_file(target_path):
                 all_findings.extend(self._scan_file(target_path))
         else:
-            for py_file in target_path.rglob("*.py"):
+            for py_file in iter_project_files_matching(target_path, {".py"}):
                 try:
                     all_findings.extend(self._scan_file(py_file))
                 except Exception:

@@ -13,6 +13,7 @@ from ecdat.scanners.base import (
     create_evidence_signal,
     normalize_finding,
 )
+from ecdat.scanners.path_policy import iter_project_files_matching
 from ecdat.core.cir_models import (
     Location,
     Implementation,
@@ -173,7 +174,7 @@ class SourceScanner(Scanner[ScannerFinding]):
         if target_path.is_file():
             findings.extend(self._scan_file(target_path))
         elif target_path.is_dir():
-            for file_path in target_path.rglob("*.py"):
+            for file_path in iter_project_files_matching(target_path, {".py"}):
                 if self._should_skip(file_path):
                     continue
                 findings.extend(self._scan_file(file_path))

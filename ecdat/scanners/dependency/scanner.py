@@ -28,6 +28,7 @@ from ecdat.core.signature_registry import (
     get_category,
     normalize_algorithm,
 )
+from ecdat.scanners.path_policy import iter_project_files, iter_project_files_matching
 
 
 CRYPTO_PACKAGES = {
@@ -83,14 +84,13 @@ class DependencyScanner(Scanner[ScannerFinding]):
         if target_path.is_file():
             findings.extend(self._scan_file(target_path))
         elif target_path.is_dir():
-            for pattern in ["requirements*.txt", "pyproject.toml", "poetry.lock", "Pipfile", "Pipfile.lock",
-                           "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
-                           "Cargo.toml", "Cargo.lock", "go.mod", "go.sum",
-                           "pom.xml", "build.gradle", "build.gradle.kts",
-                           "Gemfile", "Gemfile.lock", "composer.json", "composer.lock"]:
-                for file_path in target_path.rglob(pattern):
-                    if self._should_skip(file_path):
-                        continue
+            patterns = ["requirements*.txt", "pyproject.toml", "poetry.lock", "Pipfile", "Pipfile.lock",
+                        "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+                        "Cargo.toml", "Cargo.lock", "go.mod", "go.sum",
+                        "pom.xml", "build.gradle", "build.gradle.kts",
+                        "Gemfile", "Gemfile.lock", "composer.json", "composer.lock"]
+            for file_path in iter_project_files(target_path):
+                if any(file_path.match(pattern) for pattern in patterns):
                     findings.extend(self._scan_file(file_path))
 
             if not findings:
@@ -740,9 +740,7 @@ class DependencyScanner(Scanner[ScannerFinding]):
     def _scan_python_imports(self, target_path: Path) -> list[ScannerFinding]:
         findings: list[ScannerFinding] = []
         import ast
-        for py_file in target_path.rglob("*.py"):
-            if self._should_skip(py_file):
-                continue
+        for py_file in iter_project_files_matching(target_path, {".py"}):
             try:
                 content = py_file.read_text(encoding="utf-8")
                 tree = ast.parse(content, filename=str(py_file))
