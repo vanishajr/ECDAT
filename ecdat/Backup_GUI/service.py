@@ -30,6 +30,7 @@ from ecdat.core.validate import validate
 from ecdat.exports import cbom as cbom_mod
 from ecdat.exports import csv_gen as csv_mod
 from ecdat.exports import sarif as sarif_mod
+from ecdat.gui import inputs as input_mod
 from ecdat.gui.graph import GraphProvider, MockGraphProvider
 from ecdat.gui.migration import MigrationProvider, MockMigrationProvider
 from ecdat.reports import html as html_mod
@@ -167,6 +168,41 @@ class GuiService:
             ),
         }
 
+    # -- scan inputs (typed, real-pipeline entry) -------------------------------
+
+    @staticmethod
+    def inputs() -> list[dict]:
+        """Input-type registry for the dashboard Select-files section."""
+        return input_mod.describe_inputs()
+
+    def stage_upload(self, filename: str, content_b64: str,
+                     kind: str = "upload",
+                     batch: str | None = None) -> dict:
+        """Stage one browser-uploaded file; auto-extracts zips.
+
+        Returns the staged record plus, for zips, an ``extracted`` block
+        with the scan-ready directory. Raises ValueError when loud
+        (HTTP 400/413 at the edge).
+        """
+        try:
+            record = input_mod.stage_b64(
+                filename, content_b64,
+                batch=batch.strip() if batch else None, kind=kind or "upload")
+        except ValueError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - surfaced in payload
+            raise ValueError(f"could not stage {filename!r}: {exc}")
+        if record.get("is_zip"):
+            try:
+                record["extracted"] = input_mod.extract_zip(
+                    record["staged_path"])
+            except ValueError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                raise ValueError(
+                    f"could not extract {filename!r}: {exc}")
+        return record
+
     # -- jobs ---------------------------------------------------------------
 
     def submit(self, target: str) -> dict:
@@ -190,6 +226,32 @@ class GuiService:
                 "scan_id": None,
                 "error": None,
                 "real": callable(getattr(self.client, "scan_with_cir", None)),
+            }
+            return self._snapshot_locked(self._jobs[job_id])
+
+    def submit_typed(self, input_type: str,
+                     payload: dict | None = None) -> dict:
+        """Create a real-pipeline scan job from a typed GUI input.
+
+        Resolves the input type to an explicit scanner allowlist via
+        ``ecdat.gui.inputs`` and always runs the integrated P1/P2
+        pipeline (never mock, never the configured demo client).
+        Raises ValueError for bad input (HTTP 400 at the edge).
+        """
+        request = input_mod.resolve_typed_input(input_type, payload or {})
+        with self._lock:
+            job_id = f"gui-job-{next(self._counter):04d}"
+            self._jobs[job_id] = {
+                "job_id": job_id,
+                "target": str(request["target"]),
+                "status": "queued",
+                "progress": 0.0,
+                "polls": 0,
+                "scan_id": None,
+                "error": None,
+                "real": True,
+                "input_type": str(input_type).strip().lower(),
+                "scan_request": request,
             }
             return self._snapshot_locked(self._jobs[job_id])
 
@@ -217,15 +279,43 @@ class GuiService:
             return self._snapshot_locked(job)
 
     def _finish_locked(self, job: dict) -> str:
-        """Run the scan (mock or real) and store it. Caller holds the lock.
+        """Run the scan (mock, legacy real, or typed real) and store it.
 
-        Mock clients return canonical only (cir=None stored). Real
-        clients expose scan_with_cir: one scan producing both the
-        canonical document and the CIR sidecar stored under the same
-        scan ID. Real failures propagate as job errors (never mock).
+        Typed jobs (``scan_request`` present, from the Select-files
+        section) always run the integrated P1/P2 pipeline with their
+        resolved scanner allowlist. Legacy jobs keep the previous
+        behavior: mock clients return canonical only, real clients
+        expose scan_with_cir. Real failures propagate as job errors
+        (never mock).
         """
         from typing import cast
 
+        request = job.get("scan_request")
+        if isinstance(request, dict):
+            from ecdat.core.client import RealCoreClient
+
+            client = RealCoreClient(
+                scanners=request.get("scanners"),
+                allow_container=bool(request.get("allow_container", False)),
+                allow_cloud=bool(request.get("allow_cloud", False)),
+                allow_runtime=bool(request.get("allow_runtime", False)),
+                region=request.get("region"),
+            )
+            pair = cast("tuple[dict, dict]",
+                        client.scan_with_cir(str(request["target"])))
+            cir, doc = pair[0], pair[1]
+            validate(doc)
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            conn = db.open_db(self.db_path)
+            try:
+                try:
+                    sstore.insert_scan(conn, doc, cir)
+                    fstore.insert_findings_for_scan(conn, doc)
+                except sqlite3.IntegrityError:
+                    conn.rollback()  # scan_id already stored: reuse it
+            finally:
+                conn.close()
+            return str(doc["scan_id"])
         scan_with_cir = getattr(self.client, "scan_with_cir", None)
         cir: dict | None = None
         if callable(scan_with_cir):
@@ -258,6 +348,8 @@ class GuiService:
             "simulated": True,
             "simulated_note": REAL_PROGRESS_NOTE if real else SIMULATED_NOTE,
         }
+        if job.get("input_type"):
+            snap["input_type"] = job["input_type"]
         if job["scan_id"] is not None:
             snap["scan_id"] = job["scan_id"]
         if job["error"] is not None:
@@ -286,6 +378,26 @@ class GuiService:
         """Canonical findings projected to the v1 allowlist, in doc order."""
         return [{k: f[k] for k in _FINDING_KEYS if k in f} for f in doc["findings"]]
 
+    @staticmethod
+    def _enrich_row(finding: dict) -> dict:
+        """GUI-only derived columns from canonical metadata (no new data).
+
+        Surfaces backend-produced fields the table had no column for:
+        ``usage_state`` (P1/P2 evidence assessment), ``library``
+        (implementation), and ``asset_only`` (dependency-only findings
+        with no operation). All come from ``metadata``; absent metadata
+        yields honest ``None``/``False`` defaults.
+        """
+        meta = finding.get("metadata")
+        meta = meta if isinstance(meta, dict) else {}
+        enriched = dict(finding)
+        enriched["usage_state"] = str(meta.get("usage_state") or "Possible") \
+            if meta else None
+        enriched["library"] = meta.get("library")
+        enriched["asset_only"] = bool(meta.get("asset_only", False))
+        enriched["cir_asset_id"] = meta.get("cir_asset_id")
+        return enriched
+
     def inventory(
         self,
         scan_id: str,
@@ -300,7 +412,8 @@ class GuiService:
         doc = self._load_doc(scan_id)
         if doc is None:
             return None
-        canonical = self._project_findings(doc)
+        canonical = [self._enrich_row(f)
+                     for f in self._project_findings(doc)]
         total = len(canonical)
         # index = position in the canonical findings list, so inventory
         # rows can open /api/finding deterministically. API metadata,
@@ -357,15 +470,39 @@ class GuiService:
         }
         real = self._load_cir(scan_id) is not None
         usage_state = "Possible"
+        library: str | None = None
+        asset_only = False
+        cir_asset_id: str | None = None
         if isinstance(finding.get("metadata"), dict):
             usage_state = str(
                 finding["metadata"].get("usage_state") or "Possible")
+            lib = finding["metadata"].get("library")
+            library = str(lib) if lib is not None else None
+            asset_only = bool(finding["metadata"].get("asset_only", False))
+            cid = finding["metadata"].get("cir_asset_id")
+            cir_asset_id = str(cid) if cid else None
+        related_operations: list[dict] = []
+        if real and cir_asset_id:
+            cir_doc = self._load_cir(scan_id) or {}
+            for op in cir_doc.get("operations", []) or []:
+                if isinstance(op, dict) and str(op.get("asset_id")) == cir_asset_id:
+                    related_operations.append({
+                        "operation_id": str(op.get("operation_id")),
+                        "operation_type": str(op.get("operation_type")),
+                        "confidence": op.get("confidence"),
+                    })
+            related_operations.sort(key=lambda o: o["operation_id"])
         return {
             "scan_id": doc["scan_id"],
             "target": doc["target"],
             "index": index,
             "finding_count": len(findings),
             "finding": finding,
+            "usage_state": usage_state,
+            "library": library,
+            "asset_only": asset_only,
+            "cir_asset_id": cir_asset_id,
+            "related_operations": related_operations,
             "evidence_available": evidence_available,
             "missing_evidence": sorted(
                 k for k, v in evidence_available.items() if not v
@@ -643,6 +780,65 @@ class GuiService:
             "mock": True,
             "source": "existing report/export renderers over get_scan_doc",
         }
+
+    def scan_summary(self, scan_id: str) -> dict | None:
+        """Lightweight scan-intelligence summary (new GUI section data).
+
+        Maps every backend output family to one cheap payload without
+        re-running analysis: canonical counts (findings, files), CIR
+        counts (assets, operations, graph nodes/edges, risks,
+        recommendations), risk posture (P1 wire or mock), and tool
+        versions. None if unknown. Powers the Select-files result strip
+        so huge scans render counts before the full inventory loads.
+        """
+        doc = self._load_doc(scan_id)
+        if doc is None:
+            return None
+        rep = build_report(doc)
+        cir = self._load_cir(scan_id)
+        graph = cir.get("graph", {}) if isinstance(cir, dict) else {}
+        summary: dict = {
+            "scan_id": doc["scan_id"],
+            "target": doc["target"],
+            "started_at": doc["started_at"],
+            "finished_at": doc["finished_at"],
+            "finding_count": rep["finding_count"],
+            "files_scanned": doc["stats"]["files_scanned"],
+            "by_severity": dict(sorted(rep["by_severity"].items())),
+            "tool_versions": dict(doc["tool_versions"]),
+            "mock": cir is None,
+        }
+        if isinstance(cir, dict):
+            from ecdat.adapters import risk_view as _risk_view
+
+            posture = _risk_view.summarize_wire_risks(
+                cir.get("risks", []) or [], rep["finding_count"])
+            summary.update({
+                "assets": len(cir.get("assets", []) or []),
+                "operations": len(cir.get("operations", []) or []),
+                "graph_nodes": len(graph.get("nodes", []) or []),
+                "graph_edges": len(graph.get("edges", []) or []),
+                "risks": len(cir.get("risks", []) or []),
+                "recommendations": len(cir.get("recommendations", []) or []),
+                "risk": {"score": posture["score"],
+                         "level": posture["level"]},
+                "risk_model": posture["model"],
+                "source": "stored CIR sidecar + canonical v1",
+            })
+        else:
+            summary.update({
+                "assets": None,
+                "operations": None,
+                "graph_nodes": None,
+                "graph_edges": None,
+                "risks": None,
+                "recommendations": None,
+                "risk": {"score": rep["risk"]["score"],
+                         "level": rep["risk"]["level"]},
+                "risk_model": RISK_MODEL_NOTE,
+                "source": "canonical v1 only (mock/legacy scan)",
+            })
+        return summary
 
     def report_artifact(self, scan_id: str,
                         format: str) -> tuple[str, str, bytes] | None:

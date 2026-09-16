@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ecdat-beige: #ebe8e1;
+  --color-ecdat-cream: #f8f6f1;
+  --color-ecdat-gray: #74716a;
+  --color-ecdat-ink: #181a19;
+  --color-ecdat-border: #d7d3ca;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-width: 320px;
+    background: var(--color-ecdat-beige);
+    color: var(--color-ecdat-ink);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:not(:disabled),
+  a {
+    cursor: pointer;
+  }
+}

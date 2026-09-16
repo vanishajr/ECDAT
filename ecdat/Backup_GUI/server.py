@@ -359,6 +359,14 @@ button{transition:border-color .12s ease,background .12s ease,color .12s ease}
 @media (max-width:900px){
 .wflow a{min-width:44%}
 }
+/* ---- select-files input section (real P1/P2 pipeline) ---- */
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin:.6em 0}
+.pill{border:1px solid var(--border-strong);background:var(--surface);border-radius:var(--r-md);padding:.45em .9em;cursor:pointer;font-size:12px;color:var(--text)}
+.pill:hover{border-color:var(--accent)}
+.pill.active{border-color:var(--accent);background:var(--accent-tint);color:var(--accent-dark);font-weight:600}
+.drop{border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:22px 16px;text-align:center;color:var(--muted);font-size:12px;background:var(--raised);margin-top:.6em}
+.drop.over{border-color:var(--accent);background:var(--accent-tint);color:var(--accent-dark)}
+.drop input[type=file]{margin-top:.6em}
 /* ---- footer note ---- */
 .foot{grid-column:span 12;color:var(--faint);font-size:12px;padding:12px 2px;border-top:1px solid var(--border)}
 .foot a{color:var(--accent-dark)}
@@ -385,6 +393,7 @@ button{transition:border-color .12s ease,background .12s ease,color .12s ease}
 </div>
 <nav class="nav" id="mainnav">
 <a href="#top" class="active"><span class="lbl">Overview</span></a>
+<a href="#sec-input"><span class="lbl">Select files</span></a>
 <a href="#sec-scan"><span class="lbl">Scans</span></a>
 <a href="#sec-inventory"><span class="lbl">Inventory</span></a>
 <a href="#sec-risk"><span class="lbl">Risk</span></a>
@@ -456,6 +465,24 @@ button{transition:border-color .12s ease,background .12s ease,color .12s ease}
 <h2>Session activity</h2>
 <p class="note">This session only — actions taken in this browser tab. No history is stored.</p>
 <ul class="feed" id="activityFeed"><li><div class="ft"><b>No session activity yet</b><span>Generate a plan or start a scan to begin.</span></div></li></ul>
+</section>
+<section class="card span12" id="sec-input" aria-label="Select files">
+<p class="eyebrow">Input · real P1/P2 pipeline</p>
+<h2>Select files</h2>
+<p class="note">Choose an input type, provide the data, then scan. Runs the integrated pipeline (P2 discovery once &rarr; CIR validate &rarr; P1 analysis &rarr; canonical + CIR sidecar &rarr; stored scan) and fills every section below. Huge folders: use a server-local path (zero-copy, fastest) — uploads are for single files and ZIPs only.</p>
+<div class="pills" id="inputTypes" role="tablist" aria-label="Input type"></div>
+<div id="inputForm"></div>
+<div class="drop" id="dropZone" hidden>
+<p style="margin:.2em 0"><b>Drag &amp; drop files here</b> or browse from the file explorer.</p>
+<input type="file" id="filePick" multiple aria-label="Choose files to upload">
+<p class="note" id="dropHint" style="margin:.4em 0 0">ZIP archives auto-extract server-side.</p>
+</div>
+<div class="preview" id="stagedInfo" hidden></div>
+<div class="btnrow" style="margin-top:.7em">
+<button id="inputScanBtn" class="primary" type="button">Scan with P1/P2 pipeline</button>
+<span class="note" id="inputStatus">Loading input types...</span>
+</div>
+<div class="chips" id="scanSummary" style="margin-top:.6em" aria-label="Scan intelligence summary"></div>
 </section>
 <section class="card span4" id="sec-scan" aria-label="Scans">
 <p class="eyebrow">Scan · mock-first</p>
@@ -683,6 +710,7 @@ async function poll(jobId){
       loadAssets(j.scan_id);
       loadMigration(j.scan_id);
       loadReports(j.scan_id);
+      loadScanSummary(j.scan_id);
       loadGraphFor(j.scan_id);
     }else if(j.status === "failed"){
       if(timer){ clearInterval(timer); timer = null; }
@@ -693,6 +721,190 @@ async function poll(jobId){
     }
   }catch(e){ if(timer){ clearInterval(timer); timer = null; } showError(String(e.message || e)); }
 }
+/* ---- Select-files input section (real P1/P2 pipeline) ---- */
+let INPUTS = [];
+let activeInput = null;
+let uploadBatch = null;
+let stagedTarget = null;
+async function loadInputs(){
+  try{
+    const r = await api("/api/inputs");
+    INPUTS = r.inputs || [];
+    renderInputTypes();
+  }catch(e){ $("inputStatus").textContent = "Could not load input types: " + (e.message || e); }
+}
+function inputDef(){ return INPUTS.find(function(d){ return d.id === activeInput; }) || null; }
+function renderInputTypes(){
+  const host = $("inputTypes");
+  if(!host){ return; }
+  while(host.firstChild){ host.removeChild(host.firstChild); }
+  INPUTS.forEach(function(def){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pill" + ((activeInput === def.id) ? " active" : "");
+    b.textContent = def.label;
+    b.title = def.hint;
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", (activeInput === def.id) ? "true" : "false");
+    b.addEventListener("click", function(){ selectInput(def.id); });
+    host.appendChild(b);
+  });
+  if(!activeInput && INPUTS.length){ selectInput(INPUTS[0].id); }
+  else{ renderInputForm(); }
+}
+function selectInput(id){
+  activeInput = id; uploadBatch = null; stagedTarget = null;
+  const st = $("stagedInfo");
+  if(st){ st.hidden = true; st.textContent = ""; }
+  renderInputTypes();
+}
+function renderInputForm(){
+  const def = inputDef();
+  const form = $("inputForm");
+  if(!form){ return; }
+  while(form.firstChild){ form.removeChild(form.firstChild); }
+  const dz = $("dropZone");
+  if(!def){ if(dz){ dz.hidden = true; } return; }
+  const hint = document.createElement("p");
+  hint.className = "note";
+  hint.textContent = def.hint + " Scanners: " + def.scanners.join(", ") + ".";
+  form.appendChild(hint);
+  const row = document.createElement("div");
+  row.className = "scanrow";
+  def.fields.forEach(function(f){
+    if(def.needs_upload && f.name === "files"){ return; }
+    const wrap = document.createElement("div");
+    wrap.className = "field f-target";
+    const lab = document.createElement("label");
+    lab.setAttribute("for", "in-" + f.name);
+    lab.textContent = f.label;
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.id = "in-" + f.name; inp.className = "mono";
+    inp.placeholder = f.placeholder || "";
+    wrap.appendChild(lab); wrap.appendChild(inp); row.appendChild(wrap);
+  });
+  form.appendChild(row);
+  if(dz){ dz.hidden = !def.needs_upload; }
+  if(def.needs_upload){
+    $("dropHint").textContent = def.id === "upload"
+      ? "ZIP archives auto-extract server-side. Single files stage as-is; a batch stages into one folder."
+      : "Optional: upload here to fill the path above. Or type a server-local path (faster for big files).";
+  }
+  $("inputStatus").textContent = "Fill the fields above, then scan.";
+}
+function setStaged(text){ const st = $("stagedInfo"); st.hidden = false; st.textContent = text; }
+function readFileB64(f){
+  return new Promise(function(resolve, reject){
+    const r = new FileReader();
+    r.onload = function(){ resolve(String(r.result).split(",").pop()); };
+    r.onerror = function(){ reject(new Error("could not read " + f.name)); };
+    r.readAsDataURL(f);
+  });
+}
+async function uploadFiles(files){
+  const def = inputDef();
+  if(!def || !files || !files.length){ return; }
+  $("inputStatus").textContent = "Uploading " + files.length + " file(s)...";
+  try{
+    for(const f of files){
+      const b64 = await readFileB64(f);
+      const rec = await api("/api/uploads", {method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({filename:f.name, content_b64:b64,
+          kind:def.id, batch:uploadBatch})});
+      uploadBatch = rec.batch;
+      if(rec.extracted){
+        stagedTarget = rec.extracted.extracted_dir;
+        setStaged("staged: " + rec.filename + " (" + rec.size + " bytes)\nextracted: "
+          + rec.extracted.extracted_dir + " (" + rec.extracted.file_count + " files)");
+      }else{
+        stagedTarget = (files.length === 1) ? rec.staged_path : rec.batch;
+        setStaged("staged: " + rec.filename + " (" + rec.size + " bytes)\n"
+          + ((files.length === 1) ? ("path: " + rec.staged_path) : ("batch: " + rec.batch)));
+      }
+      if(def.needs_path){
+        const pathInput = document.getElementById("in-path")
+          || document.getElementById("in-image_or_path");
+        if(pathInput && !pathInput.value){ pathInput.value = stagedTarget; }
+      }
+    }
+    $("inputStatus").textContent = "Staged. Review, then scan.";
+    logAct("scan", "Files staged", stagedTarget, true);
+  }catch(e){ $("inputStatus").textContent = "Upload failed."; showError(String(e.message || e)); }
+}
+async function loadScanSummary(scanId){
+  try{
+    const s = await api("/api/scan-summary?scan_id=" + encodeURIComponent(scanId));
+    const host = $("scanSummary");
+    while(host.firstChild){ host.removeChild(host.firstChild); }
+    [["findings", s.finding_count], ["files", s.files_scanned],
+     ["assets", s.assets], ["ops", s.operations],
+     ["graph",
+       ((s.graph_nodes === null || s.graph_nodes === undefined) ? "—" : s.graph_nodes)
+       + "/" +
+       ((s.graph_edges === null || s.graph_edges === undefined) ? "—" : s.graph_edges)
+       + " n/e"],
+     ["risks", s.risks], ["recs", s.recommendations],
+     ["risk", s.risk.level + " (" + s.risk.score + ")"]
+    ].forEach(function(pair){
+      if(pair[1] === null || pair[1] === undefined){ return; }
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.textContent = pair[0] + ": " + pair[1];
+      host.appendChild(c);
+    });
+    const src = document.createElement("span");
+    src.className = "chip";
+    src.textContent = s.mock ? "mock scan" : "real P1/P2 scan";
+    host.appendChild(src);
+  }catch(e){ /* additive strip; inventory surfaces errors */ }
+}
+try{$("inputScanBtn").addEventListener("click", async function(){
+  showError("");
+  const def = inputDef();
+  if(!def){ showError("pick an input type first"); return; }
+  const payload = {};
+  def.fields.forEach(function(f){
+    if(f.name === "files"){ return; }
+    const el = document.getElementById("in-" + f.name);
+    if(el && el.value.trim()){ payload[f.name] = el.value.trim(); }
+  });
+  if(def.id === "upload" && !payload.path && stagedTarget){ payload.path = stagedTarget; }
+  if((def.id === "binary" || def.id === "certificate" || def.id === "container") && stagedTarget){
+    if(!payload.path && !payload.image_or_path){
+      if(def.id === "container"){ payload.image_or_path = stagedTarget; }
+      else{ payload.path = stagedTarget; }
+    }
+  }
+  $("inputStatus").textContent = "Starting real scan...";
+  if(timer){ clearInterval(timer); timer = null; }
+  try{
+    const job = await api("/api/scans", {method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({input_type:def.id, payload:payload})});
+    logAct("scan", "Real scan started", job.target, true);
+    $("inputStatus").textContent = "Scan running: " + job.target;
+    setPipe("analysis");
+    poll(job.job_id);
+    timer = setInterval(function(){ poll(job.job_id); }, 300);
+  }catch(e){ $("inputStatus").textContent = "Scan failed to start."; showError(String(e.message || e)); }
+});}catch(e){}
+(function(){
+  const dz = $("dropZone"), fp = $("filePick");
+  if(!dz || !fp){ return; }
+  ["dragenter", "dragover"].forEach(function(ev){
+    dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function(ev){
+    dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove("over"); });
+  });
+  dz.addEventListener("drop", function(e){
+    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
+      uploadFiles(e.dataTransfer.files);
+    }
+  });
+  fp.addEventListener("change", function(){ uploadFiles(fp.files); fp.value = ""; });
+})();
 /* ---- KPI + donut (derived only from loaded scan payloads; no invented history) ---- */
 var SEVC = {"critical":"#B42318","high":"#B54708","medium":"#A16207","low":"#027A48","info":"#667085"};
 var SEVORDER = ["critical","high","medium","low","info"];
@@ -945,7 +1157,7 @@ async function loadInventory(scanId){
   const table = document.createElement("table");
   table.className = "tbl";
   const head = document.createElement("tr");
-  ["Severity","Rule","File","Line","Title","Confidence"].forEach(function(h){
+  ["Severity","Rule","Usage","Library","File","Line","Title","Confidence"].forEach(function(h){
     const th = document.createElement("th");
     th.textContent = h;
     head.appendChild(th);
@@ -955,7 +1167,7 @@ async function loadInventory(scanId){
     const tr = document.createElement("tr");
     tr.className = "clickable";
     tr.setAttribute("tabindex","0");
-    tr.setAttribute("data-search",(String(f.rule_id)+" "+String(f.file)+" "+String(f.title)+" "+String(f.severity)).toLowerCase());
+    tr.setAttribute("data-search",(String(f.rule_id)+" "+String(f.file)+" "+String(f.title)+" "+String(f.severity)+" "+String(f.usage_state||"")+" "+String(f.library||"")).toLowerCase());
     function open(){ loadFinding(currentScanId, f.index); }
     tr.addEventListener("click", open);
     tr.addEventListener("keydown", function(ev){ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();open();} });
@@ -965,10 +1177,29 @@ async function loadInventory(scanId){
     badge.textContent = String(f.severity);
     sev.appendChild(badge);
     tr.appendChild(sev);
-    [["rule_id"],["file"],["line"],["title"]].forEach(function(k){
+    const ruleTd = document.createElement("td");
+    ruleTd.textContent = String(f.rule_id);
+    ruleTd.className = "mono";
+    tr.appendChild(ruleTd);
+    if(f.asset_only){
+      const ab = document.createElement("span");
+      ab.className = "badge violet";
+      ab.textContent = "asset-only";
+      ab.title = "Dependency-only finding: library capability with no observed operation";
+      ruleTd.appendChild(document.createTextNode(" "));
+      ruleTd.appendChild(ab);
+    }
+    const useTd = document.createElement("td");
+    useTd.textContent = f.usage_state ? String(f.usage_state) : "—";
+    tr.appendChild(useTd);
+    const libTd = document.createElement("td");
+    libTd.textContent = f.library ? String(f.library) : "—";
+    libTd.className = "mono";
+    tr.appendChild(libTd);
+    [["file"],["line"],["title"]].forEach(function(k){
       const td = document.createElement("td");
       td.textContent = String(f[k[0]]);
-      if(k[0]==="file"||k[0]==="rule_id"){td.className="mono";}
+      if(k[0]==="file"){td.className="mono";}
       tr.appendChild(td);
     });
     const conf = document.createElement("td");
@@ -989,7 +1220,7 @@ async function loadInventory(scanId){
     if(f.snippet){
       const srow = document.createElement("tr");
       const std = document.createElement("td");
-      std.setAttribute("colspan", "6");
+      std.setAttribute("colspan", "8");
       const det = document.createElement("details");
       det.className="disc";
       const sum = document.createElement("summary");
@@ -1106,7 +1337,10 @@ async function loadFinding(scanId, idx){
     const what = fsec("What");
     fkv(what, [["Rule", String(d.finding.rule_id)],
       ["Title", String(d.finding.title)],
-      ["Severity", String(d.finding.severity) + " (mock severity; see risk dashboard)"]]);
+      ["Severity", String(d.finding.severity) + " (mock severity; see risk dashboard)"],
+      ["Usage state", String(d.usage_state || "—")],
+      ["Library", d.library ? String(d.library) : "—"],
+      ["Asset-only", d.asset_only ? "yes — dependency-only, no observed operation" : "no"]]);
     const where = fsec("Where");
     fkv(where, [["File", String(d.finding.file)],
       ["Line", String(d.finding.line)],
@@ -1125,6 +1359,11 @@ async function loadFinding(scanId, idx){
       ev.appendChild(c);
     }
     fkv(ev, [["Metadata", d.metadata_keys.length ? d.metadata_keys.join(", ") : "none in v1 doc"],
+      ["CIR asset", d.cir_asset_id ? String(d.cir_asset_id) : "none (mock/legacy scan)"],
+      ["Related operations",
+        d.related_operations && d.related_operations.length
+          ? d.related_operations.map(function(o){ return o.operation_type + " " + o.operation_id; }).join("; ")
+          : "none"],
       ["Evidence available",
         Object.keys(d.evidence_available).map(function(k){return k + ": " + (d.evidence_available[k] ? "yes" : "no");}).join("; ")],
       ["Missing evidence", d.missing_evidence.length ? d.missing_evidence.join(", ") : "none"],
@@ -1845,6 +2084,7 @@ $("grisky").addEventListener("change", function(){ renderGraph(); });
 })();
 renderDonut({critical:0,high:0,medium:0,low:0,info:0});
 updateWorkflow();
+loadInputs().catch(function(e){ showError(String(e && e.message || e)); });
 loadGraph().catch(function(e){ showError(String(e && e.message || e)); });
 </script>
 </body>
@@ -1905,6 +2145,9 @@ class _Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             length = 0
+        if length > 40 * 1024 * 1024:
+            raise ValueError("request body too large (cap 40 MiB; "
+                             "use a server-local path for huge inputs)")
         raw = self.rfile.read(length) if length > 0 else b""
         try:
             obj = json.loads(raw.decode("utf-8") or "{}")
@@ -1936,6 +2179,15 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(200, self.service.preview(target))
             except ValueError as exc:
                 self._json(400, {"error": str(exc)})
+        elif parsed.path == "/api/inputs":
+            self._json(200, {"inputs": self.service.inputs()})
+        elif parsed.path == "/api/scan-summary":
+            summary = self.service.scan_summary(
+                query.get("scan_id", [""])[0])
+            if summary is None:
+                self._json(404, {"error": "scan not found"})
+            else:
+                self._json(200, summary)
         elif parsed.path == "/api/jobs":
             snap = self.service.status(query.get("id", [""])[0])
             if snap is None:
@@ -2016,6 +2268,26 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/api/uploads":
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            try:
+                record = self.service.stage_upload(
+                    str(body.get("filename", "")),
+                    str(body.get("content_b64", "")),
+                    kind=str(body.get("kind", "upload") or "upload"),
+                    batch=str(body.get("batch", "") or "") or None,
+                )
+            except ValueError as exc:
+                msg = str(exc)
+                code = 413 if "cap is" in msg or "too large" in msg else 400
+                self._json(code, {"error": msg})
+                return
+            self._json(200, record)
+            return
         if parsed.path != "/api/scans":
             self._json(404, {"error": "not found"})
             return
@@ -2023,6 +2295,17 @@ class _Handler(BaseHTTPRequestHandler):
             body = self._read_json()
         except ValueError as exc:
             self._json(400, {"error": str(exc)})
+            return
+        if body.get("input_type"):
+            payload = body.get("payload")
+            try:
+                snap = self.service.submit_typed(
+                    str(body.get("input_type", "")),
+                    dict(payload) if isinstance(payload, dict) else {})
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            self._json(200, snap)
             return
         try:
             snap = self.service.submit(str(body.get("target", "")))
@@ -2041,6 +2324,11 @@ def make_server(
     """Build (not start) the loopback-only GUI server. Port 0 = ephemeral."""
     check_host(host)
     service = GuiService(db_path, client=client)
+    try:
+        from ecdat.gui.inputs import cleanup_old_batches
+        cleanup_old_batches()
+    except Exception:
+        pass
     server = ThreadingHTTPServer((host, port), _Handler)
     server.daemon_threads = True
     server.gui_service = service  # type: ignore[attr-defined]

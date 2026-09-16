@@ -1,14 +1,4 @@
-"""ecdat gui [--db PATH] [--host 127.0.0.1] [--port PORT].
-
-Launch the mock-first localhost GUI dashboard. Thin launcher only:
-parser/dispatch lives in ecdat.cli, use cases in ecdat.gui.service,
-HTTP/routing in ecdat.gui.server.
-
-Loopback only: any --host outside 127.0.0.1/localhost/::1 is refused
-with exit 1 before binding. Port 0 lets the OS pick an ephemeral
-port (used by tests). Exit 0 on clean shutdown (Ctrl-C), 1 on bind
-or serving errors. No new dependencies.
-"""
+"""Launch the localhost API consumed by the new React ECDAT interface."""
 
 from __future__ import annotations
 
@@ -16,10 +6,10 @@ import argparse
 import sys
 
 from ecdat.commands import ERROR
-from ecdat.gui.server import LOOPBACK_HOSTS, make_server
+from ecdat.web.server import LOOPBACK_HOSTS, make_server
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8734
+DEFAULT_PORT = 8765
 
 
 def run(args: argparse.Namespace) -> int:
@@ -33,7 +23,7 @@ def run(args: argparse.Namespace) -> int:
         )
         return ERROR
     try:
-        server = make_server(args.db, host=host, port=port)
+        server = make_server(host=host, port=port)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return ERROR
@@ -41,8 +31,8 @@ def run(args: argparse.Namespace) -> int:
         print(f"error: cannot serve GUI: {exc}", file=sys.stderr)
         return ERROR
     bound_host, bound_port = server.server_address[0], server.server_address[1]
-    print(f"Serving ECDAT GUI (mock) at http://{bound_host}:{bound_port}")
-    print("Press Ctrl-C to stop. Localhost only; mock/simulated data.")
+    print(f"ECDAT API listening at http://{bound_host}:{bound_port}")
+    print("Start the React interface with: cd frontend; npm.cmd run dev")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

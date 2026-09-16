@@ -20,8 +20,7 @@ from pathlib import Path
 
 from ecdat.commands import ERROR
 from ecdat.commands.gui_cmd import DEFAULT_HOST, DEFAULT_PORT
-from ecdat.gui.server import LOOPBACK_HOSTS, make_server
-from ecdat.gui.service import GuiService
+from ecdat.web.server import LOOPBACK_HOSTS
 
 _SEED_FILES = {
     "app": {"m.py": "x = 1  # demo multi-finding target\n"},
@@ -46,6 +45,8 @@ def prepare_demo_db(db_path: str | Path, base_dir: str | Path) -> dict:
     Returns {"db": str, "targets": [...], "scan_ids": [...]}.
     Idempotent: re-running reuses already-stored fixture scans.
     """
+    from ecdat.Backup_GUI.service import GuiService
+
     base = Path(base_dir)
     base.mkdir(parents=True, exist_ok=True)
     targets = []
@@ -73,6 +74,8 @@ def prepare_demo_db(db_path: str | Path, base_dir: str | Path) -> dict:
 
 
 def run(args: argparse.Namespace) -> int:
+    from ecdat.Backup_GUI.server import make_server
+
     host = str(args.host)
     if host not in LOOPBACK_HOSTS:
         print(f"error: refusing non-loopback GUI host {host!r}: "
