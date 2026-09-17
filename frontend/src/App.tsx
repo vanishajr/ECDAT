@@ -35,8 +35,8 @@ type InputInfo = {
   languages: string[];
   architecture: string;
   artifact_counts?: Record<string, number>;
-  surfaces?: string[];
-  archives?: number;
+  surfaces?: Record<string, number>;
+  archives?: Array<Record<string, any>>;
   skipped?: Array<{ path?: string; reason?: string }>;
 };
 
@@ -121,6 +121,11 @@ const bytes = (value = 0) =>
   value < 1024 * 1024
     ? `${Math.max(1, Math.ceil(value / 1024))} KB`
     : `${(value / 1024 / 1024).toFixed(1)} MB`;
+
+const surfaceNames = (surfaces?: Record<string, number>) =>
+  Object.entries(surfaces || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([name, count]) => `${name} (${count})`);
 
 const tone = (level = "info") => {
   const tones: Record<string, string> = {
@@ -795,12 +800,12 @@ export default function App() {
                   <li>
                     ✓ {(input.artifact_counts?.cert ?? 0) > 0 ? `${input.artifact_counts?.cert} certificates/keys` : "Certificates/keys (when present)"}
                   </li>
-                  {(input.archives ?? 0) > 0 && (
-                    <li>✓ {input.archives} archives (expanded safely)</li>
+                  {(input.archives?.length ?? 0) > 0 && (
+                    <li>✓ {input.archives?.length} archives (expanded safely)</li>
                   )}
-                  {(input.surfaces?.length ?? 0) > 0 && (
+                  {surfaceNames(input.surfaces).length > 0 && (
                     <li className="text-xs text-[#8b867d]">
-                      Surfaces: {input.surfaces?.join(", ")}
+                      Surfaces: {surfaceNames(input.surfaces).join(", ")}
                     </li>
                   )}
                 </ul>

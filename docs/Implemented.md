@@ -967,3 +967,160 @@ pipeline.run_real_scan() ──→ ScanOrchestrator (compat wrapper)
 - Fused CIR — MET (`fusion=` provenance notes on every rebuilt op).
 
 **Next phase (Phase 9) can safely start.**
+
+# Phase 9 — Crypto Knowledge Graph and system reconstruction
+
+> Verified against the Phase 9 requirements in the roadmap. The implementation
+> is present in the production CIR path; no Phase 13/14 work was performed.
+
+## Implementation verified
+
+- `ecdat/core/graph.py` is the graph builder and provides stable node/edge IDs,
+  deduplication, indexed lookup, neighbourhood/path queries, and system-link
+  helpers. It models operations, assets, libraries, services, containers,
+  endpoints, keys/certificates, configs, cloud resources, and owners when
+  evidence supplies them.
+- `ecdat/core/operations.py:reconstruct_cir()` rebuilds the graph after fusion,
+  so source/binary/dependency/config/certificate/runtime/container/cloud
+  evidence is represented in the same CIR rather than a discovery-only graph.
+- `ecdat/adapters/graph_adapter.py` consumes the CIR graph for the GUI and
+  preserves folded file locations and edge provenance; it does not rebuild a
+  separate minimal graph. `ecdat/tests/test_graph_systems.py` and
+  `test_fusion_operations.py` cover stable IDs, resolved edges, and cross-
+  surface reconstruction.
+
+## Acceptance status
+
+- Authoritative production graph: MET.
+- Stable, deduplicated entities and justified relationships: MET for supplied
+  operation context; inferred links retain confidence/provenance.
+- Service/container/config/TLS/certificate chain: supported when the relevant
+  identifiers and evidence are present; unsupported links are omitted rather
+  than invented.
+
+# Phase 10 — System risk and deterministic recommendations
+
+## Implementation verified
+
+- `ecdat/core/risk.py` scores reconstructed operations and emits per-operation
+  P1/Mosca-style records; `ecdat/web/server.py` and report aggregation consume
+  those records through `ecdat/adapters/risk_view.py`, not a UI severity-count
+  score. Legacy/mock risk is not used by the web result payload.
+- `ScanContext` and the web risk-context form support environment, owner,
+  exposure, business criticality, data lifetime, migration lead time, and the
+  configurable QC timeline. Context provenance is retained as observed,
+  inferred, user-supplied, or unknown; omitted values are not silently raised
+  to enterprise-critical defaults.
+- `ecdat/core/recommend.py` and `ecdat/adapters/migration_adapter.py` produce
+  deterministic, operation-aware migration records with target, rationale,
+  compatibility/blockers, effort/cost information, and standards metadata.
+- `ecdat/tests/test_risk_context.py` verifies context handling and explicit
+  assumptions; recommendation and integration tests exercise shared output.
+
+## Acceptance status
+
+- Risk/recommendations based on resolved CIR operations: MET.
+- Explicit assumptions and user-supplied context: MET.
+- Shared CLI/GUI/report risk data: MET through the canonical/CIR result path.
+
+# Phase 11 — Unified persistence, exports and CI behavior
+
+## Implementation verified
+
+- `ecdat/store/repository.py` provides the shared SQLite `ScanRepository` for
+  canonical scans, CIR, plan, diagnostics, findings, cache/provenance metadata,
+  and scan history. The schema is initialized/migrated by `ecdat/store/db.py`.
+- GUI jobs persist completed results through this repository and
+  `GET /api/results/<scan_id>` reopens them when the in-memory result is absent;
+  `/api/scans` exposes history. CLI/CI use the same orchestrator and storage
+  model.
+- `ecdat/web/server.py` export routes derive JSON, CIR, CSV, SARIF, CycloneDX
+  CBOM JSON/XML, HTML, Markdown, and PDF from the stored result payload. CI
+  policy gating remains separate from P1 risk scoring and reports limitations
+  and unavailable tools.
+- `ecdat/tests/test_persistence.py` and the integration/export tests cover
+  round-trip storage, reopen behavior, and export consistency.
+
+## Acceptance status
+
+- Durable GUI/CLI/CI scan model: MET.
+- Reopen/history and cache-aware metadata: MET.
+- Shared export source and CI gating: MET.
+
+# Phase 12 — GUI scan-plan UX and judge-grade result delivery
+
+## Implementation verified and fixed
+
+- `frontend/src/App.tsx` now presents automatic local discovery by default,
+  with Quick/Standard/Deep depth, detected local artifact counts, opt-in
+  container/runtime/cloud controls, and manual scanner overrides under
+  Advanced. Optional risk context is visibly labelled user-supplied.
+- The scan-plan preview calls `POST /api/scan-plan` before execution and shows
+  artifact totals, surfaces, planned scanners, permissions, and unavailable
+  tools. Live job progress is driven by orchestrator stage events; coverage and
+  diagnostics are included in the result payload.
+- Result tabs expose analytics, P1 risk, graph, evidence/findings, assets,
+  operations, recommendations, and coverage, with exports from the shared
+  result model.
+- Fixed a half-implemented data contract in `App.tsx`: `/api/inputs/inspect`
+  returns `surfaces` as a category-count object and `archives` as archive
+  records, but the UI treated them as an array and number. The UI now renders
+  counted surfaces and archive-record totals correctly.
+
+## Remaining Phase 12 limitations (not expanded beyond scope)
+
+- Progress is stage-level rather than per-artifact counters for every scanner.
+- The graph view is a compact tabular projection rather than a full interactive
+  neighbourhood visualization.
+- Scan history is API-backed; the frontend does not yet provide a dedicated
+  history/reopen picker.
+
+## Validation
+
+- Frontend type/build validation was attempted, but the workspace has no local
+  `tsc` executable (`npm run build` stops at `tsc: not found`). Python focused
+  tests were also not runnable in the system interpreter because `pydantic` is
+  unavailable. No other phases were changed.
+# Phase 13 — Benchmark harness and measurable result quality (implemented)
+
+- Added `ecdat/benchmarks/harness.py`, runnable with
+  `python -m ecdat.benchmarks.harness --output results/phase13.json`.
+- It runs deterministic mixed source/dependency/config fixtures through the
+  real orchestrator at quick/standard/deep profiles and records timing, scan
+  counts, expected/observed algorithms, precision, recall, cache, and
+  escalation metrics.
+- It writes versioned JSON and CSV. `--openssl` records a checkout but does
+  not falsely claim execution; a pinned OpenSSL adapter remains deferred.
+
+Validation: Python syntax compilation and `git diff --check` passed. Full tests
+and frontend build are environment-blocked because `pydantic` and local `tsc`
+are unavailable.
+
+# Phase 14 — Final hardening, legacy quarantine and release gate
+
+## Updates
+
+- Audited production entry points: CLI, CI, GUI, and the compatibility
+  `pipeline.run_real_scan()` path all delegate to `ScanOrchestrator`.
+- Retained historical mock/legacy tests and documentation references rather
+  than deleting them; active production reports use P1 risk and deterministic
+  recommendations only.
+- Preserved the Phase 14 regression coverage in
+  `ecdat/tests/test_phase14_hardening.py`, including no-mock production guards,
+  orchestrator convergence, structured scanner failure/tool diagnostics, path
+  redaction, and CLI registration checks.
+- Added `docs/implementation/optional-tools.md`, documenting optional tool
+  installation/capability behavior and honest graceful degradation for
+  Semgrep, Tree-sitter, LIEF, YARA-X, capa, FLOSS, container/SBOM tooling,
+  runtime probes, and cloud SDKs.
+
+## Release-gate status
+
+- Runtime architecture and no-silent-tool-failure checks: implemented and
+  covered by the Phase 14 tests.
+- Report generation, CLI help, benchmark harness, and syntax checks: covered
+  or implemented where dependencies are available.
+- Full backend suite, frontend typecheck/build, real OpenSSL acceptance run,
+  and Windows/Linux matrix: environment/deployment validation still required;
+  this workspace lacks `pydantic` and local `tsc`, and no OpenSSL checkout was
+  supplied. These are recorded blockers, not fabricated passes.

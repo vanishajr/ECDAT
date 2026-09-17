@@ -494,11 +494,29 @@ class YARAScanner(Scanner[ScannerFinding]):
     def get_tool_version(self) -> str:
         try:
             import yara_x
-            return f"yara-x-{yara_x.__version__}"
+            version = getattr(yara_x, "__version__", None)
+            if not version:
+                # Some yara-x wheels intentionally do not export
+                # ``__version__``.  Distribution metadata is the stable
+                # fallback and avoids failing an otherwise usable scan
+                # during diagnostic/tool-version collection.
+                try:
+                    from importlib.metadata import version as dist_version
+                    version = dist_version("yara-x")
+                except Exception:
+                    version = "unknown"
+            return f"yara-x-{version}"
         except ImportError:
             try:
                 import yara
-                return f"yara-{yara.__version__}"
+                version = getattr(yara, "__version__", None)
+                if not version:
+                    try:
+                        from importlib.metadata import version as dist_version
+                        version = dist_version("yara-python")
+                    except Exception:
+                        version = "unknown"
+                return f"yara-{version}"
             except ImportError:
                 return "yara-unknown"
 
