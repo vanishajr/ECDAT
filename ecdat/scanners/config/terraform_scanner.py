@@ -20,6 +20,7 @@ class TerraformScanner(Scanner[ScannerFinding]):
         self._cipher_pattern = re.compile(r'cipher_suites?\s*=\s*\[([^\]]+)\]')
         self._cert_pattern = re.compile(r'(?:cert|certificate|public_key|certificate_arn)\s*=\s*([^\n]+)')
         self._key_pattern = re.compile(r'(?:private_key|key)\s*=\s*([^\n]+)')
+        self._kms_pattern = re.compile(r'(?:kms_key_id|kms_key_arn|key_id)\s*=\s*([^\n#]+)')
 
     def can_scan_file(self, path: Path) -> bool:
         return path.suffix in (".tf", ".tfvars") or path.name == "terraform.tfstate"
@@ -85,6 +86,10 @@ class TerraformScanner(Scanner[ScannerFinding]):
             key_match = self._key_pattern.search(line_stripped)
             if key_match:
                 findings.append(self._create_finding("Private Key", key_match.group(1).strip(), file_path, i + 1, 0.8))
+
+            kms_match = self._kms_pattern.search(line_stripped)
+            if kms_match:
+                findings.append(self._create_finding("KMS", kms_match.group(1).strip().strip('"'), file_path, i + 1, 0.7))
 
         return findings
 

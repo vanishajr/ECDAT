@@ -1,80 +1,57 @@
-"""Markdown report renderer. Pure function. No trailing newline."""
+"""Markdown report renderer."""
 
 from __future__ import annotations
 
 
 def to_markdown(report: dict) -> str:
-    r = report
-    real = r.get("real_risk")
     lines = [
-        f"# ECDAT Report: {r['scan_id']}",
-        "",
-        "## Executive Summary",
-        "",
-        f"- Target: {r['target']}",
-        f"- Findings: {r['finding_count']} "
-        f"(files scanned: {r['files_scanned']})",
-        f"- Risk: {r['risk']['level']} ({r['risk']['score']}) [mock scoring]",
+        f"# ECDAT Report: {report['scan_id']}", "", "## Executive Summary", "",
+        f"- Target: {report['target']}",
+        f"- Findings: {report['finding_count']} (files scanned: {report['files_scanned']})",
+        f"- Risk: {report['risk']['level']} ({report['risk']['score']})",
+        f"- Rules affected: {len(report['by_rule'])}", "", "## Scan Information", "",
+        f"- Started: {report['started_at']}", f"- Finished: {report['finished_at']}",
     ]
-    if real is not None:
-        lines.append(
-            f"- Real risk (P1): {real['level']} ({real['score']}) "
-            f"[{real.get('model', 'p1')}]")
-    lines += [
-        f"- Rules affected: {len(r['by_rule'])}",
-        "",
-        "## Scan Information",
-        "",
-        f"- Scan ID: {r['scan_id']}",
-        f"- Target: {r['target']}",
-        f"- Started: {r['started_at']}",
-        f"- Finished: {r['finished_at']}",
-    ]
-    for name in sorted(r["tool_versions"]):
-        lines.append(f"- Tool {name}: {r['tool_versions'][name]}")
-    lines += ["", "## Findings by Severity", ""]
-    if r["by_severity"]:
-        lines += ["| Severity | Count |", "| --- | --- |"]
-        for sev, count in sorted(r["by_severity"].items()):
-            lines.append(f"| {sev} | {count} |")
+    lines.extend(f"- Tool {k}: {v}" for k, v in sorted(report["tool_versions"].items()))
+    lines.extend(["", "## Findings by Severity", ""])
+    if report["by_severity"]:
+        lines.extend(["| Severity | Count |", "| --- | --- |"])
+        lines.extend(f"| {s} | {n} |" for s, n in sorted(report["by_severity"].items()))
     else:
         lines.append("No findings.")
-    lines += ["", "## Findings by Rule", ""]
-    if r["by_rule"]:
-        lines += ["| Rule | Severity | Count | Title |", "| --- | --- | --- | --- |"]
-        for row in r["by_rule"]:
-            lines.append(
-                f"| {row['rule_id']} | {row['severity']} | {row['count']} | {row['title']} |"
-            )
+    lines.extend(["", "## Findings by Rule", ""])
+    if report["by_rule"]:
+        lines.extend(["| Rule | Severity | Count | Title |", "| --- | --- | --- | --- |"])
+        lines.extend(f"| {r['rule_id']} | {r['severity']} | {r['count']} | {r['title']} |" for r in report["by_rule"])
     else:
         lines.append("No findings.")
-    lines += ["", "## Top Affected Files/Services", ""]
-    if r["top_files"]:
-        lines += ["| File/Service | Count |", "| --- | --- |"]
-        for row in r["top_files"]:
-            lines.append(f"| {row['file']} | {row['count']} |")
-    else:
+    lines.extend(["", "## Top Affected Files/Services", ""])
+    lines.extend((f"- {r['file']}: {r['count']}" for r in report["top_files"]))
+    if not report["top_files"]:
         lines.append("No findings.")
-    lines += [
-        "",
-        "## Risk Summary (mock)",
-        "",
-        f"Score {r['risk']['score']} / level {r['risk']['level']} "
-        "using the temporary mock scoring model.",
-        "",
-        "## Migration Summary (mock placeholder)",
-        "",
-    ]
-    if r["recommendations"]:
-        for rec in r["recommendations"]:
-            lines.append(f"- {rec['rule_id']} [{rec['severity']}] x{rec['count']}: {rec['action']}")
+    lines.extend(["", "## Risk Summary", "", f"Score {report['risk']['score']} / level {report['risk']['level']} from the P1 analysis engine.", "", "## Migration Recommendations", ""])
+    if report["recommendations"]:
+        lines.extend(f"- {r['rule_id']} [{r['severity']}] x{r['count']}: {r['action']}" for r in report["recommendations"])
     else:
         lines.append("No recommendations.")
-    lines += [
-        "",
-        "## Disclaimer",
-        "",
-        "Risk and migration sections are mock/placeholder output pending "
-        "Person 1's real risk and PQC recommendation engine.",
-    ]
+    usage = report.get("usage_states", {}) or {}
+    if usage:
+        lines.extend(["", "## Crypto Usage (Operations)", ""])
+        lines.extend(f"- {state}: {count}" for state, count in sorted(usage.items()))
+    top_ops = report.get("top_operations", []) or []
+    if top_ops:
+        lines.extend(["", "## High-Priority Operations", ""])
+        lines.extend(
+            f"- {o.get('operation_type', '')} {o.get('canonical', '')} "
+            f"[{o.get('risk_class', '')}] usage={o.get('usage_state', '')} "
+            f"at {o.get('file', '')}" for o in top_ops[:5])
+    coverage = report.get("coverage", {}) or {}
+    if coverage:
+        lines.extend(["", "## Coverage and Limitations", ""])
+        status = coverage.get("scanner_status", {}) or {}
+        lines.extend(f"- {name}: {state}" for name, state in sorted(status.items()))
+        for key, value in sorted((report.get("limitations", {}) or {}).items()):
+            if value:
+                rendered = ", ".join(map(str, value)) if isinstance(value, list) else value
+                lines.append(f"- {key}: {rendered}")
     return "\n".join(lines)

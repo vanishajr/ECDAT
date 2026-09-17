@@ -6,7 +6,5 @@ only). Source of truth is always the canonical document from
 get_scan_doc() — never flattened findings rows (those drop
 snippet/metadata).
 
-CBOM/SARIF here are a minimal/mock subset honestly derivable from
-canonical v1, pending richer CIR from Person 1. Do NOT present them
-as certified spec-complete output.
+CBOM/SARIF here are deterministic projections of canonical v1.
 """

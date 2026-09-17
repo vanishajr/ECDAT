@@ -14,10 +14,57 @@ are capped to confidence <= 0.35 per contract.
 from __future__ import annotations
 
 import hashlib
+import re
 
 from ecdat.core.fusion import decide_usage, redact_snippet, weighted_fusion
 
-__all__ = ["build_operations", "group_key_for", "dedup_key_for"]
+__all__ = ["build_operations", "group_key_for", "dedup_key_for",
+           "reconstruct_cir"]
+
+_TEST_DIR_NAMES = frozenset({"test", "tests", "testing", "testsuite",
+                             "demos", "examples", "doc"})
+
+# Evidence tool prefix -> (fusion detector, fusion signal type).
+# Signal "call" counts as direct-use evidence in weighted_fusion;
+# everything else contributes through flags/reliability instead.
+_TOOL_SIGNALS: tuple[tuple[str, str, str], ...] = (
+    ("source:api-call", "source", "call"),
+    ("source:ast", "source", "call"),
+    ("source:semgrep", "semgrep", "call"),
+    ("source:wrapper-call", "source", "call"),
+    ("binary-lief", "lief", "binary-import"),
+    ("binary-capa", "capa", "behavior"),
+    ("binary-floss", "strings", "decoded-match"),
+    ("binary-signatures", "yara-x", "constant-match"),
+    ("binary-strings", "strings", "pattern-match"),
+    ("binary:", "binary", "pattern-match"),
+    ("config:dockerfile", "dockerfile", "definition"),
+    ("config-", "config", "config-match"),
+    ("dependency:syft", "syft", "dependency-capability"),
+    ("dependency:cdxgen", "syft", "dependency-capability"),
+    ("dependency:bom-", "bom", "dependency-capability"),
+    ("dependency:", "dependency", "dependency-capability"),
+    ("container-syft", "syft", "dependency-capability"),
+    ("container-trivy", "container", "vuln-match"),
+    ("container-docker", "container", "definition"),
+    ("container:", "container", "pattern-match"),
+    ("certificate-", "certificate", "cert-parse"),
+    ("runtime-tls", "runtime", "runtime-probe"),
+    ("runtime-ssh", "runtime", "runtime-probe"),
+    ("runtime:", "runtime", "runtime-probe"),
+    ("cloud-aws", "cloud", "cloud-inventory"),
+    ("cloud:", "cloud", "cloud-inventory"),
+    ("secret", "secret", "secret-match"),
+    ("gitleaks", "gitleaks", "secret-match"),
+)
+
+_DEPENDENCY_TOOLS: tuple[str, ...] = (
+    "dependency:", "container-syft", "container-trivy",
+    "config:dockerfile", "dependency:syft", "dependency:cdxgen",
+    "dependency:bom-",
+)
+
+_SERVICE_RE = re.compile(r"service=([^;]+)")
 
 _PROVIDED_ONLY_CAP = 0.35
 _PROVIDED_SUFFIX = "provided-only"
@@ -232,6 +279,17 @@ def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None) -> list[dic
         )
         if dep and confidence > _PROVIDED_ONLY_CAP:
             confidence = _PROVIDED_ONLY_CAP
+        if not dep and not g["is_test_fixture"] and not g["is_checksum_only"] \
+                and breakdown.get("has_direct_usage"):
+            # Direct observation is a floor, not a target: fusion can
+            # corroborate upward and penalties still apply, but a direct
+            # API call is never fused below what was observed.
+            try:
+                confidence = max(confidence, max(
+                    float(e.get("confidence", 0.0) or 0.0)
+                    for e in g["evidence"]))
+            except Exception:
+                pass
         usage_state = decide_usage(
             confidence,
             dependency_only=bool(dep),
@@ -270,3 +328,656 @@ def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None) -> list[dic
 
     ops.sort(key=lambda o: (-float(o.get("confidence", 0.0)), str(o.get("id", ""))))
     return ops
+
+
+def _dethash(value: str, prefix: str, length: int = 16) -> str:
+    """Deterministic ``prefix:hash`` (same seed as discovery's helper)."""
+    hash_val = hashlib.sha256(value.encode()).hexdigest()[:length]
+    return f"{prefix}:{hash_val}"
+
+
+def _tool_signal(tool: str, detail: str = "") -> tuple[str, str]:
+    """Map an evidence tool string to (fusion detector, signal type)."""
+    text = str(tool or "")
+    for prefix, detector, signal in _TOOL_SIGNALS:
+        if text.startswith(prefix):
+            return detector, signal
+    return "unknown", "pattern-match"
+
+
+def _is_dependency_tool(tool: str) -> bool:
+    text = str(tool or "")
+    return any(text.startswith(prefix) for prefix in _DEPENDENCY_TOOLS)
+
+
+def _is_test_path(path: str | None) -> bool:
+    if not path:
+        return False
+    try:
+        from pathlib import Path as _Path
+        parts = [p.lower() for p in _Path(str(path)).parts]
+        if any(p in _TEST_DIR_NAMES for p in parts):
+            return True
+        stem = _Path(str(path)).stem.lower()
+        return bool(re.search(r"(^|[_\-.])tests?([_\-.]|$)", stem))
+    except Exception:
+        return False
+
+
+def _direct_best(evidence: list) -> float:
+    """Strongest direct-call confidence in raw CIR evidence items."""
+    best = 0.0
+    try:
+        for item in evidence or []:
+            tool = str(getattr(item, "tool", "") or "")
+            _, signal = _tool_signal(tool)
+            if signal == "call":
+                try:
+                    best = max(best, float(
+                        getattr(item, "confidence", 0.0) or 0.0))
+                except (TypeError, ValueError):
+                    continue
+    except Exception:
+        pass
+    return best
+
+
+def _test_suppressed(path: str | None, evidence: list) -> bool:
+    """Test-vector suppression needs BOTH a test path AND weak evidence.
+
+    A direct high-confidence observation (floor 0.8, the Confirmed band
+    edge) is application use no matter the filename — e.g. a fixture
+    file literally named ``test.py`` scanned at a scan root. Weak
+    test-path evidence suppresses per the fusion contract.
+    """
+    return _is_test_path(path) and _direct_best(evidence) < 0.8
+
+
+def _service_of(context_notes: str | None) -> str:
+    if not context_notes:
+        return ""
+    match = _SERVICE_RE.search(str(context_notes))
+    return match.group(1).strip() if match else ""
+
+
+def _endpoint_of(location) -> str:
+    try:
+        uri = str(getattr(location, "uri", "") or "")
+    except Exception:
+        return ""
+    return uri if "://" in uri else ""
+
+
+def _merge_evidence(lists: list[list]) -> list:
+    """Concatenate signals, dropping exact duplicates (provenance kept)."""
+    merged: list = []
+    seen: set = set()
+    for items in lists:
+        for item in items or []:
+            try:
+                key = (str(getattr(item, "tool", "")),
+                       str(getattr(item, "detail", "")),
+                       str(getattr(item, "snippet", "") or ""),
+                       str(getattr(item, "confidence", "")))
+            except Exception:
+                continue
+            if key not in seen:
+                seen.add(key)
+                merged.append(item)
+    return merged
+
+
+def _notes_append(notes: str | None, addition: str) -> str | None:
+    if not addition:
+        return notes
+    if not notes:
+        return addition
+    keys = {p.split("=")[0] + "=" for p in str(notes).split("; ")}
+    additions = [p for p in addition.split("; ")
+                 if p.split("=")[0] + "=" not in keys]
+    if not additions:
+        return notes
+    return str(notes) + "; " + "; ".join(additions)
+
+
+def _hit_for_operation(op, asset) -> dict:
+    """Adapt one CIR operation (+asset) to the build_operations contract."""
+    evidence: list[dict] = []
+    for item in (getattr(op, "evidence", None) or []):
+        try:
+            tool = str(getattr(item, "tool", "") or "unknown")
+            detector, signal = _tool_signal(
+                tool, str(getattr(item, "detail", "") or ""))
+            evidence.append({
+                "detector": detector,
+                "signal_type": signal,
+                "confidence": getattr(item, "confidence", 0.0),
+            })
+        except Exception:
+            continue
+    location = getattr(op, "location", None)
+    context = getattr(op, "context", None)
+    implementation = getattr(op, "implementation", None)
+    try:
+        file = str(getattr(location, "file", "") or "") if location else ""
+    except Exception:
+        file = ""
+    try:
+        function = str(getattr(op, "function", "") or "") or None
+    except Exception:
+        function = None
+    notes = ""
+    try:
+        notes = str(getattr(context, "notes", "") or "") if context else ""
+    except Exception:
+        notes = ""
+    asset_dict = {
+        "canonical_name": getattr(asset, "canonical", "") if asset else "",
+        "key_size": getattr(asset, "key_size", None) if asset else None,
+        "mode": getattr(asset, "mode", None) if asset else None,
+        "curve": getattr(asset, "curve", None) if asset else None,
+    }
+    try:
+        op_type = getattr(getattr(op, "operation_type", None), "value", "")
+    except Exception:
+        op_type = ""
+    try:
+        lib = str(getattr(implementation, "library", "") or "") \
+            if implementation else ""
+    except Exception:
+        lib = ""
+    try:
+        usage_state = str(getattr(getattr(op, "risk_inputs", None),
+                                  "usage_state", "") or "")
+    except Exception:
+        usage_state = ""
+    try:
+        tools = [str(getattr(e, "tool", ""))
+                 for e in (getattr(op, "evidence", None) or [])]
+    except Exception:
+        tools = []
+    dependency_only = usage_state.endswith("ProvidedOnly") or (
+        bool(tools) and all(_is_dependency_tool(t) for t in tools))
+    try:
+        raw_evidence = list(getattr(op, "evidence", None) or [])
+    except Exception:
+        raw_evidence = []
+    return {
+        "operation_type": op_type or "",
+        "canonical_name": asset_dict["canonical_name"],
+        "key_size": asset_dict["key_size"],
+        "mode": asset_dict["mode"],
+        "curve": asset_dict["curve"],
+        "file": file,
+        "function": function,
+        "service": _service_of(notes),
+        "endpoint": _endpoint_of(location),
+        "library": lib,
+        "evidence": evidence,
+        "asset_ids": [getattr(op, "asset_id", "")] if getattr(
+            op, "asset_id", "") else [],
+        "param_resolved": bool(
+            (asset_dict["key_size"] or asset_dict["mode"]
+             or asset_dict["curve"])
+            and any(e["signal_type"] == "call" for e in evidence)),
+        "binary_support": any(
+            str(getattr(i, "tool", "")).startswith("binary-")
+            for i in (getattr(op, "evidence", None) or [])),
+        "config_runtime_agreement": any(
+            str(getattr(i, "tool", "")).startswith("config-")
+            for i in (getattr(op, "evidence", None) or [])) and any(
+            str(getattr(i, "tool", "")).startswith("runtime-")
+            for i in (getattr(op, "evidence", None) or [])),
+        "dependency_only": dependency_only,
+        "is_test_fixture": _test_suppressed(file, raw_evidence),
+        "_op": op,
+        "_asset": asset,
+    }
+
+
+def _hit_dependency_only(hit: dict) -> bool:
+    """Group-level dependency separation (mirrors build_operations)."""
+    return bool(hit.get("dependency_only", False))
+
+
+def reconstruct_cir(cir):
+    """Fuse evidence and reconstruct operations over a CIR document.
+
+    The authoritative Phase 8 production stage (called by
+    ``DiscoveryEngine.scan_and_emit_cir`` for every CLI/GUI/CI scan):
+
+    1. adapts CIR operations (+assets) to raw hits carrying detector,
+       signal type, location, parameters, confidence, usage implication
+       and context per evidence item;
+    2. collapses hits with :func:`build_operations` (weighted fusion
+       confidence, usage adjudication, ProvidedOnly separation,
+       deterministic dedup keys) — never one operation per raw finding;
+    3. rewrites operations (merged provenance evidence, fused
+       confidence/usage, stable semantic IDs) and regroups assets by
+       (canonical, parameters, file) with fused confidence/usage;
+    4. preserves asset-only evidence (assets no operation references);
+    5. rebuilds the knowledge-graph nodes/edges from the merged sets;
+    6. returns a validated ``CIRDocument`` (pydantic construction).
+
+    Direct-observation confidence is a floor, not a target: fusion can
+    corroborate upward and penalties (dependency/test) still apply via
+    :func:`decide_usage`, but a direct API call is never fused below
+    what the detector observed.
+    """
+    from ecdat.core.cir_models import (
+        CIRDocument, CryptoAsset, CryptoOperation, Graph, GraphEdge,
+        GraphNode, GraphNodeKind, GraphRelationship, RiskInputs,
+        new_asset_id, new_operation_id,
+    )
+
+    assets_by_id = {a.asset_id: a for a in (cir.assets or [])}
+    hits: list[dict] = []
+    for op in (cir.operations or []):
+        try:
+            hits.append(_hit_for_operation(
+                op, assets_by_id.get(getattr(op, "asset_id", ""))))
+        except Exception:
+            continue
+    if not hits:
+        return cir
+
+    # Scan-level static/runtime agreement (task 4): a config claim for
+    # an algorithm ALSO observed live (runtime probe, same canonical)
+    # corroborates it. Computed here from scan context — the
+    # build_operations contract itself is untouched.
+    live_canonicals = set()
+    for hit in hits:
+        try:
+            tools = [str(getattr(e, "tool", ""))
+                     for e in (hit["_op"].evidence or [])]
+        except Exception:
+            tools = []
+        if any(t.startswith("runtime-") for t in tools):
+            live_canonicals.add(str(hit.get("canonical_name", "")))
+    if live_canonicals:
+        for hit in hits:
+            try:
+                tools = [str(getattr(e, "tool", ""))
+                         for e in (hit["_op"].evidence or [])]
+            except Exception:
+                tools = []
+            if any(t.startswith("config-") for t in tools) and \
+                    str(hit.get("canonical_name", "")) in live_canonicals:
+                hit["config_runtime_agreement"] = True
+
+    fused = build_operations(hits)
+
+    # Recover membership per fused group via the same deterministic
+    # dedup_key contract (insertion order = CIR order = deterministic).
+    groups: dict[str, list] = {}
+    for hit in hits:
+        key = dedup_key_for(
+            group_key_for(hit), bool(hit.get("dependency_only", False)))
+        groups.setdefault(key, []).append(hit["_op"])
+
+    new_operations: list = []
+    for group in fused:
+        key = group["dedup_key"]
+        ops = groups.get(key, [])
+        if not ops:
+            continue
+        # Survivor: richest provenance, then strongest signal (stable).
+        ops = sorted(ops, key=lambda o: (
+            -len(getattr(o, "evidence", None) or []),
+            -(float(getattr(o, "confidence", 0.0) or 0.0)),
+            str(getattr(o, "operation_id", ""))))
+        survivor = ops[0]
+        merged_evidence = _merge_evidence(
+            [list(getattr(o, "evidence", None) or []) for o in ops])
+        confidence = float(group.get("confidence", 0.0) or 0.0)
+        if group.get("breakdown", {}).get("has_direct_usage"):
+            try:
+                direct_best = max(
+                    float(getattr(e, "confidence", 0.0) or 0.0)
+                    for o in ops for e in (getattr(o, "evidence", None) or []))
+                confidence = max(confidence, direct_best)
+            except Exception:
+                pass
+        confidence = min(1.0, max(0.0, round(confidence, 3)))
+        usage = str(group.get("usage_state", "Possible"))
+        breakdown = group.get("breakdown", {}) or {}
+        if usage not in ("ProvidedOnly", "FalsePositiveSuppressed"):
+            # Adjudicate on the floored score: build_operations decides
+            # on the formula value, but direct observation floors the
+            # confidence above it (a 0.92 direct call is Confirmed, not
+            # Probable). Flags still dominate via decide_usage.
+            usage = decide_usage(
+                confidence,
+                has_direct_evidence=bool(
+                    breakdown.get("has_direct_usage", False)))
+        detectors = ",".join(breakdown.get("detectors", []) or [])
+        fusion_note = (f"fusion=conf:{confidence}/usage:{usage}/"
+                       f"detectors:{detectors}/"
+                       f"evidence:{len(merged_evidence)}/"
+                       f"hits:{group.get('hit_count', len(ops))}")
+        try:
+            notes = _notes_append(
+                str(getattr(getattr(survivor, "context", None),
+                            "notes", "") or "") or None, fusion_note)
+        except Exception:
+            notes = fusion_note
+        try:
+            context = getattr(survivor, "context", None)
+            if context is not None:
+                context.notes = notes
+        except Exception:
+            pass
+        risk_inputs = getattr(survivor, "risk_inputs", None)
+        try:
+            from ecdat.core.cir_models import UsageState as _UsageState
+            usage_state = _UsageState(usage)
+        except Exception:
+            from ecdat.core.cir_models import UsageState as _UsageState
+            usage_state = _UsageState.POSSIBLE
+        if risk_inputs is not None:
+            try:
+                risk_inputs.usage_state = usage_state
+            except Exception:
+                pass
+        else:
+            try:
+                from ecdat.core.cir_models import Exposure as _Exposure
+                exposure = getattr(getattr(survivor, "context", None),
+                                   "exposure", _Exposure.INTERNAL)
+                risk_inputs = RiskInputs(
+                    usage_state=usage_state, exposure=exposure,
+                    sensitive_data=False,
+                    external_dependency=bool(
+                        getattr(getattr(survivor, "implementation", None),
+                                "library", None)))
+            except Exception:
+                risk_inputs = None
+        # Stable semantic identity (task 10): asset link may have been
+        # regrouped below; recompute deterministically at the end.
+        new_operations.append({
+            "survivor": survivor,
+            "evidence": merged_evidence,
+            "confidence": confidence,
+            "usage_state": usage_state,
+            "risk_inputs": risk_inputs,
+            "detectors": detectors,
+        })
+
+    # Regroup assets by (canonical, params, file): same-file duplicates
+    # collapse, cross-file assets stay distinct (stable, test-pinned).
+    asset_groups: dict[tuple, list] = {}
+    for asset in (cir.assets or []):
+        try:
+            loc = getattr(asset, "location", None)
+            file = str(getattr(loc, "file", "") or "") if loc else ""
+        except Exception:
+            file = ""
+        key = (str(getattr(asset, "canonical", "")),
+               getattr(asset, "key_size", None),
+               getattr(asset, "mode", None),
+               getattr(asset, "curve", None),
+               getattr(asset, "protocol", None), file)
+        asset_groups.setdefault(key, []).append(asset)
+
+    new_assets: list = []
+    asset_id_map: dict[str, str] = {}
+    for key, members_ in asset_groups.items():
+        canonical, key_size, mode, curve, protocol, file = key
+        merged_evidence = _merge_evidence(
+            [list(getattr(a, "evidence", None) or []) for a in members_])
+        probe = [{"detector": _tool_signal(
+            str(getattr(e, "tool", "")))[0],
+            "signal_type": _tool_signal(str(getattr(e, "tool", "")))[1],
+            "confidence": getattr(e, "confidence", 0.0)}
+            for e in merged_evidence]
+        dep_only = all(
+            str(getattr(a, "usage_state", "") or "").endswith("ProvidedOnly")
+            or (bool(getattr(a, "evidence", None)) and all(
+                _is_dependency_tool(str(getattr(e, "tool", "")))
+                for e in (getattr(a, "evidence", None) or [])))
+            for a in members_)
+        test_suppress = _test_suppressed(file, merged_evidence)
+        param = bool(key_size or mode or curve) and any(
+            p["signal_type"] == "call" for p in probe)
+        confidence, breakdown = weighted_fusion(
+            probe, param_resolved=param, dependency_only=dep_only)
+        if breakdown.get("has_direct_usage"):
+            try:
+                confidence = max(confidence, max(
+                    float(getattr(e, "confidence", 0.0) or 0.0)
+                    for e in merged_evidence))
+            except Exception:
+                pass
+        confidence = min(1.0, max(0.0, round(confidence, 3)))
+        usage = decide_usage(
+            confidence, dependency_only=dep_only,
+            is_test_fixture=test_suppress,
+            has_direct_evidence=breakdown.get("has_direct_usage"))
+        survivor = sorted(
+            members_, key=lambda a: (
+                -len(getattr(a, "evidence", None) or []),
+                -(float(getattr(a, "confidence", 0.0) or 0.0)),
+                str(getattr(a, "asset_id", ""))))[0]
+        try:
+            from ecdat.core.cir_models import UsageState as _UsageState
+            usage_state = _UsageState(usage)
+        except Exception:
+            from ecdat.core.cir_models import UsageState as _UsageState
+            usage_state = _UsageState.POSSIBLE
+        new_id = new_asset_id(canonical, key_size, mode, curve, protocol,
+                              file or None, None)
+        for member in members_:
+            asset_id_map[getattr(member, "asset_id", "")] = new_id
+        try:
+            arisk = getattr(survivor, "risk_inputs", None)
+            if arisk is not None:
+                arisk.usage_state = usage_state
+        except Exception:
+            pass
+        try:
+            acontext = getattr(survivor, "context", None)
+            if acontext is not None:
+                acontext.notes = _notes_append(
+                    str(getattr(acontext, "notes", "") or "") or None,
+                    f"fusion=conf:{confidence}/usage:{usage}/"
+                    f"evidence:{len(merged_evidence)}")
+        except Exception:
+            pass
+        try:
+            new_assets.append(CryptoAsset(
+                asset_id=new_id,
+                canonical=getattr(survivor, "canonical", canonical),
+                original=getattr(survivor, "original", None),
+                key_size=key_size, mode=mode, curve=curve, protocol=protocol,
+                library=getattr(survivor, "library", None),
+                usage_state=usage_state, confidence=confidence,
+                evidence=merged_evidence,
+                location=getattr(survivor, "location", None),
+                implementation=getattr(survivor, "implementation", None),
+                context=getattr(survivor, "context", None),
+                risk_inputs=getattr(survivor, "risk_inputs", None),
+            ))
+        except Exception:
+            new_assets.append(survivor)
+
+    # Finalize operations with regrouped asset links + stable IDs.
+    final_operations: list = []
+    for entry in new_operations:
+        survivor = entry["survivor"]
+        old_asset_id = getattr(survivor, "asset_id", "")
+        new_asset = asset_id_map.get(old_asset_id, old_asset_id)
+        try:
+            from ecdat.core.cir_models import OperationType as _OpType
+            op_type = getattr(survivor, "operation_type", None)
+            if not isinstance(op_type, _OpType):
+                continue
+            op_id = new_operation_id(
+                op_type, new_asset,
+                getattr(survivor, "function", None),
+                getattr(survivor, "location", None))
+            final_operations.append(CryptoOperation(
+                operation_id=op_id,
+                operation_type=op_type,
+                asset_id=new_asset,
+                confidence=entry["confidence"],
+                evidence=entry["evidence"],
+                function=getattr(survivor, "function", None),
+                location=getattr(survivor, "location", None),
+                implementation=getattr(survivor, "implementation", None),
+                context=getattr(survivor, "context", None),
+                risk_inputs=entry["risk_inputs"],
+            ))
+        except Exception:
+            continue
+
+    # Rebuild the graph from the merged sets (same vocabulary/IDs).
+    nodes: dict[str, GraphNode] = {}
+    edges: list[GraphEdge] = []
+    for asset in new_assets:
+        try:
+            nodes[asset.asset_id] = GraphNode(
+                id=asset.asset_id, kind=GraphNodeKind.ASSET,
+                label=asset.canonical, ref=asset.asset_id)
+            loc = getattr(asset, "location", None)
+            file = str(getattr(loc, "file", "") or "") if loc else ""
+            if file:
+                file_id = _dethash(file, "file")
+                if file_id not in nodes:
+                    nodes[file_id] = GraphNode(
+                        id=file_id, kind=GraphNodeKind.FILE,
+                        label=file, ref=file)
+                edges.append(GraphEdge(**{
+                    "from": file_id, "to": asset.asset_id,
+                    "relationship": GraphRelationship.CONTAINS}))
+            impl = getattr(asset, "implementation", None)
+            lib = str(getattr(impl, "library", "") or "") if impl else ""
+            if lib:
+                lib_id = _dethash(lib, "library")
+                if lib_id not in nodes:
+                    nodes[lib_id] = GraphNode(
+                        id=lib_id, kind=GraphNodeKind.LIBRARY,
+                        label=lib, ref=lib)
+                edges.append(GraphEdge(**{
+                    "from": asset.asset_id, "to": lib_id,
+                    "relationship": GraphRelationship.USES}))
+        except Exception:
+            continue
+    for operation in final_operations:
+        try:
+            nodes[operation.operation_id] = GraphNode(
+                id=operation.operation_id, kind=GraphNodeKind.OPERATION,
+                label=operation.operation_type.value,
+                ref=operation.operation_id)
+            edges.append(GraphEdge(**{
+                "from": operation.operation_id, "to": operation.asset_id,
+                "relationship": GraphRelationship.USES}))
+            loc = getattr(operation, "location", None)
+            file = str(getattr(loc, "file", "") or "") if loc else ""
+            if file:
+                file_id = _dethash(file, "file")
+                if file_id not in nodes:
+                    nodes[file_id] = GraphNode(
+                        id=file_id, kind=GraphNodeKind.FILE,
+                        label=file, ref=file)
+                edges.append(GraphEdge(**{
+                    "from": file_id, "to": operation.operation_id,
+                    "relationship": GraphRelationship.CONTAINS}))
+        except Exception:
+            continue
+
+    # Phase 9: authoritative cross-surface system links. The minimal
+    # file/asset/operation/library nodes above stay (tested base); the
+    # rich builder contributes service/host/key/cert/config/cloud/owner
+    # nodes plus depends_on/derives/calls/terminates edges, all in the
+    # same CIR v0.1 vocabulary. Library entities are consolidated so one
+    # library is one node (rich ``lib:`` ids merge into the minimal
+    # ``library:`` ids on matching base names). Failures degrade to the
+    # minimal graph, never a failed scan.
+    try:
+        from ecdat.core.graph import wire_system_links as _wire_links
+        extra = _wire_links(new_assets, final_operations) or {}
+        lib_base_to_id: dict[str, str] = {}
+        for node in nodes.values():
+            try:
+                if node.kind == GraphNodeKind.LIBRARY:
+                    base = str(node.label or "").split("@")[0].strip().lower()
+                    if base:
+                        lib_base_to_id.setdefault(base, node.id)
+            except Exception:
+                continue
+        seen_edges = {(e.from_node, e.to, e.relationship) for e in edges}
+        for node in (extra.get("nodes", []) or []):
+            try:
+                nid = str(node.get("id", "") or "")
+                kind = str(node.get("kind", "") or "")
+                if not nid or not kind:
+                    continue
+                if nid in nodes:
+                    continue
+                if nid.startswith("lib:"):
+                    base = str(node.get("label", "") or "").split("@")[0]
+                    base = base.strip().lower().split(" (inferred)")[0]
+                    target = lib_base_to_id.get(base)
+                    if target:
+                        continue  # consolidated below via edge rewrite
+                nodes[nid] = GraphNode(
+                    id=nid, kind=GraphNodeKind(kind),
+                    label=node.get("label"), ref=node.get("ref"))
+            except Exception:
+                continue
+        for edge in (extra.get("edges", []) or []):
+            try:
+                src, dst = str(edge.get("from", "")), str(edge.get("to", ""))
+                rel = GraphRelationship(str(edge.get("relationship", "")))
+                if not src or not dst:
+                    continue
+                if src.startswith("lib:"):
+                    base = ""
+                    for node in (extra.get("nodes", []) or []):
+                        if str(node.get("id", "")) == src:
+                            base = str(node.get("label", "") or "")
+                            break
+                    base = base.split("@")[0].strip().lower()
+                    base = base.split(" (inferred)")[0]
+                    if base and base in lib_base_to_id:
+                        src = lib_base_to_id[base]
+                if dst.startswith("lib:"):
+                    base = ""
+                    for node in (extra.get("nodes", []) or []):
+                        if str(node.get("id", "")) == dst:
+                            base = str(node.get("label", "") or "")
+                            break
+                    base = base.split("@")[0].strip().lower()
+                    base = base.split(" (inferred)")[0]
+                    if base and base in lib_base_to_id:
+                        dst = lib_base_to_id[base]
+                if src not in nodes or dst not in nodes:
+                    continue
+                key = (src, dst, rel)
+                if key not in seen_edges:
+                    seen_edges.add(key)
+                    edges.append(GraphEdge(**{
+                        "from": src, "to": dst, "relationship": rel}))
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    try:
+        return CIRDocument(
+            cir_version=getattr(cir, "cir_version", "0.1"),
+            scan_id=getattr(cir, "scan_id"),
+            target=getattr(cir, "target"),
+            started_at=getattr(cir, "started_at"),
+            finished_at=getattr(cir, "finished_at"),
+            tool_versions=dict(getattr(cir, "tool_versions", {}) or {}),
+            registry_version=getattr(cir, "registry_version"),
+            assets=new_assets,
+            operations=final_operations,
+            graph=Graph(nodes=list(nodes.values()), edges=edges),
+            risks=list(getattr(cir, "risks", []) or []),
+            recommendations=list(
+                getattr(cir, "recommendations", []) or []),
+        )
+    except Exception:
+        return cir

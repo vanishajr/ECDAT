@@ -32,9 +32,7 @@ def insert_scan(
 ) -> str:
     """Insert one validated canonical scan doc. Returns its scan id.
 
-    ``cir`` is the optional enriched CIR sidecar (real scans only);
-    it is stored verbatim under the same scan ID. None means a
-    mock/legacy scan with no CIR.
+    ``cir`` is the enriched CIR sidecar stored under the same scan ID.
     """
     scan_id = doc["scan_id"]
     conn.execute(
@@ -72,8 +70,8 @@ def get_scan_doc(conn: sqlite3.Connection, scan_id: str) -> dict | None:
 def get_scan_cir(conn: sqlite3.Connection, scan_id: str) -> dict | None:
     """Return the stored enriched CIR sidecar, or None.
 
-    None means the scan is mock/legacy (no CIR was stored) or the scan
-    is unknown. Callers must not treat None as an empty CIR.
+    None means the scan is unknown or predates CIR persistence. Callers
+    must not treat None as an empty CIR.
     """
     row = conn.execute(
         "SELECT cir_json FROM scans WHERE id = ?", (scan_id,)

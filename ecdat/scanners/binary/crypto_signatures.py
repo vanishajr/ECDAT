@@ -334,3 +334,115 @@ CRYPTO_LIBRARIES = {
     "pqcrystals_falcon": {"canonical": "Falcon", "category": "pqc_sig"},
     "pqcrystals_sphincs": {"canonical": "SLH-DSA", "category": "pqc_sig"},
 }
+
+#: Raw crypto constants (bytes) for the signatures stage (Phase 6).
+#: Presence implies a statically linked/custom implementation, not mere
+#: linkage. Hex prefixes are matched against raw binary bytes.
+CRYPTO_CONSTANTS = {
+    # AES forward S-box (first 7 bytes: 63 7c 77 7b f2 6b 6f).
+    "637c777bf26b6f": "AES",
+    # AES inverse S-box (first 7 bytes: 52 09 6a d5 30 36 a5).
+    "52096ad53036a5": "AES",
+    # SHA-256 initial hash values (first 7 bytes big-endian).
+    "6a09e667bb67ae": "SHA-256",
+    # SHA-256 round constants K (K[0..1]: 428a2f98 71374491).
+    "428a2f9871374491": "SHA-256",
+    # SHA-512 initial hash values (first 8 bytes).
+    "6a09e667f3bcc908": "SHA-512",
+    # MD5 initialization vector ("0123456789abcdef" ASCII).
+    "30313233343536373839616263646566": "MD5",
+    # ChaCha20 sigma constant ("expand 32-byte k" ASCII).
+    "657870616e642033322d62797465206b": "ChaCha20",
+    # "Poly1305" tag ASCII.
+    "506f6c7931333035": "Poly1305",
+}
+
+#: ASN.1 OIDs (DER bytes and dotted form) for the signatures stage.
+CRYPTO_OIDS = {
+    "06092a864886f70d010101": "RSA",  # 1.2.840.113549.1.1.1 rsaEncryption
+    "06072a8648ce3d0201": "ECDSA",  # 1.2.840.10045.2.1 ecPublicKey
+    "06072b06010401da47": "ECDH",  # 1.3.132.1.12 dhSinglePass-stdDH
+    "06032b656e": "X25519",  # 1.3.101.110
+    "06032b656f": "X448",  # 1.3.101.111
+    "06032b6570": "Ed25519",  # 1.3.101.112
+    "06032b6571": "Ed448",  # 1.3.101.113
+    "0609608648016503040201": "SHA-256",  # 2.16.840.1.101.3.4.2.1
+    "0609608648016503040202": "SHA-384",
+    "0609608648016503040203": "SHA-512",
+    "0609608648016503040102": "AES-128-CBC",  # ...3.4.1.2
+    "0609608648016503040116": "AES-192-CBC",  # ...3.4.1.22
+    "060960864801650304012a": "AES-256-CBC",  # ...3.4.1.42
+    "0609608648016503040106": "AES-128-GCM",  # ...3.4.1.6
+    "060960864801650304012e": "AES-256-GCM",  # ...3.4.1.46
+}
+
+#: Dotted-string forms of the same OIDs (matched in decoded strings).
+CRYPTO_OID_STRINGS = {
+    "1.2.840.113549.1.1.1": "RSA",
+    "1.2.840.113549.1.1.5": "RSA",
+    "1.2.840.10045.2.1": "ECDSA",
+    "1.2.840.10045.4.3.2": "ECDSA",
+    "1.3.101.110": "X25519",
+    "1.3.101.111": "X448",
+    "1.3.101.112": "Ed25519",
+    "1.3.101.113": "Ed448",
+    "1.3.132.1.12": "ECDH",
+    "2.16.840.1.101.3.4.1.2": "AES-128-CBC",
+    "2.16.840.1.101.3.4.1.22": "AES-192-CBC",
+    "2.16.840.1.101.3.4.1.42": "AES-256-CBC",
+    "2.16.840.1.101.3.4.1.6": "AES-128-GCM",
+    "2.16.840.1.101.3.4.1.26": "AES-192-GCM",
+    "2.16.840.1.101.3.4.1.46": "AES-256-GCM",
+    "2.16.840.1.101.3.4.2.1": "SHA-256",
+    "2.16.840.1.101.3.4.2.2": "SHA-384",
+    "2.16.840.1.101.3.4.2.3": "SHA-512",
+}
+
+#: Byte markers suggesting packing/protection (escalation signal only).
+PACKER_MARKERS = (
+    "UPX!", "UPX0", "UPX1", ".upx", "ASPack", "PECompact", "Themida",
+    "VMProtect", "Enigma", "MPRESS", "FSG!", "MEW",
+)
+
+#: Whole-string PE/TLS-directory artifacts: thread-local-storage loader
+#: structures, never Transport Layer Security. Matched strings carrying
+#: these tokens are not crypto evidence, whatever pattern hit them.
+_PE_NONCRYPTO_TOKENS = (
+    "image_tls_directory", "pimage_tls_callback", "tls_callback",
+    "tlsgetvalue", "tlssetvalue", "tlsalloc", "tlsfree", "__dyn_tls_init",
+    "__dyn_tls_dtor", "image_import_descriptor", "importdesc",
+    "_tls_index", "_tls_start", "_tls_end", "_tls_used",
+    "tls_start__", "tls_end__", ".tls$",
+)
+
+
+def is_plausible_crypto_string(text: str, pattern: str) -> bool:
+    """Guard plain-string matches against systematic false positives.
+
+    Two cheap, conservative rules (Phase 6 FP discipline):
+    1. PE loader artifacts (TLS directory, import descriptors, Win32
+       thread-local-storage APIs) are never crypto evidence.
+    2. Very short patterns (< 4 chars: des/ssl/tls/rsa/...) must either
+       sit on letter boundaries or dominate the token; this drops
+       English words (Destination), paths (gccmain.c) and sibling words
+       (ProcessLocksList) while keeping version strings (tls1.2),
+       mode suffixes (aes-256-gcm) and compounds (3DES, ECDH).
+    Longer patterns always pass (their specificity is the guard).
+    """
+    low = str(text or "").lower()
+    if not low:
+        return False
+    for token in _PE_NONCRYPTO_TOKENS:
+        if token in low:
+            return False
+    if low.strip() == ".tls":
+        return False
+    pattern = str(pattern or "")
+    if len(pattern) >= 4:
+        return True
+    import re as _re
+    if _re.search(r"(^|[^A-Za-z])" + _re.escape(pattern) + r"([^A-Za-z]|$)",
+                  str(text or ""), _re.IGNORECASE):
+        return True
+    alnum = sum(1 for ch in low if ch.isalnum())
+    return alnum > 0 and (len(pattern) / alnum) >= 0.5

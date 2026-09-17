@@ -1,9 +1,8 @@
 """ECDAT core package (Person 3 platform layer).
 
 Lazy re-exports (PEP 562) so `import ecdat.core.client` never pulls
-pydantic or scanner dependencies: the mock/demo path stays
-stdlib-only (+jsonschema). Real-mode modules are imported on first
-attribute access only.
+pydantic or scanner dependencies: lightweight imports remain lazy and
+analysis dependencies are imported on first attribute access.
 """
 
 from __future__ import annotations

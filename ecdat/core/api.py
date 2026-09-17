@@ -2,7 +2,7 @@
 
 Single-process + ThreadPool facade over the Agent C analysis stages. CIR
 v0.1 (cir.schema.json) is the source of truth: ``scan`` runs inventory ->
-triage -> cheap synthetic extract -> fuse (Agent B fusion usage) ->
+triage -> pattern extract -> fuse (Agent B fusion usage) ->
 assets/operations -> graph. Risks/recommendations are NOT embedded by
 default (``include_risk`` / ``include_recommend`` default False -- they
 are a downstream stage via :func:`enrich_cir`).
@@ -134,7 +134,7 @@ _KEY_EXTS = {".pem", ".der", ".crt", ".cer", ".key", ".p12", ".pfx",
 _MAX_TEXT_BYTES = 2 * 1024 * 1024
 _MAX_FILES = 5000
 
-# Synthetic-stage reliability per surface (fusion input only, never
+# Pattern-stage reliability per surface (fusion input only, never
 # serialized: CIR evidence carries tool/detail/confidence/snippet alone).
 # Values mirror the DETECTOR_RELIABILITY scale of the stage each surface
 # stands in for. Consequence by design: the cheap pass peaks at Probable;
@@ -152,7 +152,7 @@ _SURFACE_RELIABILITY = {
 _DIRECT_SIGNALS = {"source-api-call", "binary-import"}
 
 # (raw_hint, operation_type, pattern, usage, role, confidence, library,
-#  signal_type). Library is a synthetic-attribution heuristic (documented
+#  signal_type). Library attribution is a heuristic (documented
 #  in scan()); version/api are filled per-hit only when observed.
 _PATTERNS: list[tuple] = [
     ("RSA", "Encrypt", re.compile(r"\bRSA\b.{0,60}?(1024|2048|3072|4096)", re.I),
@@ -272,7 +272,7 @@ def _service_for(target: Path) -> str:
 
 
 def _extract(path: Path, kind: str, service: str) -> list[dict]:
-    """Cheap synthetic extract: pattern hits shaped for fusion grouping."""
+    """Extract pattern hits shaped for fusion grouping."""
     text = _read_text(path)
     if not text:
         return []
@@ -359,7 +359,7 @@ def _fuse(hits: list[dict], service: str) -> tuple[list[dict], list[dict], list[
         first = members[0]
         dep_only = first.get("role") == "provides"
         evidence_in = [{
-            "detector": "agentC-synthetic-cheap",
+            "detector": "pattern-extract",
             "signal_type": ("call" if m.get("signal_type") in _DIRECT_SIGNALS
                             else str(m.get("signal_type", "pattern-match"))),
             "confidence": m.get("confidence", 0.5),
@@ -387,7 +387,7 @@ def _fuse(hits: list[dict], service: str) -> tuple[list[dict], list[dict], list[
         ) else "internal"
         best = max(members, key=lambda m: m.get("confidence", 0.0))
         signals = [{
-            "tool": "agentC-synthetic-cheap",
+            "tool": "pattern-extract",
             "detail": (f"{m.get('signal_type', 'pattern-match')} "
                        f"{m['canonical_name']} at {m['file']}:{m['line']}"),
             "confidence": m.get("confidence", 0.5),

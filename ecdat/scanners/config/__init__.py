@@ -8,6 +8,7 @@ from ecdat.scanners.config.openssl_scanner import OpenSSLConfigScanner
 from ecdat.scanners.config.kubernetes_scanner import KubernetesScanner
 from ecdat.scanners.config.terraform_scanner import TerraformScanner
 from ecdat.scanners.config.generic_scanner import GenericConfigScanner
+from ecdat.scanners.config.dockerfile_scanner import DockerfileScanner
 
 __all__ = [
     "ConfigScanner",
@@ -18,4 +19,5 @@ __all__ = [
     "KubernetesScanner",
     "TerraformScanner",
     "GenericConfigScanner",
+    "DockerfileScanner",
 ]

@@ -8,7 +8,7 @@ SCHEMA_URI = "https://json.schemastore.org/sarif-2.1.0.json"
 SARIF_VERSION = "2.1.0"
 
 # Deterministic severity mapping. Line numbers are passed through
-# verbatim (line 0 denotes non-file offsets in binary/cloud mocks).
+# verbatim (line 0 denotes non-file offsets in binary or cloud scans).
 LEVELS = {
     "critical": "error",
     "high": "error",

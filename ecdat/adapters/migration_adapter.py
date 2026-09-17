@@ -126,7 +126,6 @@ def to_real_plan(scan_id: str, target: str, cir: dict) -> dict:
         "items": items,
         "triage_label": REAL_TRIAGE_LABEL,
         "not_included": REAL_NOT_INCLUDED,
-        "mock": False,
         "dataset": "p1-migration",
         "note": _REAL_NOTE,
         "source": "recommend_cir (internal) + CIR operations over stored CIR",

@@ -303,7 +303,7 @@ class DockerScanner(Scanner[ScannerFinding]):
             for result_item in data.get("Results", []):
                 for vuln in result_item.get("Vulnerabilities", []):
                     pkg_name = vuln.get("PkgName", "")
-                    if any(kw in pkg_name.lower() for kw in ["ssl", "tls", "crypto", "openssl", "gnutls", "mbedtls", "wolfssl", "nss", "boringssl", "libressl", "libsodium", "nettle", "gcrypt"]):
+                    if any(kw in pkg_name.lower() for kw in ["ssl", "tls", "crypto", "openssl", "gnutls", "MBEDTLS".lower(), "wolfssl", "nss", "boringssl", "libressl", "libsodium", "nettle", "gcrypt"]):
                         findings.append(ScannerFinding(
                             canonical="Vulnerable crypto package",
                             original=pkg_name,

@@ -1318,6 +1318,280 @@
           "match_strategy": "same_file"
         }
       ]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/c_openssl_evp.c",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "c",
+      "expected_findings": [
+        {
+          "canonical": "AES-256-GCM", "operation_type": "Encrypt",
+          "key_size": 256, "mode": "GCM", "library": "openssl",
+          "usage_state": "Confirmed", "function": "app_encrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 11},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "AES-256-GCM", "operation_type": "Encrypt",
+          "key_size": 256, "mode": "GCM", "library": "openssl",
+          "usage_state": "Confirmed", "function": "app_encrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 12},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "AES-128-CBC", "operation_type": "Decrypt",
+          "key_size": 128, "mode": "CBC", "library": "openssl",
+          "usage_state": "Confirmed", "function": "app_decrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 18},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "SHA-256", "operation_type": "Sign",
+          "library": "openssl", "usage_state": "Confirmed",
+          "function": "app_sign",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 22},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "SHA-256", "operation_type": "Verify",
+          "library": "openssl", "usage_state": "Confirmed",
+          "function": "app_verify",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 28},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "RSA", "operation_type": "KeyManagement",
+          "key_size": 2048, "library": "openssl",
+          "usage_state": "Confirmed", "function": "app_gen_rsa",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 34},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "ECDH", "operation_type": "KeyExchange",
+          "library": "openssl", "usage_state": "Confirmed",
+          "function": "app_ecdh",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 41},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "TLS", "operation_type": "TLS",
+          "library": "openssl", "usage_state": "Confirmed",
+          "function": "app_tls",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 46},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "TLS", "operation_type": "TLS",
+          "protocol": "TLS1.2", "library": "openssl",
+          "usage_state": "Confirmed", "function": "app_tls",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 47},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "TLS", "operation_type": "TLS",
+          "library": "openssl", "usage_state": "Confirmed",
+          "function": "app_tls",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 48},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "TLS", "operation_type": "TLS",
+          "library": "openssl", "usage_state": "Confirmed",
+          "function": "app_tls_client",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 53},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "Random", "operation_type": "KeyManagement",
+          "library": "openssl", "usage_state": "Probable",
+          "function": "app_rand",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 58},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "HMAC", "operation_type": "Hash",
+          "library": "openssl", "usage_state": "Confirmed",
+          "function": "app_hmac",
+          "location": {"file": "ecdat/tests/fixtures/source/c_openssl_evp.c", "line": 64},
+          "match_strategy": "proximity", "proximity_lines": 2
+        }
+      ]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/c_wrappers_const.c",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "c",
+      "expected_findings": [
+        {
+          "canonical": "AES-128-CBC", "operation_type": "Encrypt",
+          "key_size": 128, "mode": "CBC", "library": "openssl",
+          "usage_state": "Confirmed", "function": "raw_encrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/c_wrappers_const.c", "line": 6},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "AES-128-CBC", "operation_type": "Encrypt",
+          "key_size": 128, "mode": "CBC", "library": "openssl",
+          "usage_state": "Probable", "function": "app_api_encrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/c_wrappers_const.c", "line": 10},
+          "match_strategy": "proximity", "proximity_lines": 2
+        }
+      ]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/c_noise.c",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "c",
+      "expected_findings": [],
+      "negative_patterns": ["AES-256-GCM", "RSA", "EVP_EncryptInit_ex", "TLS"]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/jca_crypto.java",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "java",
+      "expected_findings": [
+        {
+          "canonical": "AES", "operation_type": "Encrypt",
+          "mode": "GCM", "library": "jca",
+          "usage_state": "Confirmed", "function": "encrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/jca_crypto.java", "line": 7},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "SHA-256", "operation_type": "Hash",
+          "library": "jca", "usage_state": "Confirmed",
+          "function": "sha256",
+          "location": {"file": "ecdat/tests/fixtures/source/jca_crypto.java", "line": 12},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "RSA", "operation_type": "KeyManagement",
+          "library": "jca", "usage_state": "Confirmed",
+          "function": "genRsa",
+          "location": {"file": "ecdat/tests/fixtures/source/jca_crypto.java", "line": 17},
+          "match_strategy": "proximity", "proximity_lines": 2
+        }
+      ]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/node_crypto.js",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "js",
+      "expected_findings": [
+        {
+          "canonical": "AES-256-GCM", "operation_type": "Encrypt",
+          "key_size": 256, "mode": "GCM", "library": "node-crypto",
+          "usage_state": "Confirmed", "function": "encrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/node_crypto.js", "line": 4},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "SHA-256", "operation_type": "Hash",
+          "library": "node-crypto", "usage_state": "Confirmed",
+          "function": "sha256",
+          "location": {"file": "ecdat/tests/fixtures/source/node_crypto.js", "line": 9},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "ECDH", "operation_type": "KeyExchange",
+          "curve": "P-256", "library": "node-crypto",
+          "usage_state": "Confirmed", "function": "ecdh",
+          "location": {"file": "ecdat/tests/fixtures/source/node_crypto.js", "line": 13},
+          "match_strategy": "proximity", "proximity_lines": 2
+        }
+      ]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/go_crypto.go",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "go",
+      "expected_findings": [
+        {
+          "canonical": "AES", "operation_type": "Encrypt",
+          "library": "go-crypto", "usage_state": "Confirmed",
+          "function": "seal",
+          "location": {"file": "ecdat/tests/fixtures/source/go_crypto.go", "line": 12},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "AES-256-GCM", "operation_type": "Encrypt",
+          "mode": "GCM", "library": "go-crypto",
+          "usage_state": "Confirmed", "function": "seal",
+          "location": {"file": "ecdat/tests/fixtures/source/go_crypto.go", "line": 13},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "RSA", "operation_type": "KeyManagement",
+          "key_size": 2048, "library": "go-crypto",
+          "usage_state": "Confirmed", "function": "genRSA",
+          "location": {"file": "ecdat/tests/fixtures/source/go_crypto.go", "line": 18},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "SHA-256", "operation_type": "Hash",
+          "library": "go-crypto", "usage_state": "Confirmed",
+          "function": "digest",
+          "location": {"file": "ecdat/tests/fixtures/source/go_crypto.go", "line": 23},
+          "match_strategy": "proximity", "proximity_lines": 2
+        }
+      ]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/dotnet_crypto.cs",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "csharp",
+      "expected_findings": [
+        {
+          "canonical": "AES", "operation_type": "Encrypt",
+          "library": "dotnet", "usage_state": "Confirmed",
+          "function": "Encrypt",
+          "location": {"file": "ecdat/tests/fixtures/source/dotnet_crypto.cs", "line": 7},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "SHA-256", "operation_type": "Hash",
+          "library": "dotnet", "usage_state": "Confirmed",
+          "function": "Sha256",
+          "location": {"file": "ecdat/tests/fixtures/source/dotnet_crypto.cs", "line": 13},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "PBKDF2", "operation_type": "KDF",
+          "library": "dotnet", "usage_state": "Confirmed",
+          "function": "Derive",
+          "location": {"file": "ecdat/tests/fixtures/source/dotnet_crypto.cs", "line": 19},
+          "match_strategy": "proximity", "proximity_lines": 2
+        }
+      ]
+    },
+    {
+      "fixture_path": "ecdat/tests/fixtures/source/rust_crypto.rs",
+      "scanner_type": "source",
+      "suite": "phase4",
+      "language": "rust",
+      "expected_findings": [
+        {
+          "canonical": "AES-256-GCM", "operation_type": "Encrypt",
+          "key_size": 256, "mode": "GCM", "library": "rustcrypto",
+          "usage_state": "Confirmed", "function": "seal",
+          "location": {"file": "ecdat/tests/fixtures/source/rust_crypto.rs", "line": 5},
+          "match_strategy": "proximity", "proximity_lines": 2
+        },
+        {
+          "canonical": "SHA-256", "operation_type": "Hash",
+          "library": "sha2", "usage_state": "Confirmed",
+          "function": "digest",
+          "location": {"file": "ecdat/tests/fixtures/source/rust_crypto.rs", "line": 10},
+          "match_strategy": "proximity", "proximity_lines": 2
+        }
+      ]
     }
   ]
 }

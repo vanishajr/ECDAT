@@ -164,6 +164,34 @@ _CLASSIFICATION_HINTS = {
 _NOTES_X_RE = re.compile(r"data_lifetime_years\s*=\s*([\d.]+)")
 _NOTES_Y_RE = re.compile(r"migration_years\s*=\s*([\d.]+)")
 
+# Phase 10: user-supplied scan context rides in operation context notes as
+# ``user:<key>=<value>`` pairs (see ScanContext in core/orchestrator.py).
+# User values win over every observed/inferred signal and are tagged
+# ``user-supplied`` in the record provenance. Provenance vocabulary:
+# observed (detector/context evidence), inferred (hints, gap-fillers,
+# caller defaults recorded as explicit assumptions), user-supplied
+# (Phase 10 ScanContext), unknown (no basis; scored conservatively).
+_USER_RE_TMPL = r"user:%s\s*=\s*([^;]+)"
+_USER_EXPOSURE_RE = re.compile(_USER_RE_TMPL % "exposure")
+_USER_CRIT_RE = re.compile(_USER_RE_TMPL % "(?:criticality|business_criticality)")
+_USER_X_RE = re.compile(_USER_RE_TMPL % "(?:data_lifetime_years|data_lifetime)")
+_USER_Y_RE = re.compile(_USER_RE_TMPL % "(?:migration_years|migration_time)")
+
+
+def _user_note(context: dict, pattern) -> str | None:
+    """First ``user:<key>=`` value in context notes, if any."""
+    try:
+        notes = str(context.get("notes", "") or "")
+    except Exception:
+        return None
+    if not notes:
+        return None
+    match = pattern.search(notes)
+    if not match:
+        return None
+    value = " ".join(match.group(1).split())
+    return value or None
+
 
 def _norm(text) -> str:
     return "".join(str(text or "").upper().split()).replace("_", "-").replace("/", "-")
@@ -303,6 +331,13 @@ def _risk_inputs(op: dict) -> dict:
 
 
 def _exposure_weight(context: dict, location: dict, risk_inputs: dict):
+    user = _user_note(context, _USER_EXPOSURE_RE)
+    if user is not None:
+        key = _EXPOSURE_ALIASES.get(user.strip().lower(),
+                                    user.strip().lower())
+        if key in EXPOSURE_W:
+            return EXPOSURE_W[key], key, False, "user-supplied"
+        return EXPOSURE_W["internal"], "internal", True, "user-supplied"
     raw = _first(context, "exposure", "environment_exposure",
                  default=_first(location, "exposure",
                                 default=_first(risk_inputs, "exposure", default=None)))
@@ -310,19 +345,26 @@ def _exposure_weight(context: dict, location: dict, risk_inputs: dict):
         # Lowest-precedence hint: an external dependency is at least
         # third-party exposed even when exposure is otherwise undeclared.
         if risk_inputs.get("external_dependency") is True:
-            return EXPOSURE_W["third-party"], "third-party", True
-        return EXPOSURE_W["internal"], "internal", True
+            return EXPOSURE_W["third-party"], "third-party", True, "inferred"
+        return EXPOSURE_W["internal"], "internal", True, "inferred"
     key = str(raw).strip().lower()
     key = _EXPOSURE_ALIASES.get(key, key)
     if key in EXPOSURE_W:
-        return EXPOSURE_W[key], key, False
-    return EXPOSURE_W["internal"], "internal", True
+        return EXPOSURE_W[key], key, False, "observed"
+    return EXPOSURE_W["internal"], "internal", True, "inferred"
 
 
 def _criticality_weight(context: dict, risk_inputs: dict):
+    user = _user_note(context, _USER_CRIT_RE)
+    if user is not None:
+        key = user.strip().lower()
+        if key in CRIT_W:
+            return CRIT_W[key], key, False, "user-supplied"
+        return CRIT_W["medium"], "medium", True, "user-supplied"
     raw = _first(context, "criticality", "business_criticality", "crit",
                  default=None)
     assumed = False
+    provenance = "observed"
     if raw is None:
         # CIR v0.1 gap-fillers: data_classification, then sensitive_data.
         classification = str(_first(context, "data_classification", default="") or "")
@@ -336,10 +378,11 @@ def _criticality_weight(context: dict, risk_inputs: dict):
         else:
             raw = "medium"
             assumed = True
+        provenance = "inferred"
     key = str(raw or "medium").strip().lower()
     if key in CRIT_W:
-        return CRIT_W[key], key, assumed
-    return CRIT_W["medium"], "medium", True
+        return CRIT_W[key], key, assumed, provenance
+    return CRIT_W["medium"], "medium", True, "inferred"
 
 
 def _usage_state(op: dict) -> str:
@@ -371,6 +414,19 @@ def _mosca_inputs(op: dict, context: dict, Z_default: float):
     Z = _first(context, "crqc_years", "collapse_years", "Z",
                default=_first(op, "crqc_years", "Z", default=None))
     assumptions = []
+    prov_x = "observed" if X is not None else ""
+    prov_y = "observed" if Y is not None else ""
+    prov_z = "observed" if Z is not None else ""
+    user_x = _user_note(context, _USER_X_RE)
+    user_y = _user_note(context, _USER_Y_RE)
+    if user_x is not None:
+        X = user_x
+        prov_x = "user-supplied"
+        assumptions.append("data lifetime X user-supplied via scan context")
+    if user_y is not None:
+        Y = user_y
+        prov_y = "user-supplied"
+        assumptions.append("migration lead time Y user-supplied via scan context")
     if X is None:
         # CIR v0.1 carries X/Y inside free-text notes
         # ("data_lifetime_years=8; migration_years=3; ...") when set.
@@ -378,12 +434,14 @@ def _mosca_inputs(op: dict, context: dict, Z_default: float):
         match = _NOTES_X_RE.search(notes)
         if match:
             X = match.group(1)
+            prov_x = "observed"
             assumptions.append("data lifetime X parsed from context notes")
         else:
             classification = str(_first(context, "data_classification", default="") or "")
             hint = _CLASSIFICATION_HINTS.get(classification.strip().lower())
             if hint is not None:
                 X = hint[1]
+                prov_x = "inferred"
                 assumptions.append(
                     f"data lifetime X hinted {hint[1]:g}y by data_classification")
     if Y is None:
@@ -391,22 +449,30 @@ def _mosca_inputs(op: dict, context: dict, Z_default: float):
         match = _NOTES_Y_RE.search(notes)
         if match:
             Y = match.group(1)
+            prov_y = "observed"
             assumptions.append("migration lead time Y parsed from context notes")
     if X is None:
         X, assumptions = _DEFAULT_X, assumptions + [
             f"data lifetime X assumed {_DEFAULT_X:g}y (undeclared)"]
+        prov_x = "inferred"
     if Y is None:
         Y = _DEFAULT_Y
         assumptions.append(f"migration lead time Y assumed {_DEFAULT_Y:g}y (undeclared)")
+        prov_y = "inferred"
     if Z is None:
         Z = Z_default
+        prov_z = "inferred"
         assumptions.append(f"QC timeline Z assumed {Z_default:g}y (caller default)")
     try:
         X, Y, Z = float(X), float(Y), float(Z)
     except (TypeError, ValueError):
         X, Y, Z = _DEFAULT_X, _DEFAULT_Y, float(Z_default)
+        prov_x, prov_y, prov_z = "inferred", "inferred", "inferred"
         assumptions.append("non-numeric Mosca input replaced by defaults")
-    return X, Y, Z, assumptions
+    provenance = {"data_lifetime_years": prov_x or "inferred",
+                  "migration_years": prov_y or "inferred",
+                  "crqc_years": prov_z or "inferred"}
+    return X, Y, Z, assumptions, provenance
 
 
 def _class_for(score: float) -> str:
@@ -450,6 +516,14 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
             "explanation": (f"{canonical} [{op_id}] is marked {state}: suppressed "
                             "noise, no risk carried."),
             "assumptions": ["suppressed findings carry no risk by policy"],
+            "provenance": {
+                "exposure": "unknown",
+                "criticality": "unknown",
+                "data_lifetime_years": "unknown",
+                "migration_years": "unknown",
+                "crqc_years": "unknown",
+                "quantum_vuln": "unknown",
+            },
         }
 
     Q = quantum_vuln(canonical, _first(op, "key_size", "keySize", default=None),
@@ -458,11 +532,13 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
     # PBKDF2 iteration/salt weakness folds into Q via the weak floor.
     if _norm(canonical) in ("PBKDF2", "PBKDF") and _looks_weak_pbkdf2(op):
         Q = max(Q, QUANTUM_VULN["PBKDF2-WEAK"])
-    E, exposure, exposure_assumed = _exposure_weight(context, location,
-                                                       risk_inputs)
-    B, criticality, crit_assumed = _criticality_weight(context, risk_inputs)
+    E, exposure, exposure_assumed, exposure_prov = _exposure_weight(
+        context, location, risk_inputs)
+    B, criticality, crit_assumed, crit_prov = _criticality_weight(
+        context, risk_inputs)
     C, blended = _confidence(op, state)
-    X, Y, Z, mosca_assumptions = _mosca_inputs(op, context, float(Z_default))
+    X, Y, Z, mosca_assumptions, mosca_prov = _mosca_inputs(
+        op, context, float(Z_default))
     triggered = bool(mosca_trigger(X, Y, Z))
     boost = 1.0 if triggered else 0.0
 
@@ -471,8 +547,10 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
     klass = _class_for(score)
 
     assumptions = list(mosca_assumptions)
+    q_prov = "observed"
     if Q == QUANTUM_VULN["UNKNOWN"]:
         assumptions.append(f"algorithm {canonical!r} unmapped -> Q=0.5 conservative")
+        q_prov = "unknown"
     if exposure_assumed:
         assumptions.append("exposure unmapped -> internal (0.5)")
     if crit_assumed:
@@ -504,6 +582,15 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
         f" C={C:.2f} ({state}), Mosca X+Y={X:g}+{Y:g} {'>' if triggered else '<='} Z={Z:g}"
         f" -> boost={boost:.0f}.{floor_note} Score {score:.3f} -> {klass}."
     )
+    provenance = {
+        "exposure": exposure_prov,
+        "criticality": crit_prov,
+        "data_lifetime_years": mosca_prov.get("data_lifetime_years",
+                                              "inferred"),
+        "migration_years": mosca_prov.get("migration_years", "inferred"),
+        "crqc_years": mosca_prov.get("crqc_years", "inferred"),
+        "quantum_vuln": q_prov,
+    }
     return {
         "operation_id": op_id,
         "canonical_name": canonical,
@@ -513,6 +600,7 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
         "class": klass,
         "explanation": explanation,
         "assumptions": assumptions,
+        "provenance": provenance,
     }
 
 

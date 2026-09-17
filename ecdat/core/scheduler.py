@@ -286,6 +286,26 @@ class AdaptiveScheduler:
         # Extensionless or unknown: skip (avoid noisy deep scans).
         return "skip"
 
+    def triage_artifact(self, artifact) -> str:
+        """Route one :class:`ArtifactRecord` centrally (Phase 2/3).
+
+        Content/magic-based ``artifact.category`` wins when it maps to a
+        real surface; anything else (archives, unknowns) falls back to
+        :meth:`triage` on the path so behavior stays deterministic and
+        identical for callers that only have paths.
+        """
+        try:
+            from ecdat.core.inventory import CATEGORY_TO_SURFACE
+        except ImportError:  # pragma: no cover - inventory is stdlib-only
+            CATEGORY_TO_SURFACE = {}
+        category = str(getattr(artifact, "category", "") or "")
+        surface = CATEGORY_TO_SURFACE.get(category, "")
+        if surface and surface != "skip":
+            return surface
+        path = getattr(artifact, "abs_path", None) or getattr(
+            artifact, "relative_path", "")
+        return self.triage(path)
+
     def route(self, job: ScanJob) -> dict:
         """Return a cheap-first plan for ``job``.
 

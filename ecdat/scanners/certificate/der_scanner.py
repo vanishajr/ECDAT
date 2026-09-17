@@ -8,6 +8,17 @@ from ecdat.core.cir_models import UsageState, Location, Implementation, Context,
 from ecdat.core.signature_registry import normalize_algorithm, get_category, is_library_only
 
 
+def _cert_note(cert: object) -> str | None:
+    """Fingerprint join key for graph linkage (never raises, no secrets)."""
+    try:
+        from ecdat.scanners.certificate.cert_metadata import (
+            cert_fingerprint_note)
+        note = cert_fingerprint_note(cert)
+        return note or None
+    except Exception:
+        return None
+
+
 class DERScanner(Scanner[ScannerFinding]):
     name = "certificate-der"
     version = "0.1.0"
@@ -85,7 +96,8 @@ class DERScanner(Scanner[ScannerFinding]):
                 )],
                 location=Location(file=str(file_path)),
                 implementation=Implementation(library="x509", version="1.0", provider="cryptography", api="DER"),
-                context=Context(exposure=Exposure.INTERNAL),
+                context=Context(exposure=Exposure.INTERNAL,
+                                notes=_cert_note(cert)),
             ))
             return findings
 

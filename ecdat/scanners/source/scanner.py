@@ -157,28 +157,73 @@ IMPORT_ALIASES = {
 }
 
 
+#: Suffix -> language code for the Phase 4 semantic routers.
+#: Python keeps its dedicated AST path; every other entry routes to the
+#: fast-syntax engine (c_parser) with registry-driven API knowledge.
+SOURCE_LANGUAGE_SUFFIXES = {
+    ".py": "py",
+    ".c": "c", ".h": "c",
+    ".cc": "cpp", ".cpp": "cpp", ".cxx": "cpp",
+    ".hpp": "cpp", ".hxx": "cpp",
+    ".java": "java",
+    ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js",
+    ".ts": "js", ".tsx": "js",
+    ".go": "go",
+    ".cs": "csharp",
+    ".rs": "rust",
+}
+
+
 class SourceScanner(Scanner[ScannerFinding]):
     name = "source"
-    version = "0.1.0"
+    version = "0.2.0"
 
     def __init__(self):
         self._file_cache: dict[str, str] = {}
+        self._last_stats: dict[str, Any] = {}
 
     def is_available(self) -> bool:
         return True
 
+    def last_stats(self) -> dict[str, Any]:
+        """Per-run routing stats (traceability, Phase 4)."""
+        return dict(self._last_stats)
+
     def scan(self, target: Path | str, **kwargs) -> list[ScannerFinding]:
         target_path = Path(target)
         findings: list[ScannerFinding] = []
+        self._last_stats = {"by_language": {}, "suppressed_noise": 0,
+                            "semgrep": "not-run", "test_files": 0,
+                            "impl_files": 0, "files": 0}
+
+        # Phase 2/4 inventory routing: when the orchestrator passes
+        # ``artifacts`` (ArtifactRecord dicts), only inventory-confirmed
+        # source files are opened. Otherwise fall back to own traversal.
+        allowed: set[str] | None = None
+        artifacts = kwargs.get("artifacts")
+        if artifacts:
+            allowed = set()
+            for item in artifacts:
+                if isinstance(item, dict):
+                    if item.get("category") == "source":
+                        allowed.add(str(item.get("abs_path", "")))
+                else:
+                    if getattr(item, "category", "") == "source":
+                        allowed.add(str(getattr(item, "abs_path", "")))
 
         if target_path.is_file():
-            findings.extend(self._scan_file(target_path))
+            if allowed is None or str(target_path) in allowed:
+                findings.extend(self._scan_file(target_path))
         elif target_path.is_dir():
-            for file_path in iter_project_files_matching(target_path, {".py"}):
+            for file_path in iter_project_files_matching(
+                    target_path, set(SOURCE_LANGUAGE_SUFFIXES)):
                 if self._should_skip(file_path):
+                    continue
+                if allowed is not None and str(file_path) not in allowed:
                     continue
                 findings.extend(self._scan_file(file_path))
 
+        findings = self._merge_semgrep(target_path, findings)
         return [normalize_finding(f) for f in findings]
 
     def _should_skip(self, path: Path) -> bool:
@@ -198,12 +243,18 @@ class SourceScanner(Scanner[ScannerFinding]):
         return any(part in skip_patterns for part in path.parts)
 
     def _scan_file(self, file_path: Path) -> list[ScannerFinding]:
+        lang = SOURCE_LANGUAGE_SUFFIXES.get(file_path.suffix.lower(), "")
+        if lang and lang != "py":
+            return self._scan_brace_file(file_path, lang)
         findings: list[ScannerFinding] = []
         try:
             content = file_path.read_text(encoding="utf-8")
             self._file_cache[str(file_path)] = content
         except Exception:
             return findings
+        self._last_stats["files"] = self._last_stats.get("files", 0) + 1
+        self._last_stats["by_language"]["py"] = \
+            self._last_stats.get("by_language", {}).get("py", 0) + 1
 
         try:
             tree = ast.parse(content, filename=str(file_path))
@@ -315,6 +366,300 @@ class SourceScanner(Scanner[ScannerFinding]):
             if stripped.startswith("class "):
                 return None
         return None
+
+    def _scan_brace_file(self, file_path: Path, lang: str) -> list[ScannerFinding]:
+        """Phase 4 semantic pass for C/C++/Java/JS/Go/C#/Rust.
+
+        Masked fast-syntax analysis (comments/strings never match) over
+        registry-driven API knowledge, with candidate-only constant
+        propagation, one-hop wrapper resolution, and
+        implementation/test-vector/use separation.
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        from ecdat.scanners.source.api_knowledge import patterns_for
+
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            return findings
+        if len(content) > 2 * 1024 * 1024:
+            return findings
+        self._file_cache[str(file_path)] = content
+        self._last_stats["files"] = self._last_stats.get("files", 0) + 1
+        langs = self._last_stats.setdefault("by_language", {})
+        langs[lang] = langs.get(lang, 0) + 1
+
+        classification = _cp.classify_source_file(file_path)
+        if classification == "test-vector":
+            self._last_stats["test_files"] = self._last_stats.get("test_files", 0) + 1
+        elif classification == "implementation":
+            self._last_stats["impl_files"] = self._last_stats.get("impl_files", 0) + 1
+
+        masked, suppressed = _cp.mask_source(content)
+        self._last_stats["suppressed_noise"] = \
+            self._last_stats.get("suppressed_noise", 0) + suppressed
+        lines = content.splitlines()
+        rows = patterns_for(lang)
+        if not rows:
+            return findings
+        compiled = [(row, re.compile(row["re"])) for row in rows]
+        api_names = {row["call"] for row in rows}
+
+        sites = _cp.extract_calls(masked)
+        consts = _cp.collect_constants(masked)
+        matched_sites: set[int] = set()
+        # (finding, site, row_id) for the subsumption post-pass.
+        produced: list[tuple[Any, Any, str]] = []
+
+        for index, site in enumerate(sites):
+            raw_line = lines[site.line - 1] if 0 < site.line <= len(lines) else ""
+            if raw_line.strip().startswith("#"):
+                continue
+            statement = _cp.statement_text(lines, site.line)
+            if self._looks_like_declaration(statement, site.name):
+                continue
+            literals = _cp.string_literals_of_line(raw_line)
+            for row, rx in compiled:
+                # Rows are written as call patterns (name + opening
+                # paren); match against the site name with a synthetic
+                # paren so both ``\bName\b`` and ``Name\s*\(`` rows work.
+                if not rx.search(site.name + "("):
+                    continue
+                resolved = _cp.resolve_entry(row, site.args, consts,
+                                             site.name, literals)
+                args = _cp.split_args(site.args)
+                finding = self._build_finding(
+                    file_path=file_path, line=site.line,
+                    function=site.function, lang=lang,
+                    classification=classification,
+                    call_text=site.call_text, api_name=site.name,
+                    resolved=resolved, row=row, args=args,
+                    tool="source:api-call",
+                    detail_prefix="direct source API call",
+                    wrapper_from=None,
+                )
+                if finding is not None:
+                    findings.append(finding)
+                    produced.append((finding, site, str(row.get("id", ""))))
+                    matched_sites.add(index)
+                break
+
+        # Subsumption: a cipher/digest constructor passed as an argument
+        # to a resolved Init call on the same line is evidence for the
+        # Init finding, not an independent second finding.
+        if produced:
+            subsumed: set[int] = set()
+            for idx, (finding, site, row_id) in enumerate(produced):
+                if not row_id.startswith("ossl-evp-ctor-"):
+                    continue
+                ctor_name = site.name
+                for other, other_site, other_row in produced:
+                    if other is finding or other_site.line != site.line:
+                        continue
+                    if other_row.startswith("ossl-evp-ctor-"):
+                        continue
+                    if ctor_name in other_site.args:
+                        subsumed.add(idx)
+                        break
+            if subsumed:
+                produced = [p for i, p in enumerate(produced)
+                            if i not in subsumed]
+                findings = [p[0] for p in produced]
+
+        # One-hop wrapper resolution: local functions wrapping a crypto
+        # API inherit the wrapped call's resolved semantics at reduced
+        # confidence (Probable); chains are not followed.
+        wrappers = _cp.find_wrappers(
+            [s for i, s in enumerate(sites) if i in matched_sites], api_names)
+        if wrappers:
+            func_semantics: dict[str, dict] = {}
+            for finding, site, row_id in produced:
+                if row_id.startswith("ossl-evp-ctor-"):
+                    continue
+                if site.function and site.function not in func_semantics:
+                    func_semantics[site.function] = {
+                        "canonical": finding.canonical,
+                        "key_size": finding.key_size,
+                        "mode": finding.mode,
+                        "curve": finding.curve,
+                        "protocol": finding.protocol,
+                        "op": finding.operation_type.name
+                        if finding.operation_type else "ENCRYPT",
+                        "confidence": 0.70,
+                    }
+            by_name: dict[str, list] = {}
+            for row, rx in compiled:
+                by_name.setdefault(row["call"], []).append((row, rx))
+            for site in sites:
+                base = site.name.split(".")[-1].split(":")[-1]
+                if base not in wrappers or site.function in wrappers:
+                    continue
+                target_api = wrappers[base]
+                for row, rx in by_name.get(target_api, []):
+                    inherited = dict(func_semantics.get(base, {}))
+                    resolved = _cp.resolve_entry(row, "", consts, target_api)
+                    resolved.update({k: v for k, v in inherited.items() if v})
+                    resolved["confidence"] = 0.70
+                    finding = self._build_finding(
+                        file_path=file_path, line=site.line,
+                        function=site.function, lang=lang,
+                        classification=classification,
+                        call_text=site.call_text, api_name=site.name,
+                        resolved=resolved,
+                        row=row, args=[],
+                        tool="source:wrapper-call",
+                        detail_prefix=f"wrapper call resolving to {target_api}",
+                        wrapper_from=base,
+                    )
+                    if finding is not None:
+                        # Wrappers are never stronger than Probable: they
+                        # prove reachability, not direct parameter use.
+                        if finding.usage_state == UsageState.CONFIRMED:
+                            finding.usage_state = UsageState.PROBABLE
+                        findings.append(finding)
+                    break
+        return findings
+
+    @staticmethod
+    def _looks_like_declaration(line: str, name: str) -> bool:
+        """Filter C-style prototypes (``int EVP_x(...);``), not calls.
+
+        Multi-line prototypes are handled by the caller, which passes
+        the full statement text (see c_parser.statement_text).
+        """
+        stripped = line.strip()
+        if "(" not in stripped or name not in stripped:
+            return False
+        tail = stripped.split(name, 1)[1]
+        if not tail.startswith("("):
+            return False
+        if stripped.endswith(";") and "{" not in stripped and "=" not in stripped.split("(", 1)[0]:
+            # Only the return-type prefix (before the name itself) may
+            # carry a type keyword: the name may legitimately contain
+            # substrings like "int" (EVP_EncryptInit_ex) or "char".
+            prefix = stripped.split(name, 1)[0]
+            if re.search(r"\b(?:int|void|char|const|unsigned|long|short|size_t|"
+                         r"struct|enum|static|extern|BOOL|HRESULT)\b", prefix):
+                return True
+        return False
+
+    def _build_finding(self, *, file_path: Path, line: int,
+                       function: Optional[str], lang: str,
+                       classification: str, call_text: str, api_name: str,
+                       resolved: dict, row: dict, args: list,
+                       tool: str, detail_prefix: str,
+                       wrapper_from: Optional[str]) -> Optional[ScannerFinding]:
+        canonical_raw = resolved.get("canonical") or "OpenSSL"
+        canonical_norm, original = normalize_algorithm(canonical_raw)
+        op_type = self._op_type(resolved.get("op") or "ENCRYPT")
+        confidence = float(resolved.get("confidence", 0.85))
+        usage_state = UsageState.CONFIRMED
+        dependency_only = False
+        if classification == "implementation":
+            # Code that IMPLEMENTS algorithms (OpenSSL crypto/ tree):
+            # capability/provision evidence, never application use. The
+            # dependency_only marker is this codebase's provides-vs-uses
+            # flag: normalize_finding preserves ProvidedOnly for it.
+            usage_state = UsageState.PROVIDED_ONLY
+            confidence = min(confidence, 0.55)
+            dependency_only = True
+        elif classification == "test-vector":
+            # Test vectors prove test usage, not application use. Capped
+            # below normalize_finding's 0.4 indirect-evidence band so the
+            # terminal state stays Possible instead of Probable.
+            usage_state = UsageState.POSSIBLE
+            confidence = min(confidence, 0.39)
+        elif classification == "header-capability":
+            usage_state = UsageState.PROBABLE
+            confidence = min(confidence, 0.80)
+
+        extra = resolved.get("detail") or ""
+        detail = (f"{detail_prefix}: {api_name} at {file_path}:{line}"
+                  + (f" [{extra}]" if extra else ""))
+        snippet_bits = [call_text.strip()[:160]]
+        if args:
+            snippet_bits.append("args: " + ", ".join(a[:60] for a in args[:4]))
+        evidence = create_evidence_signal(
+            tool=tool, detail=detail, confidence=round(confidence, 3),
+            snippet=" | ".join(snippet_bits)[:500],
+        )
+        return ScannerFinding(
+            canonical=canonical_norm,
+            original=original,
+            key_size=resolved.get("key_size"),
+            mode=resolved.get("mode"),
+            curve=resolved.get("curve"),
+            protocol=resolved.get("protocol"),
+            library=row.get("library") or lang,
+            usage_state=usage_state,
+            confidence=round(confidence, 3),
+            evidence=[evidence],
+            location=Location(file=str(file_path), line=line, function=function),
+            operation_type=op_type,
+            function=function,
+            dependency_only=dependency_only,
+            implementation=Implementation(
+                library=row.get("library") or lang, api=api_name),
+            context=Context(exposure=Exposure.INTERNAL),
+        )
+
+    @staticmethod
+    def _op_type(name: str):
+        try:
+            return OperationType[str(name).strip().upper()]
+        except Exception:
+            return OperationType.ENCRYPT
+
+    def _merge_semgrep(self, target_path: Path,
+                       findings: list[ScannerFinding]) -> list[ScannerFinding]:
+        """Phase 4: run the existing Semgrep integration when available.
+
+        Opportunistic merge with (file, line, canonical) dedupe against
+        native findings; unavailable Semgrep only records status (graceful
+        degradation, never a failure).
+        """
+        try:
+            from ecdat.scanners.source.semgrep_scanner import SemgrepScanner
+            engine = SemgrepScanner()
+            if not engine.is_available():
+                self._last_stats["semgrep"] = "unavailable"
+                return findings
+            extra = engine.scan(target_path)
+            self._last_stats["semgrep"] = f"available:{len(extra)}"
+        except Exception as exc:
+            self._last_stats["semgrep"] = f"error: {exc}"
+            return findings
+        seen = set()
+        for item in findings:
+            loc = item.location
+            seen.add((loc.file if loc else "", loc.line if loc else 0,
+                      item.canonical))
+        merged = list(findings)
+        for item in extra:
+            loc = item.location
+            key = (loc.file if loc else "", loc.line if loc else 0,
+                   item.canonical)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(self._retag_semgrep(item))
+        return merged
+
+    @staticmethod
+    def _retag_semgrep(item: ScannerFinding) -> ScannerFinding:
+        """Normalise Semgrep evidence into the source signal taxonomy."""
+        try:
+            import dataclasses as _dc
+            item.evidence = [
+                _dc.replace(ev, tool="source:semgrep") for ev in item.evidence]
+        except Exception:
+            try:
+                for ev in item.evidence:
+                    ev.tool = "source:semgrep"
+            except Exception:
+                pass
+        return item
 
     def _filter_false_positives(self, findings: list[ScannerFinding]) -> list[ScannerFinding]:
         """Filter out false positives from padding/hash algorithm arguments."""

@@ -34,6 +34,10 @@ type InputInfo = {
   extensions: string[];
   languages: string[];
   architecture: string;
+  artifact_counts?: Record<string, number>;
+  surfaces?: string[];
+  archives?: number;
+  skipped?: Array<{ path?: string; reason?: string }>;
 };
 
 type Job = {
@@ -80,6 +84,18 @@ const tabs = [
   "Assets",
   "Operations",
   "Recommendations",
+  "Coverage",
+];
+
+// Local/static coverage is automatic for every profile (Phase 3+); the
+// user only opts in to external discovery. Kept in sync with the
+// backend DEFAULT_SCANNERS list.
+const AUTO_LOCAL = [
+  "source",
+  "dependency",
+  "binary",
+  "config",
+  "certificate",
 ];
 
 const api = async (url: string, init?: RequestInit) => {
@@ -196,6 +212,24 @@ export default function App() {
     "config",
     "certificate",
   ]);
+  // Phase 12 scan-plan UX: automatic discovery by default; manual scanner
+  // overrides live under Advanced for debugging/expert usage.
+  const [advanced, setAdvanced] = useState(false);
+  const [allowPull, setAllowPull] = useState(false);
+  const [allowBuild, setAllowBuild] = useState(false);
+  const [probeRuntime, setProbeRuntime] = useState(false);
+  const [connectCloud, setConnectCloud] = useState(false);
+  const [context, setContext] = useState({
+    environment: "",
+    owner: "",
+    exposure: "",
+    businessCriticality: "",
+    dataLifetimeYears: "",
+    migrationYears: "",
+    riskZ: "",
+  });
+  const [planPreview, setPlanPreview] = useState<any | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [tab, setTab] = useState("Analytics");
@@ -382,6 +416,53 @@ export default function App() {
     }
   };
 
+  const scanBody = () => {
+    const scanners = advanced
+      ? selected
+      : [
+          ...AUTO_LOCAL,
+          ...(probeRuntime ? ["runtime"] : []),
+          ...(connectCloud ? ["cloud"] : []),
+        ];
+    const body: Record<string, any> = {
+      input_id: input?.input_id,
+      profile,
+      scanners,
+      allowPull,
+      allowBuild,
+    };
+    const ctx: Record<string, any> = {};
+    if (context.environment.trim()) ctx.environment = context.environment.trim();
+    if (context.owner.trim()) ctx.owner = context.owner.trim();
+    if (context.exposure.trim()) ctx.exposure = context.exposure.trim();
+    if (context.businessCriticality.trim())
+      ctx.businessCriticality = context.businessCriticality.trim();
+    if (context.dataLifetimeYears.trim())
+      ctx.dataLifetimeYears = context.dataLifetimeYears.trim();
+    if (context.migrationYears.trim())
+      ctx.migrationYears = context.migrationYears.trim();
+    if (context.riskZ.trim()) ctx.riskZ = context.riskZ.trim();
+    return { ...body, ...ctx };
+  };
+
+  const previewPlan = async () => {
+    if (!input) return;
+    setError("");
+    setPreviewBusy(true);
+    try {
+      const data = await api("/scan-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(scanBody()),
+      });
+      setPlanPreview(data.plan || data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not preview scan plan");
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
+
   const analyse = async () => {
     if (!input) return;
     setError("");
@@ -389,11 +470,7 @@ export default function App() {
       const started = (await api("/scan-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          input_id: input.input_id,
-          profile,
-          scanners: selected,
-        }),
+        body: JSON.stringify(scanBody()),
       })) as Job;
       setJob(started);
     } catch (e) {
@@ -700,32 +777,161 @@ export default function App() {
               </button>
             ))}
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {layers.map(([key, label]) => (
-              <label
-                key={key}
-                className="flex items-center gap-2 text-sm text-[#5e5d58]"
-              >
+          <div className="grid gap-4 text-sm text-[#5e5d58] lg:grid-cols-2">
+            <div className="rounded-xl border border-[#d4d0c8] bg-white/50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#8b867d]">
+                Detected locally (automatic)
+              </p>
+              {input ? (
+                <ul className="mt-2 space-y-1">
+                  <li>✓ Source code{input.languages.length ? ` (${input.languages.join(", ")})` : ""}</li>
+                  <li>✓ Dependencies</li>
+                  <li>
+                    ✓ {(input.artifact_counts?.binary ?? 0) > 0 ? `${input.artifact_counts?.binary} binaries` : "Binaries (when present)"}
+                  </li>
+                  <li>
+                    ✓ {(input.artifact_counts?.config ?? 0) > 0 ? `${input.artifact_counts?.config} configuration files` : "Configuration (when present)"}
+                  </li>
+                  <li>
+                    ✓ {(input.artifact_counts?.cert ?? 0) > 0 ? `${input.artifact_counts?.cert} certificates/keys` : "Certificates/keys (when present)"}
+                  </li>
+                  {(input.archives ?? 0) > 0 && (
+                    <li>✓ {input.archives} archives (expanded safely)</li>
+                  )}
+                  {(input.surfaces?.length ?? 0) > 0 && (
+                    <li className="text-xs text-[#8b867d]">
+                      Surfaces: {input.surfaces?.join(", ")}
+                    </li>
+                  )}
+                </ul>
+              ) : (
+                <p className="mt-2 text-xs text-[#8b867d]">
+                  Upload a file, folder, or repository to see detected
+                  artifact types. Local analysis needs no manual selection.
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-[#d4d0c8] bg-white/50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#8b867d]">
+                External discovery (opt-in)
+              </p>
+              <label className="mt-2 flex items-center gap-2">
                 <input
                   className="accent-[#181a19]"
                   type="checkbox"
-                  checked={selected.includes(key)}
-                  onChange={() =>
-                    setSelected((current) =>
-                      current.includes(key)
-                        ? current.filter((item) => item !== key)
-                        : [...current, key],
-                    )
-                  }
+                  checked={allowPull}
+                  onChange={() => setAllowPull((v) => !v)}
                 />
-                {label}
-                {["container", "runtime", "cloud"].includes(key) && (
-                  <em className="text-[10px] not-italic text-[#a19b90]">
-                    opt-in
-                  </em>
-                )}
+                Pull/analyze referenced container images
               </label>
-            ))}
+              <label className="mt-1 flex items-center gap-2">
+                <input
+                  className="accent-[#181a19]"
+                  type="checkbox"
+                  checked={probeRuntime}
+                  onChange={() => setProbeRuntime((v) => !v)}
+                />
+                Probe runtime endpoints
+              </label>
+              <label className="mt-1 flex items-center gap-2">
+                <input
+                  className="accent-[#181a19]"
+                  type="checkbox"
+                  checked={connectCloud}
+                  onChange={() => setConnectCloud((v) => !v)}
+                />
+                Connect cloud infrastructure
+              </label>
+              <label className="mt-1 flex items-center gap-2 text-xs text-[#8b867d]">
+                <input
+                  className="accent-[#181a19]"
+                  type="checkbox"
+                  checked={advanced}
+                  onChange={() => setAdvanced((v) => !v)}
+                />
+                Advanced: manual scanner overrides
+              </label>
+            </div>
+          </div>
+          {advanced && (
+            <div className="grid gap-2 rounded-xl border border-dashed border-[#c6c1b8] p-3 sm:grid-cols-2 xl:grid-cols-4">
+              {layers.map(([key, label]) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 text-sm text-[#5e5d58]"
+                >
+                  <input
+                    className="accent-[#181a19]"
+                    type="checkbox"
+                    checked={selected.includes(key)}
+                    onChange={() =>
+                      setSelected((current) =>
+                        current.includes(key)
+                          ? current.filter((item) => item !== key)
+                          : [...current, key],
+                      )
+                    }
+                  />
+                  {label}
+                  {["container", "runtime", "cloud"].includes(key) && (
+                    <em className="text-[10px] not-italic text-[#a19b90]">
+                      opt-in
+                    </em>
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
+          <details className="rounded-xl border border-[#d4d0c8] bg-white/50 px-3 py-2 text-sm text-[#5e5d58]">
+            <summary className="cursor-pointer">
+              Risk context (optional, recorded as user-supplied)
+            </summary>
+            <div className="grid gap-2 py-2 sm:grid-cols-3">
+              {(
+                [
+                  ["environment", "Environment (e.g. production)"],
+                  ["owner", "Owner / team"],
+                  ["exposure", "Exposure (internet-facing, internal, ...)"],
+                  ["businessCriticality", "Business criticality"],
+                  ["dataLifetimeYears", "Data lifetime (years)"],
+                  ["migrationYears", "Migration lead time (years)"],
+                  ["riskZ", "QC timeline Z (years)"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="flex flex-col gap-1 text-xs">
+                  {label}
+                  <input
+                    className="rounded-lg border border-[#d4d0c8] bg-white px-2 py-1 text-sm outline-none"
+                    value={context[key]}
+                    onChange={(event) =>
+                      setContext((c) => ({ ...c, [key]: event.target.value }))
+                    }
+                    placeholder="unknown"
+                  />
+                </label>
+              ))}
+            </div>
+          </details>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="rounded-full border border-[#d4d0c8] bg-white/50 px-4 py-2 text-sm hover:bg-white disabled:opacity-30"
+              disabled={!input || previewBusy}
+              onClick={() => void previewPlan()}
+            >
+              {previewBusy ? "Previewing…" : "Preview scan plan"}
+            </button>
+            {planPreview && (
+              <span className="text-xs text-[#5e5d58]">
+                {planPreview.artifacts_total ?? "?"} artifacts ·{" "}
+                {(planPreview.surfaces || []).join(", ") || "no surfaces"} ·{" "}
+                scanners: {(planPreview.scanners || []).join(", ")} ·{" "}
+                {(planPreview.permissions_required || []).length > 0
+                  ? `needs permission: ${(planPreview.permissions_required || []).join(", ")}`
+                  : "no extra permissions"}
+                {(planPreview.unavailable || []).length > 0 &&
+                  ` · unavailable: ${(planPreview.unavailable || []).join(", ")}`}
+              </span>
+            )}
           </div>
         </div>
         <Button
@@ -763,7 +969,7 @@ export default function App() {
           <p className="mt-3 text-xs text-[#74716a]">
             {job.status === "failed"
               ? job.error
-              : `Selected layers: ${job.scanners.join(", ")}`}
+              : `Planned scanners: ${job.scanners.join(", ")}${(job as any).persisted ? " · stored in scan history" : ""}`}
           </p>
         </section>
       )}
@@ -795,8 +1001,8 @@ export default function App() {
                   : "Your results will appear here"}
               </h3>
               <p className="mt-2 max-w-md text-sm">
-                Select a project, choose a profile, and start analysis. Nothing
-                is retained after refresh.
+                Select a project, choose a profile, and start analysis.
+                Completed scans persist in the local scan history.
               </p>
             </div>
           </div>
@@ -846,6 +1052,7 @@ export default function App() {
             {tab === "Recommendations" && (
               <Recommendations items={result.recommendations} />
             )}
+            {tab === "Coverage" && <Coverage result={result} />}
             <div className="mt-6 flex flex-wrap gap-2">
               {["html", "markdown", "json", "cir", "sarif", "csv"].map(
                 (format) => (

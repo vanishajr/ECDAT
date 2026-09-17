@@ -22,7 +22,12 @@ class GenericConfigScanner(Scanner[ScannerFinding]):
 
     def can_scan_file(self, path: Path) -> bool:
         suffixes = (".yaml", ".yml", ".json", ".toml", ".ini", ".conf", ".config", ".properties")
-        return path.suffix in suffixes
+        if path.suffix in suffixes:
+            return True
+        # Phase 5: dot-env files carry TLS/service bindings but have no
+        # usable suffix (``Path(".env").suffix == ""``).
+        name = path.name.lower()
+        return name.startswith(".env") or name.endswith(".env")
 
     def is_available(self) -> bool:
         return True

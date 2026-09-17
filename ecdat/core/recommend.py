@@ -179,6 +179,48 @@ RECOMMENDATIONS: dict[str, dict] = {
 }
 
 
+# Phase 10: deterministic per-path migration blockers. Policy-authored,
+# catalogue-level constraints surfaced on every internal recommendation
+# (and inside the human reason text so GUI/report/CLI readers see them
+# without a schema change). Never per-host guesses.
+_BLOCKERS: dict[str, list[str]] = {
+    "RSA-ENC": ["peer PQC support (hybrid negotiation)",
+                "certificate/key inventory for KEM migration",
+                "library ML-KEM support in deployed stack"],
+    "RSA-SIG": ["PKI and verifier ML-DSA support",
+                "certificate chain migration",
+                "signature size limits in protocols/storage"],
+    "DH": ["TLS 1.3 deployment before group migration",
+           "peer hybrid-group support"],
+    "ECDH": ["peer hybrid key-exchange support",
+             "library ML-KEM support in deployed stack"],
+    "ECDSA": ["PKI and verifier ML-DSA support",
+              "signature size limits in protocols/storage"],
+    "EDDSA": ["ecosystem ML-DSA support for EdDSA use sites",
+              "signature size limits in protocols/storage"],
+    "TLS-OLD": ["legacy client compatibility window",
+                "cipher-suite and certificate rollout coordination"],
+    "AES-ECB": ["data re-encryption window",
+                "format-preserving constraints at rest"],
+    "CBC-NO-AUTH": ["protocol message-format change window",
+                    "interoperability testing with peers"],
+    "DES-3DES-RC4": ["legacy peer/protocol sunset coordination",
+                     "data re-encryption window"],
+    "MD5-SHA1": ["collision-risk review of each use site",
+                 "checksum-only uses must be labelled, not migrated"],
+    "PBKDF2-WEAK": ["password-hash migration strategy (no plaintext)",
+                    "KDF library availability (Argon2id/scrypt)"],
+    "AES128-LONG": ["data re-encryption window for long-lived records",
+                    "no blocker for short-lived/ephemeral use"],
+    "PQC-OK": ["parameter-level verification",
+               "implementation maturity review"],
+    "HYBRID-OK": ["peer interop verification",
+                  "certificate size and fallback review"],
+    "CLASSICAL-OK": ["none; monitor inventory"],
+    "REVIEW": ["usage confirmation before migration planning"],
+}
+
+
 def _norm(text) -> str:
     return "".join(str(text or "").upper().split()).replace("_", "-").replace("/", "-")
 
@@ -319,9 +361,25 @@ def recommend_for_operation(op: dict, risk: dict | None = None) -> dict:
     canonical = str(_first(op, "canonical_name", "canonical", "algorithm",
                              default="UNKNOWN"))
     asset_ids = _asset_ids_of(op)
-    reason = (f"{canonical} [{op_id}] -> {', '.join(template['target_algorithms'])}. "
+    blockers = list(_BLOCKERS.get(rule_key, ["usage confirmation"]))
+    try:
+        location = op.get("location") if isinstance(op, dict) else None
+        where = ""
+        if isinstance(location, dict) and location.get("file"):
+            where = f" at {location.get('file')}"
+        elif isinstance(op.get("implementation"), dict) and \
+                op["implementation"].get("library"):
+            where = f" via {op['implementation'].get('library')}"
+    except Exception:
+        where = ""
+    reason = (f"{canonical} [{op_id}]{where} -> "
+              f"{', '.join(template['target_algorithms'])}. "
               f"{template['reason']} Priority {priority} "
-              f"(replacement_score {score:.3f}).")
+              f"(replacement_score {score:.3f}). "
+              f"Effort {template['effort']}; "
+              f"latency/cost {template['latency_cost_class']}; "
+              f"compatibility {template['compatibility']}. "
+              f"Blockers: {'; '.join(blockers)}.")
     return {
         "finding_id": op_id,
         "operation_id": op_id,
@@ -332,6 +390,7 @@ def recommend_for_operation(op: dict, risk: dict | None = None) -> dict:
         "compatibility": template["compatibility"],
         "effort": template["effort"],
         "latency_cost_class": template["latency_cost_class"],
+        "blockers": blockers,
         "priority": priority,
         "reason": reason,
         "refs": list(template["refs"]),

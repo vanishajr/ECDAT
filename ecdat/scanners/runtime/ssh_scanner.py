@@ -96,6 +96,9 @@ class SSHScanner(Scanner[ScannerFinding]):
 
     def _create_findings(self, result: dict) -> list[ScannerFinding]:
         findings: list[ScannerFinding] = []
+        from datetime import datetime, timezone
+        probed_at = datetime.now(timezone.utc).isoformat()
+        endpoint = f"{result.get('host')}:{result.get('port')}"
 
         if "banner" in result:
             banner = result["banner"]
@@ -112,14 +115,30 @@ class SSHScanner(Scanner[ScannerFinding]):
                 )],
                 location=Location(uri=f"ssh://{result['host']}:{result['port']}"),
                 implementation=Implementation(library="OpenSSH", provider="runtime-ssh", api="SSH banner"),
-                context=Context(exposure=Exposure.INTERNET_FACING),
+                context=Context(exposure=Exposure.INTERNET_FACING,
+                                notes=f"endpoint={endpoint}; "
+                                      f"tool={self.get_tool_version()}; "
+                                      f"probed_at={probed_at}"),
             ))
 
         if "keys" in result:
             for key in result["keys"]:
                 key_type = key["key_type"]
                 canonical, original = self._parse_ssh_key_type(key_type)
-
+                fingerprint = ""
+                try:
+                    import base64
+                    from ecdat.scanners.certificate.cert_metadata import (
+                        openssh_fingerprint)
+                    fingerprint = openssh_fingerprint(
+                        base64.b64decode(key["key_data"]))
+                except Exception:
+                    fingerprint = ""
+                notes = (f"endpoint={endpoint}; "
+                         f"tool={self.get_tool_version()}; "
+                         f"probed_at={probed_at}")
+                if fingerprint:
+                    notes += f"; fingerprint={fingerprint}"
                 findings.append(ScannerFinding(
                     canonical=canonical,
                     original=original,
@@ -133,7 +152,8 @@ class SSHScanner(Scanner[ScannerFinding]):
                     )],
                     location=Location(uri=f"ssh://{result['host']}:{result['port']}"),
                     implementation=Implementation(library="OpenSSH", provider="runtime-ssh", api="SSH host key"),
-                    context=Context(exposure=Exposure.INTERNET_FACING),
+                    context=Context(exposure=Exposure.INTERNET_FACING,
+                                    notes=notes),
                 ))
 
         return findings

@@ -84,6 +84,10 @@ class DiscoveryEngine:
             if factory is not None and name not in self._all_scanners:
                 self._all_scanners[str(name).strip().lower()] = factory()
         self._scanners = dict(self._all_scanners)
+        # Phase 3: structured per-scanner outcome of the last scan()
+        # ("success" | "failed: ..." | "unavailable"). Read via
+        # last_status(); the scan() return type is unchanged.
+        self._last_status: dict[str, str] = {}
 
     def get_available_scanners(self) -> list[str]:
         return [name for name, scanner in self._all_scanners.items() if scanner.is_available()]
@@ -107,6 +111,31 @@ class DiscoveryEngine:
                 report[name] = False
         return report
 
+    def last_status(self) -> dict[str, str]:
+        """Structured outcome per scanner of the most recent scan().
+
+        Values: ``"success"``, ``"failed: <error>"``,
+        ``"unavailable"`` (scanner reports itself unavailable), or
+        ``"not-run"`` (no scan yet this process).
+        """
+        if not self._last_status:
+            return {name: "not-run" for name in self._scanners}
+        return dict(self._last_status)
+
+    def binary_stage_report(self) -> dict:
+        """Staged binary record of the most recent scan (Phase 6).
+
+        Empty dict when the binary family did not run; never raises.
+        """
+        try:
+            scanner = self._scanners.get("binary")
+            report = getattr(scanner, "last_report", None)
+            if callable(report):
+                return dict(report())
+        except Exception:
+            pass
+        return {}
+
     def scan(self, target: Path | str, scanner_names: Optional[list[str]] = None, **kwargs) -> list[ScannerFinding]:
         target_path = Path(target) if not isinstance(target, str) or Path(target).exists() else target
 
@@ -125,9 +154,19 @@ class DiscoveryEngine:
             def _run(item: tuple[str, object]) -> list:
                 name, scanner = item
                 try:
-                    return list(scanner.scan(target_path, **kwargs))  # type: ignore[union-attr]
+                    available = scanner.is_available()  # type: ignore[union-attr]
+                except Exception:
+                    available = False
+                if not available:
+                    self._last_status[str(name)] = "unavailable"
+                    return []
+                try:
+                    out = list(scanner.scan(target_path, **kwargs))  # type: ignore[union-attr]
+                    self._last_status[str(name)] = "success"
+                    return out
                 except Exception as e:
                     logger.warning("Scanner %s failed: %s", name, e)
+                    self._last_status[str(name)] = f"failed: {e}"
                     return []
 
             with ThreadPoolExecutor(max_workers=len(scanners_to_run)) as pool:
@@ -136,10 +175,19 @@ class DiscoveryEngine:
         else:
             for name, scanner in scanners_to_run.items():
                 try:
+                    available = scanner.is_available()
+                except Exception:
+                    available = False
+                if not available:
+                    self._last_status[str(name)] = "unavailable"
+                    continue
+                try:
                     findings = scanner.scan(target_path, **kwargs)
+                    self._last_status[str(name)] = "success"
                     all_findings.extend(findings)
                 except Exception as e:
                     logger.warning("Scanner %s failed: %s", name, e)
+                    self._last_status[str(name)] = f"failed: {e}"
                     continue
 
         normalized = [normalize_finding(f) for f in all_findings]
@@ -280,7 +328,20 @@ class DiscoveryEngine:
 
         cir = self._emit_cir(findings, target, target_name)
 
-        return cir
+        # Phase 8: the authoritative fusion + operation reconstruction
+        # layer owns confidence/usage/operations from here on. Proximity
+        # correlation above stays as the grouping pre-pass; this stage
+        # recomputes confidence via weighted fusion, adjudicates usage,
+        # collapses duplicate operations, and rebuilds the graph.
+        # Degrades to the unfused CIR (never a failed scan) only if the
+        # fusion layer itself raises.
+        try:
+            from ecdat.core.operations import reconstruct_cir
+            return reconstruct_cir(cir)
+        except Exception:
+            logger.warning("fusion reconstruction failed; using raw CIR",
+                           exc_info=True)
+            return cir
 
     def _emit_cir(
         self,

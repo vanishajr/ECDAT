@@ -22,6 +22,8 @@ class TLSResult:
     sig_algo: str
     key_size: int | None
     curve: str | None
+    fingerprint: str = ""
+    probed_at: str = ""
 
 
 class TLSScanner(Scanner[ScannerFinding]):
@@ -89,6 +91,7 @@ class TLSScanner(Scanner[ScannerFinding]):
                     sig_algo = ""
                     key_size = None
                     curve = None
+                    fingerprint = ""
 
                     if cert:
                         from cryptography import x509
@@ -98,7 +101,14 @@ class TLSScanner(Scanner[ScannerFinding]):
                         sig_algo = x509_cert.signature_algorithm_oid._name
                         key_size = self._get_key_size(x509_cert.public_key())
                         curve = self._get_curve(x509_cert.public_key())
+                        try:
+                            from ecdat.scanners.certificate.cert_metadata import (
+                                sha256_fingerprint_hex)
+                            fingerprint = sha256_fingerprint_hex(cert)
+                        except Exception:
+                            fingerprint = ""
 
+                    from datetime import datetime, timezone
                     return TLSResult(
                         host=host,
                         port=port,
@@ -108,6 +118,8 @@ class TLSScanner(Scanner[ScannerFinding]):
                         sig_algo=sig_algo,
                         key_size=key_size,
                         curve=curve,
+                        fingerprint=fingerprint,
+                        probed_at=datetime.now(timezone.utc).isoformat(),
                     )
         except ssl.SSLError:
             pass
@@ -119,6 +131,21 @@ class TLSScanner(Scanner[ScannerFinding]):
             pass
 
         return None
+
+    def _runtime_notes(self, result: TLSResult, extra: str = "") -> str:
+        """Graph-linkable runtime provenance (Phase 7).
+
+        Endpoint identity, tool/version, timestamp, and the leaf-cert
+        fingerprint that links this probe to static cert/config evidence.
+        """
+        notes = (f"endpoint={result.host}:{result.port}; "
+                 f"tool={self.get_tool_version()}; "
+                 f"probed_at={result.probed_at}")
+        if result.fingerprint:
+            notes += f"; fingerprint={result.fingerprint}"
+        if extra:
+            notes += f"; {extra}"
+        return notes
 
     def _create_findings(self, result: TLSResult) -> list[ScannerFinding]:
         findings: list[ScannerFinding] = []
@@ -146,7 +173,9 @@ class TLSScanner(Scanner[ScannerFinding]):
             )],
             location=Location(uri=f"tls://{result.host}:{result.port}"),
             implementation=Implementation(library="OpenSSL", provider="runtime-tls", api="TLS handshake"),
-            context=Context(exposure=Exposure.INTERNET_FACING),
+            context=Context(exposure=Exposure.INTERNET_FACING,
+                            notes=self._runtime_notes(
+                                result, f"protocol={result.version}")),
         ))
 
         if result.cipher:
@@ -178,7 +207,9 @@ class TLSScanner(Scanner[ScannerFinding]):
                     )],
                     location=Location(uri=f"tls://{result.host}:{result.port}"),
                     implementation=Implementation(library="OpenSSL", provider="runtime-tls", api="Cipher negotiation"),
-                    context=Context(exposure=Exposure.INTERNET_FACING),
+                    context=Context(exposure=Exposure.INTERNET_FACING,
+                                    notes=self._runtime_notes(
+                                        result, f"cipher={cipher}")),
                 ))
 
         if result.sig_algo:
@@ -201,7 +232,8 @@ class TLSScanner(Scanner[ScannerFinding]):
                 )],
                 location=Location(uri=f"tls://{result.host}:{result.port}"),
                 implementation=Implementation(library="X.509", provider="runtime-tls", api="Certificate validation"),
-                context=Context(exposure=Exposure.INTERNET_FACING),
+                context=Context(exposure=Exposure.INTERNET_FACING,
+                                notes=self._runtime_notes(result)),
             ))
 
         return findings
