@@ -1,0 +1,13 @@
+id: S008
+name: aes128_cbc_c
+fixture: synthetic/S008_aes128_cbc_c
+expected:
+  operations:
+  - algorithm: AES
+    mode: CBC
+    key_size: 128
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

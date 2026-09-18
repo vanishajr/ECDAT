@@ -1,0 +1,5 @@
+id: R11
+repo: node
+assertions:
+  no_crash: true
+  avoid_binding_layer_duplicate_explosion: true

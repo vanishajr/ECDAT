@@ -5,7 +5,7 @@ connections exist in index_page() without changing detection, contracts,
 exports, or report generation.
 """
 
-from ecdat.gui.server import index_page
+from ecdat.Backup_GUI.server import index_page
 
 
 def test_workflow_rail_present():

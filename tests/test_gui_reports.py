@@ -14,8 +14,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from ecdat.gui.server import index_page, make_server
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.server import index_page, make_server
+from ecdat.Backup_GUI.service import GuiService
 
 
 def _svc(tmp_path: Path) -> GuiService:

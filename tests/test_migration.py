@@ -20,15 +20,15 @@ import pytest
 
 from ecdat.commands.recommend_cmd import recommend_for_findings
 from ecdat.core.validate import load_json
-from ecdat.gui.migration import (
+from ecdat.Backup_GUI.migration import (
     STATUS_PLACEHOLDER,
     MigrationProvider,
     MockMigrationProvider,
     build_mock_items,
     to_frontend_plan,
 )
-from ecdat.gui.server import index_page, make_server
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.server import index_page, make_server
+from ecdat.Backup_GUI.service import GuiService
 
 FORBIDDEN_KEYS = {
     "timeline",

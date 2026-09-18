@@ -1,0 +1,10 @@
+id: S034
+name: test_only_des
+fixture: synthetic/S034_test_only_des
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: DES
+    usage: Confirmed
+  recommendation:
+    required: false

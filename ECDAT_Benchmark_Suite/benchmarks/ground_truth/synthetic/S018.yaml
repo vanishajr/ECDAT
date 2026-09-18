@@ -1,0 +1,11 @@
+id: S018
+name: rsa2048_c
+fixture: synthetic/S018_rsa2048_c
+expected:
+  operations:
+  - algorithm: RSA
+    key_size: 2048
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

@@ -1,0 +1,9 @@
+id: S033
+name: aws_kms_terraform
+fixture: synthetic/S033_aws_kms_terraform
+expected:
+  operations:
+  - algorithm: KMS
+  forbidden_operations: []
+  recommendation:
+    required: false

@@ -1,0 +1,13 @@
+id: S032
+name: docker_openssl_used
+fixture: synthetic/S032_docker_openssl_used
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

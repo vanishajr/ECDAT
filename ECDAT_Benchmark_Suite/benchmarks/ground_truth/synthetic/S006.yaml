@@ -1,0 +1,13 @@
+id: S006
+name: aes256_gcm_encrypt_c
+fixture: synthetic/S006_aes256_gcm_encrypt_c
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

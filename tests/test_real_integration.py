@@ -204,7 +204,7 @@ def test_dependency_only_assets_preserved(tmp_path):
 
 
 def test_service_risk_summary_real_branch(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     proj = _crypto_project(tmp_path)
     svc = GuiService(tmp_path / "r.db", client=RealCoreClient())
@@ -222,7 +222,7 @@ def test_service_risk_summary_real_branch(tmp_path):
 
 
 def test_mock_risk_branch_unchanged(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     svc = GuiService(tmp_path / "m.db")
     done = _complete_job(svc, "samples/rsa_small.py")
@@ -267,7 +267,7 @@ def test_migration_items_match_contract(tmp_path):
 
 
 def test_service_migration_plan_real_branch(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     proj = _crypto_project(tmp_path)
     svc = GuiService(tmp_path / "mg.db", client=RealCoreClient())
@@ -282,8 +282,8 @@ def test_service_migration_plan_real_branch(tmp_path):
 
 
 def test_service_graph_for_scan_real(tmp_path):
-    from ecdat.gui.graph import to_frontend_graph
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.graph import to_frontend_graph
+    from ecdat.Backup_GUI.service import GuiService
 
     proj = _crypto_project(tmp_path)
     svc = GuiService(tmp_path / "g.db", client=RealCoreClient())
@@ -415,7 +415,7 @@ def test_real_scan_empty_target_loud():
 
 
 def test_gui_job_failure_never_yields_mock(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     svc = GuiService(tmp_path / "f.db", client=RealCoreClient(
         scanners=["bogus-scanner"]))
@@ -534,7 +534,7 @@ def test_cli_scan_real_end_to_end(tmp_path, capsys):
 
 
 def test_gui_api_over_real_scan(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     proj = _crypto_project(tmp_path)
     svc = GuiService(tmp_path / "api.db", client=RealCoreClient())
@@ -560,7 +560,7 @@ def test_get_client_modes():
 
 
 def test_real_finding_detail_uses_actual_usage_state(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     proj = _crypto_project(tmp_path)
     svc = GuiService(tmp_path / "fd.db", client=RealCoreClient())
@@ -575,7 +575,7 @@ def test_real_finding_detail_uses_actual_usage_state(tmp_path):
 
 
 def test_real_finding_detail_wording_not_mock(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     proj = _crypto_project(tmp_path)
     svc = GuiService(tmp_path / "fdw.db", client=RealCoreClient())
@@ -589,7 +589,7 @@ def test_real_finding_detail_wording_not_mock(tmp_path):
 
 
 def test_real_inventory_and_assets_not_mock(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     proj = _crypto_project(tmp_path)
     svc = GuiService(tmp_path / "im.db", client=RealCoreClient())
@@ -601,7 +601,7 @@ def test_real_inventory_and_assets_not_mock(tmp_path):
 
 
 def test_mock_inventory_assets_detail_still_mock(tmp_path):
-    from ecdat.gui.service import GuiService
+    from ecdat.Backup_GUI.service import GuiService
 
     svc = GuiService(tmp_path / "imm.db")
     done = _complete_job(svc, "samples/rsa_small.py")

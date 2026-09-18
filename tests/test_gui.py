@@ -21,8 +21,8 @@ import pytest
 
 from ecdat.cli import build_parser
 from ecdat.commands import gui_cmd
-from ecdat.gui.server import check_host, index_page, make_server
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.server import check_host, index_page, make_server
+from ecdat.Backup_GUI.service import GuiService
 from ecdat.store import db
 from ecdat.store import scans as sstore
 

@@ -9,7 +9,7 @@ malformed graphs are rejected with ValueError, never rendered.
 
 import pytest
 
-from ecdat.gui.graph import (
+from ecdat.Backup_GUI.graph import (
     NODE_TYPES,
     RELATIONS,
     GraphProvider,
@@ -17,7 +17,7 @@ from ecdat.gui.graph import (
     build_mock_graph,
     to_frontend_graph,
 )
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.service import GuiService
 
 
 def _tiny_raw():

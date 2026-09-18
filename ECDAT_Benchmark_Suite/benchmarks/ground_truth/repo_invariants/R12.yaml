@@ -1,0 +1,6 @@
+id: R12
+repo: express
+assertions:
+  no_crash: true
+  mostly_negative_control: true
+  confirmed_crypto_should_be_low: true

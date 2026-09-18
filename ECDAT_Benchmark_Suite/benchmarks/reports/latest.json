@@ -1,0 +1,1351 @@
+{
+  "created_at": "2026-09-18T08:19:54Z",
+  "mode": "fast",
+  "profiles": [
+    "standard"
+  ],
+  "synthetic": {
+    "standard": [
+      {
+        "id": "D01",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D02",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D03",
+        "operations": {
+          "tp": 1,
+          "fp": 1,
+          "fn": 0,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "missed": [],
+          "unexpected": [
+            {
+              "asset_id": "ast:2d2271b014d99bd8",
+              "canonical": "OpenSSL",
+              "original": "OpenSSL",
+              "library": "openssl",
+              "usage_state": "Probable",
+              "confidence": 0.7,
+              "evidence": [
+                {
+                  "tool": "source:api-call",
+                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\D03_dataflow_3\\main.c:2 [cipher unresolved; library capability only]",
+                  "confidence": 0.7,
+                  "snippet": "EVP_EncryptInit_ex(c,b,0,k,iv) | args: c, b, 0, k"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\D03_dataflow_3\\main.c",
+                "line": 2
+              },
+              "implementation": {
+                "library": "openssl",
+                "api": "EVP_EncryptInit_ex"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "Probable",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:af4d21bf9a0f9765",
+              "operation_type": "Encrypt",
+              "operation": "encrypt",
+              "usage": "Probable"
+            }
+          ]
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D04",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D05",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D06",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D07",
+        "operations": {
+          "tp": 1,
+          "fp": 1,
+          "fn": 0,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "missed": [],
+          "unexpected": [
+            {
+              "asset_id": "ast:358c7580d411b754",
+              "canonical": "OpenSSL",
+              "original": "OpenSSL",
+              "library": "openssl",
+              "usage_state": "Probable",
+              "confidence": 0.7,
+              "evidence": [
+                {
+                  "tool": "source:api-call",
+                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\D07_factory_function\\main.c:3 [cipher unresolved; library capability only]",
+                  "confidence": 0.7,
+                  "snippet": "EVP_EncryptInit_ex(c,chosen(),0,k,iv) | args: c, chosen(), 0, k"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\D07_factory_function\\main.c",
+                "line": 3
+              },
+              "implementation": {
+                "library": "openssl",
+                "api": "EVP_EncryptInit_ex"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "Probable",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:575868cad7d56039",
+              "operation_type": "Encrypt",
+              "operation": "encrypt",
+              "usage": "Probable"
+            }
+          ]
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D08",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "D09",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [
+            {
+              "usage": "Confirmed"
+            }
+          ],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": false
+      },
+      {
+        "id": "D10",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "FP001",
+        "operations": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": [
+            {
+              "asset_id": "ast:e5fe39a92fd0bea4",
+              "canonical": "AES-256-GCM",
+              "original": "AES-256-GCM",
+              "key_size": 256,
+              "mode": "GCM",
+              "library": "openssl",
+              "usage_state": "Confirmed",
+              "confidence": 0.9,
+              "evidence": [
+                {
+                  "tool": "source:api-call",
+                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c:12",
+                  "confidence": 0.9,
+                  "snippet": "EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), 0, key, iv) | args: ctx, EVP_aes_256_gcm(), 0, key"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c",
+                "line": 12,
+                "function": "main"
+              },
+              "implementation": {
+                "library": "openssl",
+                "api": "EVP_EncryptInit_ex"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "Confirmed",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:2e967f88d5f1284e",
+              "operation_type": "Encrypt",
+              "function": "main",
+              "algorithm": "AES",
+              "operation": "encrypt",
+              "usage": "Confirmed"
+            }
+          ]
+        },
+        "forbidden_hits": [
+          {
+            "forbidden": {
+              "algorithm": "AES",
+              "usage": "Confirmed"
+            },
+            "actual": {
+              "asset_id": "ast:e5fe39a92fd0bea4",
+              "canonical": "AES-256-GCM",
+              "original": "AES-256-GCM",
+              "key_size": 256,
+              "mode": "GCM",
+              "library": "openssl",
+              "usage_state": "Confirmed",
+              "confidence": 0.9,
+              "evidence": [
+                {
+                  "tool": "source:api-call",
+                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c:12",
+                  "confidence": 0.9,
+                  "snippet": "EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), 0, key, iv) | args: ctx, EVP_aes_256_gcm(), 0, key"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c",
+                "line": 12,
+                "function": "main"
+              },
+              "implementation": {
+                "library": "openssl",
+                "api": "EVP_EncryptInit_ex"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "Confirmed",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:2e967f88d5f1284e",
+              "operation_type": "Encrypt",
+              "function": "main",
+              "algorithm": "AES",
+              "operation": "encrypt",
+              "usage": "Confirmed"
+            }
+          }
+        ],
+        "recommendation_ok": true,
+        "pass": false
+      },
+      {
+        "id": "S001",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S002",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S003",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S004",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S005",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S006",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S007",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S008",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S009",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S010",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S011",
+        "operations": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [
+            {
+              "algorithm": "RC4",
+              "operation": "encrypt",
+              "usage": "Confirmed"
+            }
+          ],
+          "unexpected": [
+            {
+              "asset_id": "ast:54d96361506d939e",
+              "canonical": "OpenSSL",
+              "original": "OpenSSL",
+              "library": "openssl",
+              "usage_state": "Probable",
+              "confidence": 0.7,
+              "evidence": [
+                {
+                  "tool": "source:api-call",
+                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S011_rc4_c\\main.c:3 [cipher unresolved; library capability only]",
+                  "confidence": 0.7,
+                  "snippet": "EVP_EncryptInit_ex(ctx, EVP_rc4(), 0, k, 0) | args: ctx, EVP_rc4(), 0, k"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S011_rc4_c\\main.c",
+                "line": 3,
+                "function": "f"
+              },
+              "implementation": {
+                "library": "openssl",
+                "api": "EVP_EncryptInit_ex"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "Probable",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:9450842b45e8c79e",
+              "operation_type": "Encrypt",
+              "function": "f",
+              "operation": "encrypt",
+              "usage": "Probable"
+            }
+          ]
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": false
+      },
+      {
+        "id": "S012",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S013",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S014",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S015",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S016",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S017",
+        "operations": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [
+            {
+              "algorithm": "RSA",
+              "key_size": 1024,
+              "usage": "Confirmed"
+            }
+          ],
+          "unexpected": [
+            {
+              "asset_id": "ast:0adec6890596032c",
+              "canonical": "RSA",
+              "original": "RSA",
+              "library": "jca",
+              "usage_state": "Confirmed",
+              "confidence": 0.88,
+              "evidence": [
+                {
+                  "tool": "source:api-call",
+                  "detail": "direct source API call: KeyPairGenerator.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S017_rsa1024_java\\Keys.java:3 [algorithm RSA]",
+                  "confidence": 0.88,
+                  "snippet": "KeyPairGenerator.getInstance()"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S017_rsa1024_java\\Keys.java",
+                "line": 3
+              },
+              "implementation": {
+                "library": "jca",
+                "api": "KeyPairGenerator.getInstance"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "Confirmed",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:23033a180e92c61f",
+              "operation_type": "KeyManagement",
+              "algorithm": "RSA",
+              "operation": "keymanagement",
+              "usage": "Confirmed"
+            }
+          ]
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": false
+      },
+      {
+        "id": "S018",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S019",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S020",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S021",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [
+            {
+              "algorithm": "X25519",
+              "usage": "Confirmed"
+            }
+          ],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": false
+      },
+      {
+        "id": "S022",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S023",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S024",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S025",
+        "operations": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [
+            {
+              "algorithm": "Argon2",
+              "usage": "Confirmed"
+            }
+          ],
+          "unexpected": [
+            {
+              "asset_id": "ast:6d4f35eeb9311974",
+              "canonical": "Argon2",
+              "original": "Argon2",
+              "library": "argon2-cffi",
+              "usage_state": "ProvidedOnly",
+              "confidence": 0.075,
+              "evidence": [
+                {
+                  "tool": "dependency:requirements",
+                  "detail": "dependency argon2-cffi found in requirements.txt:1",
+                  "confidence": 0.55,
+                  "snippet": "argon2-cffi==23.1.0"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S025_argon2_python\\requirements.txt",
+                "line": 1
+              },
+              "implementation": {
+                "library": "argon2-cffi"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "Dependency-only; no confirmed crypto operation; fusion=conf:0.075/usage:ProvidedOnly/detectors:dependency/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "ProvidedOnly",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:ad98e182d0b0cca9",
+              "operation_type": "KDF",
+              "algorithm": "Argon2",
+              "operation": "kdf",
+              "usage": "ProvidedOnly"
+            }
+          ]
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": false
+      },
+      {
+        "id": "S026",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [
+            {
+              "algorithm": "TLS1.0"
+            }
+          ],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": false,
+        "pass": false
+      },
+      {
+        "id": "S027",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S028",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S029",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S030",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S031",
+        "operations": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": [
+            {
+              "asset_id": "ast:9c32464dff3553a2",
+              "canonical": "OpenSSL",
+              "original": "OpenSSL",
+              "library": "docker",
+              "usage_state": "ProvidedOnly",
+              "confidence": 0.075,
+              "evidence": [
+                {
+                  "tool": "config:dockerfile",
+                  "detail": "container definition (not deployed image): package install provides OpenSSL (openssl)",
+                  "confidence": 0.5,
+                  "snippet": "RUN apt-get update && apt-get install -y openssl"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S031_docker_openssl_unused\\Dockerfile",
+                "line": 2
+              },
+              "implementation": {
+                "library": "docker",
+                "provider": "dockerfile"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "container-definition; service=S031_docker_openssl_unused; cmd=[\"/app.sh\"]; fusion=conf:0.075/usage:ProvidedOnly/detectors:dockerfile/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "ProvidedOnly",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:b0f1499bf4ee6acb",
+              "operation_type": "TLS",
+              "operation": "tls",
+              "usage": "ProvidedOnly"
+            }
+          ]
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S032",
+        "operations": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S033",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [
+            {
+              "algorithm": "KMS"
+            }
+          ],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": false
+      },
+      {
+        "id": "S034",
+        "operations": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": [
+            {
+              "asset_id": "ast:c9f296ae0f6f7bee",
+              "canonical": "DES",
+              "original": "DES",
+              "key_size": 56,
+              "mode": "CBC",
+              "library": "openssl",
+              "usage_state": "FalsePositiveSuppressed",
+              "confidence": 0.782,
+              "evidence": [
+                {
+                  "tool": "source:api-call",
+                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S034_test_only_des\\tests\\test_legacy.c:3",
+                  "confidence": 0.39,
+                  "snippet": "EVP_EncryptInit_ex(ctx,EVP_des_cbc(),0,k,iv) | args: ctx, EVP_des_cbc(), 0, k"
+                }
+              ],
+              "location": {
+                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S034_test_only_des\\tests\\test_legacy.c",
+                "line": 3,
+                "function": "test"
+              },
+              "implementation": {
+                "library": "openssl",
+                "api": "EVP_EncryptInit_ex"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "fusion=conf:0.782/usage:FalsePositiveSuppressed/detectors:source/evidence:1/hits:1"
+              },
+              "risk_inputs": {
+                "usage_state": "FalsePositiveSuppressed",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": true
+              },
+              "operation_id": "op:5fab5a6c86936c13",
+              "operation_type": "Encrypt",
+              "function": "test",
+              "algorithm": "DES",
+              "operation": "encrypt",
+              "usage": "FalsePositiveSuppressed"
+            }
+          ]
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      },
+      {
+        "id": "S035",
+        "operations": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "missed": [],
+          "unexpected": []
+        },
+        "forbidden_hits": [],
+        "recommendation_ok": true,
+        "pass": true
+      }
+    ]
+  },
+  "repositories": [
+    {
+      "repo": {
+        "id": "R12",
+        "name": "express",
+        "url": "https://github.com/expressjs/express",
+        "commit": null,
+        "purpose": "mostly-negative Node control"
+      },
+      "profile": "standard",
+      "wall_seconds": 0.18333669999265112,
+      "peak_rss_mb": 47.58984375,
+      "result": {
+        "scan_id": "scan:4ce876218567c357",
+        "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
+        "cir": {
+          "cir_version": "0.1",
+          "scan_id": "scan:4ce876218567c357",
+          "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
+          "started_at": "2026-09-18T08:20:03Z",
+          "finished_at": "2026-09-18T08:20:03Z",
+          "tool_versions": {
+            "source": "0.2.0",
+            "dependency": "0.2.0",
+            "binary": "binary-v0.2.0(strings-builtin)",
+            "config": "config-v0.1.0",
+            "certificate": "certificate-v0.1.0"
+          },
+          "registry_version": "2026.09.11",
+          "assets": [],
+          "operations": [],
+          "graph": {
+            "nodes": [],
+            "edges": []
+          },
+          "stats": {
+            "asset_count": 0,
+            "operation_count": 0,
+            "node_count": 0,
+            "edge_count": 0,
+            "risk_count": 0,
+            "recommendation_count": 0
+          },
+          "risks": [],
+          "recommendations": []
+        },
+        "canonical": {
+          "schema_version": "1.0",
+          "scan_id": "scan:4ce876218567c357",
+          "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
+          "started_at": "2026-09-18T08:20:03Z",
+          "finished_at": "2026-09-18T08:20:03Z",
+          "tool_versions": {
+            "source": "0.2.0",
+            "dependency": "0.2.0",
+            "binary": "binary-v0.2.0(strings-builtin)",
+            "config": "config-v0.1.0",
+            "certificate": "certificate-v0.1.0"
+          },
+          "findings": [],
+          "stats": {
+            "files_scanned": 0,
+            "findings_count": 0
+          }
+        },
+        "plan": {
+          "job_id": "job-316314c50431",
+          "kind": "repo",
+          "label": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
+          "content_hash": "cef9a8c4f1bf3e07",
+          "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
+          "profile": "standard",
+          "permissions": {
+            "allow_container": false,
+            "allow_cloud": false,
+            "allow_runtime": false,
+            "allow_pull": false,
+            "allow_build": false
+          },
+          "scanners": [
+            "source",
+            "dependency",
+            "binary",
+            "config",
+            "certificate"
+          ],
+          "stages": [
+            "semgrep",
+            "tree-sitter",
+            "gitleaks"
+          ],
+          "escalate": false,
+          "unavailable": [],
+          "caller": "benchmark",
+          "display_target": "express",
+          "artifacts_total": 0,
+          "artifact_counts": {},
+          "surfaces": [],
+          "skipped": [],
+          "warnings": [],
+          "effort": {
+            "escalation_allowed": true,
+            "archive_depth": 3,
+            "expensive_backends": [
+              "capa",
+              "floss-selective"
+            ],
+            "candidate_reasoning": "normal"
+          },
+          "escalation_allowed": true,
+          "permissions_required": [],
+          "cache_hit": false
+        },
+        "job_id": "job-316314c50431",
+        "kind": "repo",
+        "diagnostics": {
+          "job_id": "job-316314c50431",
+          "kind": "repo",
+          "content_hash": "cef9a8c4f1bf3e07",
+          "profile": "standard",
+          "caller": "benchmark",
+          "display_target": "express",
+          "scanners": [
+            "source",
+            "dependency",
+            "binary",
+            "config",
+            "certificate"
+          ],
+          "stages": [
+            "semgrep",
+            "tree-sitter",
+            "gitleaks"
+          ],
+          "escalate": false,
+          "escalation_allowed": true,
+          "escalation": {
+            "evaluated": 0,
+            "candidates": [],
+            "escalated": 0,
+            "note": "CIR-level candidates; per-binary execution is recorded under diagnostics binary_stages",
+            "binaries_evaluated": 0,
+            "binaries_with_findings": 0,
+            "binary_candidates": 0,
+            "binaries_escalated": 0,
+            "expensive_analysis_rate": 0.0,
+            "binary_stage_times": {}
+          },
+          "unavailable": [],
+          "scanner_status": {
+            "binary": "success",
+            "source": "success",
+            "certificate": "success",
+            "config": "success",
+            "dependency": "success"
+          },
+          "binary_stages": {
+            "binaries": 0,
+            "with_findings": 0,
+            "cheap_pass_candidates": 0,
+            "escalated_binaries": 0,
+            "expensive_runs": 0,
+            "expensive_analysis_rate": 0.0,
+            "stage_times": {}
+          },
+          "binary_tools": {
+            "capa": "unavailable",
+            "floss": "unavailable",
+            "ghidra": "not-configured",
+            "binary-strings": "available"
+          },
+          "permissions_required": [],
+          "artifacts_total": 0,
+          "artifact_counts": {},
+          "surfaces": [],
+          "cache_hit": false,
+          "cache_key": "scan:75592c44635e7d0bd2453d5b7a0b4cee",
+          "registry_version": "2026.09.11",
+          "tool_versions": {
+            "source": "0.2.0",
+            "dependency": "0.2.0",
+            "binary": "binary-v0.2.0(strings-builtin)",
+            "config": "config-v0.1.0",
+            "certificate": "certificate-v0.1.0"
+          },
+          "elapsed_sec": 0.112
+        }
+      }
+    }
+  ],
+  "summary": {
+    "synthetic_pass": 38,
+    "synthetic_fail": 8,
+    "repo_runs": 1
+  }
+}

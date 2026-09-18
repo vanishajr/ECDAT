@@ -1,0 +1,12 @@
+id: S004
+name: dependency_unused
+fixture: synthetic/S004_dependency_unused
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: AES
+    usage: Confirmed
+  - algorithm: RSA
+    usage: Confirmed
+  recommendation:
+    required: false

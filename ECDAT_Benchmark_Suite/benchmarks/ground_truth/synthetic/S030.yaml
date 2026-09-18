@@ -1,0 +1,9 @@
+id: S030
+name: nginx_cert_reference
+fixture: synthetic/S030_nginx_cert_reference
+expected:
+  operations:
+  - algorithm: TLS1.3
+  forbidden_operations: []
+  recommendation:
+    required: false

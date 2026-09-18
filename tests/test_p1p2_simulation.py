@@ -16,13 +16,13 @@ from pathlib import Path
 from ecdat.commands.recommend_cmd import recommend_for_findings
 from ecdat.commands.risk_cmd import WEIGHTS, risk_from_findings
 from ecdat.core.validate import validate
-from ecdat.gui.graph import NODE_TYPES, RELATIONS, to_frontend_graph
-from ecdat.gui.migration import (
+from ecdat.Backup_GUI.graph import NODE_TYPES, RELATIONS, to_frontend_graph
+from ecdat.Backup_GUI.migration import (
     STATUS_PLACEHOLDER,
     MockMigrationProvider,
     to_frontend_plan,
 )
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.service import GuiService
 from ecdat.store import db
 from ecdat.store import findings as fstore
 from ecdat.store import scans as sstore

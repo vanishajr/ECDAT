@@ -1,0 +1,12 @@
+id: S002
+name: comments_only
+fixture: synthetic/S002_comments_only
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: AES
+    usage: Confirmed
+  - algorithm: RSA
+    usage: Confirmed
+  recommendation:
+    required: false

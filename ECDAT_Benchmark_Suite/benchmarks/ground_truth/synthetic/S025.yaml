@@ -1,0 +1,10 @@
+id: S025
+name: argon2_python
+fixture: synthetic/S025_argon2_python
+expected:
+  operations:
+  - algorithm: Argon2
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

@@ -9,13 +9,13 @@ into GuiService must flow through; fabricated PQC fields
 output. Mock semantics stay explicit throughout.
 """
 
-from ecdat.gui.migration import (
+from ecdat.Backup_GUI.migration import (
     STATUS_PLACEHOLDER,
     MigrationProvider,
     MockMigrationProvider,
     to_frontend_plan,
 )
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.service import GuiService
 
 FORBIDDEN = {"timeline", "effort", "priority", "confidence", "phase",
              "pqc_target", "migration_sequence", "migration_state",

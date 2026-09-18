@@ -1,0 +1,2 @@
+#include <openssl/evp.h>
+static void inner(EVP_CIPHER_CTX*c,const unsigned char*k,const unsigned char*iv){EVP_EncryptInit_ex(c,EVP_aes_256_gcm(),0,k,iv);} static void outer(EVP_CIPHER_CTX*c,const unsigned char*k,const unsigned char*iv){inner(c,k,iv);}

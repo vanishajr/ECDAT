@@ -1,0 +1,6 @@
+id: R06
+repo: curl
+assertions:
+  no_crash: true
+  deterministic: true
+  supported_tls_backend_not_equal_active_backend: true

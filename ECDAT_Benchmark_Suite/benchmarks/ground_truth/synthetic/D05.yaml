@@ -1,0 +1,13 @@
+id: D05
+name: dataflow_5
+fixture: synthetic/D05_dataflow_5
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

@@ -1,0 +1,8 @@
+id: S001
+name: clean_rest
+fixture: synthetic/S001_clean_rest
+expected:
+  operations: []
+  forbidden_operations: []
+  recommendation:
+    required: false

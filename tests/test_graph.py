@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from ecdat.gui.graph import (
+from ecdat.Backup_GUI.graph import (
     NODE_TYPES,
     RELATIONS,
     GraphProvider,
@@ -25,8 +25,8 @@ from ecdat.gui.graph import (
     build_mock_graph,
     to_frontend_graph,
 )
-from ecdat.gui.server import index_page, make_server
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.server import index_page, make_server
+from ecdat.Backup_GUI.service import GuiService
 
 RELATION_SET = set(RELATIONS)
 

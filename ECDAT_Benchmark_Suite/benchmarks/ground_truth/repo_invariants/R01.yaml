@@ -1,0 +1,8 @@
+id: R01
+repo: openssl
+assertions:
+  no_crash: true
+  deterministic: true
+  docs_confirmed_operations: 0
+  implementation_must_not_default_to_confirmed_usage: true
+  tests_not_production_by_default: true

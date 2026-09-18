@@ -10,7 +10,7 @@ correctness.
 
 from ecdat.commands.recommend_cmd import recommend_for_findings
 from ecdat.commands.risk_cmd import WEIGHTS, level_for, risk_from_findings
-from ecdat.gui.service import GuiService
+from ecdat.Backup_GUI.service import GuiService
 from ecdat.reports.aggregate import build_report
 
 SEVERITIES = ("critical", "high", "medium", "low", "info")

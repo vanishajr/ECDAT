@@ -1,0 +1,13 @@
+id: D02
+name: dataflow_2
+fixture: synthetic/D02_dataflow_2
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

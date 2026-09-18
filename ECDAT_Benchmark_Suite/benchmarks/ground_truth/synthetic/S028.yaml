@@ -1,0 +1,9 @@
+id: S028
+name: tls13_nginx
+fixture: synthetic/S028_tls13_nginx
+expected:
+  operations:
+  - algorithm: TLS1.3
+  forbidden_operations: []
+  recommendation:
+    required: false
