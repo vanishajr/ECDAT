@@ -1,0 +1,9 @@
+id: S029
+name: unreferenced_cert
+fixture: synthetic/S029_unreferenced_cert
+expected:
+  operations: []
+  forbidden_operations:
+  - usage: Confirmed
+  recommendation:
+    required: false

@@ -1,0 +1,10 @@
+id: S015
+name: sha1_checksum_python
+fixture: synthetic/S015_sha1_checksum_python
+expected:
+  operations:
+  - algorithm: SHA-1
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

@@ -1,0 +1,11 @@
+id: S017
+name: rsa1024_java
+fixture: synthetic/S017_rsa1024_java
+expected:
+  operations:
+  - algorithm: RSA
+    key_size: 1024
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: true

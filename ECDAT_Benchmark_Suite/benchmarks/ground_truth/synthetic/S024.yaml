@@ -1,0 +1,10 @@
+id: S024
+name: pbkdf2_high_python
+fixture: synthetic/S024_pbkdf2_high_python
+expected:
+  operations:
+  - algorithm: PBKDF2
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

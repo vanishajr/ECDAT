@@ -11,6 +11,8 @@ from ecdat.scanners.config.openssl_scanner import OpenSSLConfigScanner
 from ecdat.scanners.config.kubernetes_scanner import KubernetesScanner
 from ecdat.scanners.config.terraform_scanner import TerraformScanner
 from ecdat.scanners.config.generic_scanner import GenericConfigScanner
+from ecdat.scanners.config.dockerfile_scanner import DockerfileScanner
+from ecdat.scanners.config.service_context import attach_service_context
 
 
 class ConfigScanner(Scanner[ScannerFinding]):
@@ -26,6 +28,7 @@ class ConfigScanner(Scanner[ScannerFinding]):
             KubernetesScanner(),
             TerraformScanner(),
             GenericConfigScanner(),
+            DockerfileScanner(),
         ]
 
     def is_available(self) -> bool:
@@ -57,6 +60,12 @@ class ConfigScanner(Scanner[ScannerFinding]):
                 except Exception:
                     continue
 
+        # Phase 5: graph-linkable service context (service, listeners,
+        # cert/key/KMS refs) derived per file; additive, never drops.
+        try:
+            attach_service_context(all_findings)
+        except Exception:
+            pass
         return all_findings
 
 

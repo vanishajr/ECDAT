@@ -181,6 +181,9 @@ class AWSScanner(Scanner[ScannerFinding]):
                         ssl_cert_id = listener_info.get("SSLCertificateId", "")
 
                         if protocol in ("HTTPS", "SSL"):
+                            notes = f"service={name}; listener={protocol}:{port}"
+                            if ssl_cert_id:
+                                notes += f"; cert_ref={ssl_cert_id}"
                             findings.append(ScannerFinding(
                                 canonical="TLS1.2",
                                 original=f"ELB {protocol}",
@@ -194,7 +197,8 @@ class AWSScanner(Scanner[ScannerFinding]):
                                 )],
                                 location=Location(uri=f"aws:elb:{region}:{name}"),
                                 implementation=Implementation(library="AWS ELB", provider="aws", api="ELB"),
-                                context=Context(exposure=Exposure.INTERNET_FACING, environment=region),
+                                context=Context(exposure=Exposure.INTERNET_FACING, environment=region,
+                                                notes=notes),
                             ))
         except Exception:
             pass
@@ -224,6 +228,12 @@ class AWSScanner(Scanner[ScannerFinding]):
                             if protocol in ("HTTPS", "TLS"):
                                 for cert in certs:
                                     cert_arn = cert.get("CertificateArn", "")
+                                    notes = (f"service={lb_name}; "
+                                             f"listener={protocol}:{port}")
+                                    if cert_arn:
+                                        notes += f"; cert_ref={cert_arn}"
+                                    if ssl_policy:
+                                        notes += f"; ssl_policy={ssl_policy}"
                                     findings.append(ScannerFinding(
                                         canonical="TLS1.2",
                                         original=f"ALB {protocol}",
@@ -237,7 +247,8 @@ class AWSScanner(Scanner[ScannerFinding]):
                                         )],
                                         location=Location(uri=f"aws:alb:{region}:{lb_name}"),
                                         implementation=Implementation(library="AWS ALB", provider="aws", api="ELBv2"),
-                                        context=Context(exposure=Exposure.INTERNET_FACING, environment=region),
+                                        context=Context(exposure=Exposure.INTERNET_FACING, environment=region,
+                                                        notes=notes),
                                     ))
                     except Exception:
                         continue

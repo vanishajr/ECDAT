@@ -1,0 +1,10 @@
+id: D08
+name: config_selected
+fixture: synthetic/D08_config_selected
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: AES
+    usage: Confirmed
+  recommendation:
+    required: false

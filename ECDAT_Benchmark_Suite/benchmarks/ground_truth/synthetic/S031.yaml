@@ -1,0 +1,12 @@
+id: S031
+name: docker_openssl_unused
+fixture: synthetic/S031_docker_openssl_unused
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: AES
+    usage: Confirmed
+  - algorithm: RSA
+    usage: Confirmed
+  recommendation:
+    required: false

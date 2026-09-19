@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "repositories": [
+    {
+      "id": "R01",
+      "name": "openssl",
+      "url": "https://github.com/openssl/openssl",
+      "commit": null,
+      "purpose": "implementation-heavy C/TLS false-positive torture test"
+    },
+    {
+      "id": "R02",
+      "name": "libsodium",
+      "url": "https://github.com/jedisct1/libsodium",
+      "commit": null,
+      "purpose": "modern crypto implementation vs use"
+    },
+    {
+      "id": "R03",
+      "name": "bc-java",
+      "url": "https://github.com/bcgit/bc-java",
+      "commit": null,
+      "purpose": "Java/JCA/JCE/PQC provider implementation"
+    },
+    {
+      "id": "R04",
+      "name": "go-x-crypto",
+      "url": "https://github.com/golang/crypto",
+      "commit": null,
+      "purpose": "Go crypto implementation corpus"
+    },
+    {
+      "id": "R05",
+      "name": "pyca-cryptography",
+      "url": "https://github.com/pyca/cryptography",
+      "commit": null,
+      "purpose": "Python/Rust/native mixed crypto library"
+    },
+    {
+      "id": "R06",
+      "name": "curl",
+      "url": "https://github.com/curl/curl",
+      "commit": null,
+      "purpose": "real TLS consumer with multiple supported backends"
+    },
+    {
+      "id": "R07",
+      "name": "redis",
+      "url": "https://github.com/redis/redis",
+      "commit": null,
+      "purpose": "C app with optional TLS/config/certs"
+    },
+    {
+      "id": "R08",
+      "name": "nginx",
+      "url": "https://github.com/nginx/nginx",
+      "commit": null,
+      "purpose": "TLS server, OpenSSL, config and cert relationships"
+    },
+    {
+      "id": "R09",
+      "name": "spring-security",
+      "url": "https://github.com/spring-projects/spring-security",
+      "commit": null,
+      "purpose": "password hashing, legacy compatibility, Java"
+    },
+    {
+      "id": "R10",
+      "name": "vault",
+      "url": "https://github.com/hashicorp/vault",
+      "commit": null,
+      "purpose": "large Go security application/key management"
+    },
+    {
+      "id": "R11",
+      "name": "node",
+      "url": "https://github.com/nodejs/node",
+      "commit": null,
+      "purpose": "JS/C++/OpenSSL layered crypto"
+    },
+    {
+      "id": "R12",
+      "name": "express",
+      "url": "https://github.com/expressjs/express",
+      "commit": null,
+      "purpose": "mostly-negative Node control"
+    }
+  ]
+}

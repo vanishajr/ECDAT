@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from ecdat.commands import ERROR
+from ecdat.reports.aggregate import display_path
 from ecdat.store import db
 from ecdat.store import findings as fstore
 from ecdat.store import scans as sstore
@@ -34,11 +35,15 @@ def run(args: argparse.Namespace) -> int:
         print(json.dumps({"scan": row, "findings": rows}, indent=2, sort_keys=True))
         return 0
 
+    target = str(row["target"])
     print(f"scan_id:  {row['id']}")
-    print(f"target:   {row['target']}")
+    print(f"target:   {display_path(target, target)}")
     print(f"started:  {row['started_at']}")
     print(f"finished: {row['finished_at']}")
     print(f"findings: {len(rows)}")
-    for f in rows:
-        print(f"  [{f['severity']}] {f['rule_id']} {f['file']}:{f['line']} {f['title']}")
+    for f in rows[:20]:
+        shown = display_path(target, str(f["file"]))
+        print(f"  [{f['severity']}] {f['title']} {shown}:{f['line']}")
+    if len(rows) > 20:
+        print(f"  ... and {len(rows) - 20} more (see report/exports)")
     return 0

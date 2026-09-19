@@ -61,6 +61,7 @@ import re
 from collections import defaultdict, deque
 
 __all__ = ["build_graph", "GraphIndex", "to_cir_graph", "graph_index_for_cir",
+           "wire_system_links",
            "NODE_TYPES", "RELATIONS", "CIR_KIND_FOR", "CIR_REL_FOR"]
 
 NODE_TYPES = frozenset({
@@ -703,3 +704,319 @@ class GraphIndex:
                     order.append(self.by_id[dst])
                     queue.append(dst)
         return order
+
+
+# --------------------------------------------------------------------------
+# Phase 9: production wire enrichment (authoritative system reconstruction)
+# --------------------------------------------------------------------------
+
+#: ``k=v`` join keys (Phase 5 service context, Phase 7 runtime/container
+#: notes) understood by the wire enrichment below. Values are observed
+#: detector output; nothing is invented here.
+_WIRE_KV_KEYS = ("service", "endpoint", "image", "layer", "fingerprint",
+                 "cert_ref", "key_ref", "kms_ref", "listener", "owner")
+
+_WIRE_KV_RES = {key: re.compile(r"%s=([^;\r\n]+)" % re.escape(key))
+                for key in _WIRE_KV_KEYS}
+
+_URL_RE = re.compile(r"https?://[A-Za-z0-9_.\-:/?#=&%+~]+")
+_SHA_FP_RE = re.compile(r"SHA256:(?:[0-9A-Fa-f]{2}:){10,}[0-9A-Fa-f]{2}")
+
+
+def _wire_kv_all(text: str | None, key: str) -> list[str]:
+    """All values recorded for ``key=`` in a notes/detail blob."""
+    if not text:
+        return []
+    out: list[str] = []
+    for match in _WIRE_KV_RES[key].finditer(str(text)):
+        value = " ".join(match.group(1).split())
+        if value and len(value) <= 200 and value not in out:
+            out.append(value)
+    return out
+
+
+def _wire_evidence_texts(obj) -> list[str]:
+    """Joinable text blobs from one asset/operation (notes + evidence)."""
+    texts: list[str] = []
+    try:
+        notes = getattr(getattr(obj, "context", None), "notes", None)
+        if notes:
+            texts.append(str(notes))
+    except Exception:
+        pass
+    try:
+        for item in (getattr(obj, "evidence", None) or []):
+            for attr in ("detail", "snippet"):
+                try:
+                    value = getattr(item, attr, None)
+                except Exception:
+                    value = None
+                if value:
+                    texts.append(str(value))
+    except Exception:
+        pass
+    return texts
+
+
+def _wire_first(values: list[str]) -> str:
+    for value in values:
+        if value:
+            return value
+    return ""
+
+
+def wire_system_links(assets, operations) -> dict:
+    """Cross-surface system links for fused CIR assets/operations.
+
+    The authoritative Phase 9 enrichment: adapts the fused pydantic
+    assets/operations (duck-typed via ``getattr`` so this module stays
+    stdlib-only with no ``cir_models`` import) to the rich
+    :func:`build_graph` contract, projects the result onto the CIR v0.1
+    wire vocabulary with :func:`to_cir_graph`, and returns wire dicts::
+
+        {"nodes": [{id, kind, ref, label?}],
+         "edges": [{from, to, relationship}],
+         "provenance": {node_id: "observed" | "inferred"},
+         "counts": {"nodes": N, "edges": M, "observed": O, "inferred": I}}
+
+    Only evidence-backed links are emitted (an operation without a
+    service name gets no Service node; a fingerprint seen once links
+    only its own object). A shared node referenced from more than one
+    distinct file is marked ``inferred`` (cross-file linkage) in both
+    ``provenance`` and the node ``ref`` (``inferred:<rich-id>``);
+    single-file nodes are ``observed``. Labels of inferred nodes gain a
+    `` (inferred)`` suffix so GUI/report surfaces stay honest.
+
+    Never raises: any internal failure yields empty nodes/edges.
+    """
+    try:
+        return _wire_system_links_inner(list(assets or []),
+                                        list(operations or []))
+    except Exception:
+        return {"nodes": [], "edges": [], "provenance": {},
+                "counts": {"nodes": 0, "edges": 0,
+                           "observed": 0, "inferred": 0}}
+
+
+def _wire_system_links_inner(assets: list, operations: list) -> dict:
+    asset_by_id: dict[str, object] = {}
+    for asset in assets:
+        try:
+            aid = str(getattr(asset, "asset_id", "") or "")
+        except Exception:
+            continue
+        if aid:
+            asset_by_id[aid] = asset
+
+    # Basename index of scanned certificate files for cert_ref joins.
+    cert_files: dict[str, str] = {}
+    for asset in assets:
+        try:
+            tools = [str(getattr(e, "tool", "") or "")
+                     for e in (getattr(asset, "evidence", None) or [])]
+        except Exception:
+            tools = []
+        if not any(t.startswith("certificate-") for t in tools):
+            continue
+        try:
+            loc = getattr(asset, "location", None)
+            path = str(getattr(loc, "file", "") or "")
+        except Exception:
+            path = ""
+        if path:
+            base = path.replace("\\", "/").split("/")[-1].lower()
+            if base:
+                cert_files.setdefault(base, path)
+
+    op_dicts: list[dict] = []
+    asset_dicts: list[dict] = []
+    key_files: dict[str, set[str]] = {}
+
+    def _track(node_id: str, path: str) -> None:
+        if node_id and path:
+            key_files.setdefault(node_id, set()).add(path)
+
+    for operation in operations:
+        try:
+            op_id = str(getattr(operation, "operation_id", "") or "")
+            asset_id = str(getattr(operation, "asset_id", "") or "")
+            op_type = str(getattr(getattr(operation, "operation_type", None),
+                                  "value", None)
+                          or getattr(operation, "operation_type", "")
+                          or "Encrypt")
+            confidence = float(getattr(operation, "confidence", 0.0) or 0.0)
+        except Exception:
+            continue
+        if not op_id:
+            continue
+        asset = asset_by_id.get(asset_id)
+        try:
+            canonical = str(getattr(asset, "canonical", "") or "UNKNOWN")
+        except Exception:
+            canonical = "UNKNOWN"
+        blobs = _wire_evidence_texts(operation)
+        if asset is not None:
+            blobs = blobs + _wire_evidence_texts(asset)
+        joined = "\n".join(blobs)
+        try:
+            loc = getattr(operation, "location", None)
+            path = str(getattr(loc, "file", "") or "") if loc else ""
+            uri = str(getattr(loc, "uri", "") or "") if loc else ""
+        except Exception:
+            path, uri = "", ""
+        services = _wire_kv_all(joined, "service")
+        endpoints = _wire_kv_all(joined, "endpoint")
+        if uri and "://" in uri and uri not in endpoints:
+            endpoints.append(uri)
+        for match in _URL_RE.finditer(joined):
+            if match.group(0) not in endpoints:
+                endpoints.append(match.group(0))
+        images = _wire_kv_all(joined, "image")
+        layers = _wire_kv_all(joined, "layer")
+        fps = _wire_kv_all(joined, "fingerprint")
+        cert_refs = _wire_kv_all(joined, "cert_ref")
+        key_refs = _wire_kv_all(joined, "key_ref")
+        kms_refs = _wire_kv_all(joined, "kms_ref")
+        owners = _wire_kv_all(joined, "owner")
+        service = _wire_first(services)
+        endpoint = _wire_first(endpoints)
+        image = _wire_first(images)
+        # Container inner URIs (image:<ref>/layer:<digest>/<rel>) carry
+        # the image identity even when notes are absent.
+        if not image and path.startswith("image:"):
+            image = path[len("image:"):].split("/layer:")[0].split("/")[0]
+        cert_fp = _wire_first(
+            [v for v in fps if _SHA_FP_RE.search(v)] + fps)
+        cert_cfg = ""
+        for ref in cert_refs + key_refs:
+            base = ref.replace("\\", "/").split("/")[-1].lower()
+            if base in cert_files:
+                cert_cfg = cert_files[base]
+                break
+            if not cert_cfg and len(ref) <= 200:
+                cert_cfg = ref
+        key_id = _wire_first(
+            [v for v in kms_refs + key_refs if v != cert_cfg])
+        cloud = _wire_first(
+            [v for v in kms_refs + cert_refs + key_refs
+             if v.startswith("arn:")])
+        try:
+            impl = getattr(operation, "implementation", None)
+            library = str(getattr(impl, "library", "") or "") if impl else ""
+            version = str(getattr(impl, "version", "") or "") \
+                if impl else ""
+        except Exception:
+            library, version = "", ""
+        try:
+            ctx = getattr(operation, "context", None)
+            exposure = str(getattr(getattr(ctx, "exposure", None), "value",
+                                   None)
+                           or getattr(ctx, "exposure", "") or "")
+        except Exception:
+            exposure = ""
+        try:
+            key_size = getattr(asset, "key_size", None)
+            mode = getattr(asset, "mode", None)
+            curve = getattr(asset, "curve", None)
+            protocol = getattr(asset, "protocol", None)
+        except Exception:
+            key_size = mode = curve = protocol = None
+        try:
+            usage = str(getattr(getattr(operation, "risk_inputs", None),
+                                "usage_state", None) or "")
+            if not usage or "." in usage:
+                usage = usage.rsplit(".", 1)[-1]
+        except Exception:
+            usage = ""
+        op_dict: dict = {
+            "operation_id": op_id,
+            "operation_type": op_type,
+            "canonical_name": canonical,
+            "asset_id": asset_id,
+            "confidence": confidence,
+            "usage_state": usage or "Possible",
+            "location": {"file": path,
+                         **({"service": service} if service else {}),
+                         **({"endpoint": endpoint} if endpoint else {}),
+                         **({"image": image} if image else {}),
+                         **({"config": cert_cfg} if cert_cfg and service
+                             else {})},
+            "implementation": {
+                **({"library": library} if library else {}),
+                **({"version": version} if version else {}),
+                **({"container_layer": _wire_first(layers)}
+                   if layers else {}),
+            },
+            "context": {**({"service": service} if service else {}),
+                        **({"owner": _wire_first(owners)}
+                           if owners else {}),
+                        **({"exposure": exposure} if exposure else {})},
+            "material": {
+                **({"key_id": key_id} if key_id else {}),
+                **({"cert_fingerprint": cert_fp} if cert_fp else {}),
+                **({"cloud_resource_id": cloud} if cloud else {}),
+            },
+        }
+        op_dicts.append(op_dict)
+        for prefix, key in (("svc:", service), ("ep:", endpoint),
+                            ("img:", image),
+                            ("key:", key_id),
+                            ("cert:", cert_fp or cert_cfg),
+                            ("cloud:", cloud),
+                            ("owner:", _wire_first(owners))):
+            if key:
+                _track(prefix + _slug(key), path)
+
+    for asset in assets:
+        try:
+            aid = str(getattr(asset, "asset_id", "") or "")
+            canonical = str(getattr(asset, "canonical", "") or "")
+        except Exception:
+            continue
+        if aid and canonical:
+            asset_dicts.append({"asset_id": aid,
+                                "canonical_name": canonical})
+
+    rich = build_graph(op_dicts, asset_dicts, [])
+    wire = to_cir_graph(rich)
+    # Drop the op->asset derives edges the minimal rebuild already
+    # expresses as USES (one link per semantic; no parallel dupes).
+    op_ids = {d["operation_id"] for d in op_dicts}
+    asset_ids = {d["asset_id"] for d in asset_dicts}
+    nodes: list[dict] = []
+    edges: list[dict] = []
+    for node in wire.get("nodes", []) or []:
+        if not isinstance(node, dict) or not node.get("id"):
+            continue
+        nid = str(node["id"])
+        if nid in op_ids or nid in asset_ids:
+            continue  # minimal rebuild owns op/asset/file nodes
+        nodes.append(node)
+    for edge in wire.get("edges", []) or []:
+        if not isinstance(edge, dict):
+            continue
+        src, dst = str(edge.get("from", "")), str(edge.get("to", ""))
+        if src in op_ids and dst in asset_ids:
+            continue
+        if src and dst:
+            edges.append(edge)
+
+    provenance: dict[str, str] = {}
+    for node in nodes:
+        nid = str(node["id"])
+        files = key_files.get(nid, set())
+        # file:/library: prefixed ids never occur here, but guard anyway.
+        if len(files) > 1:
+            provenance[nid] = "inferred"
+            node["ref"] = "inferred:" + nid
+            label = str(node.get("label", "") or nid)
+            if not label.endswith(" (inferred)"):
+                node["label"] = label + " (inferred)"
+        else:
+            provenance[nid] = "observed"
+            node["ref"] = "observed:" + nid
+    observed = sum(1 for v in provenance.values() if v == "observed")
+    return {"nodes": nodes, "edges": edges, "provenance": provenance,
+            "counts": {"nodes": len(nodes), "edges": len(edges),
+                       "observed": observed,
+                       "inferred": len(provenance) - observed}}

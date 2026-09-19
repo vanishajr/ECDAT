@@ -16,6 +16,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { Background, Controls, Handle, Position, ReactFlow } from "@xyflow/react";
 import heroOrbit from "../hero-orbit.png";
 import {
   ChangeEvent,
@@ -34,6 +35,10 @@ type InputInfo = {
   extensions: string[];
   languages: string[];
   architecture: string;
+  artifact_counts?: Record<string, number>;
+  surfaces?: Record<string, number>;
+  archives?: Array<Record<string, any>>;
+  skipped?: Array<{ path?: string; reason?: string }>;
 };
 
 type Job = {
@@ -60,6 +65,14 @@ type GithubRepository = {
   updated_at: string | null;
 };
 type GithubProjectStatus = "idle" | "loading" | "uploaded";
+type Demo = {
+  id: string;
+  name: string;
+  description: string;
+  language: string;
+  files: string[];
+  code: string;
+};
 
 const API = "/api";
 const layers = [
@@ -73,13 +86,23 @@ const layers = [
   ["cloud", "Cloud resources"],
 ];
 const tabs = [
-  "Analytics",
-  "Risk level",
-  "Graph",
+  "Overview",
   "Findings",
-  "Assets",
-  "Operations",
-  "Recommendations",
+  "Crypto Inventory",
+  "Crypto Graph",
+  "Migration",
+  "Coverage",
+];
+
+// Local/static coverage is automatic for every profile (Phase 3+); the
+// user only opts in to external discovery. Kept in sync with the
+// backend DEFAULT_SCANNERS list.
+const AUTO_LOCAL = [
+  "source",
+  "dependency",
+  "binary",
+  "config",
+  "certificate",
 ];
 
 const api = async (url: string, init?: RequestInit) => {
@@ -106,6 +129,11 @@ const bytes = (value = 0) =>
     ? `${Math.max(1, Math.ceil(value / 1024))} KB`
     : `${(value / 1024 / 1024).toFixed(1)} MB`;
 
+const surfaceNames = (surfaces?: Record<string, number>) =>
+  Object.entries(surfaces || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([name, count]) => `${name} (${count})`);
+
 const tone = (level = "info") => {
   const tones: Record<string, string> = {
     critical: "bg-[#762f32] text-white",
@@ -126,6 +154,19 @@ const dotTone = (level = "info") => {
     info: "bg-[#6586a4]",
   };
   return tones[level.toLowerCase()] || tones.info;
+};
+
+// Risk-circle accent: tinted ring + score number per risk level,
+// reusing the severity palette. Restrained: track stays neutral.
+const riskAccent = (level = "info") => {
+  const accents: Record<string, string> = {
+    critical: "border-[#b8424d] text-[#8b1f24]",
+    high: "border-[#a96f52] text-[#8a5636]",
+    medium: "border-[#d78b3e] text-[#8a6414]",
+    low: "border-[#b88945] text-[#6f5a1e]",
+    info: "border-[#6586a4] text-[#3d5a73]",
+  };
+  return accents[level.toLowerCase()] || "border-[#d5d1c8] text-[#181a19]";
 };
 
 function Button({
@@ -189,16 +230,32 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState<InputInfo | null>(null);
-  const [profile, setProfile] = useState("standard");
+  // Single default analysis mode: the backend always runs the standard
+  // profile. No depth selector is exposed.
   const [selected, setSelected] = useState<string[]>([
     "source",
     "dependency",
     "config",
     "certificate",
   ]);
+  // Phase 12 scan-plan UX: automatic discovery by default; manual scanner
+  // overrides live under Advanced for debugging/expert usage.
+  const [advanced, setAdvanced] = useState(false);
+  const [allowPull, setAllowPull] = useState(false);
+  const [allowBuild, setAllowBuild] = useState(false);
+  const [probeRuntime, setProbeRuntime] = useState(false);
+  const [connectCloud, setConnectCloud] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [result, setResult] = useState<Result | null>(null);
-  const [tab, setTab] = useState("Analytics");
+  const [tab, setTab] = useState("Overview");
+  const [exportFormat, setExportFormat] = useState("pdf");
+  // Cross-tab rule focus: "View migration/finding" jumps set both the
+  // target tab and a rule filter. Cleared on manual tab switches.
+  const [ruleFocus, setRuleFocus] = useState<string | null>(null);
+  const jump = (next: string, rule: string | null) => {
+    setRuleFocus(rule);
+    setTab(next);
+  };
   const [error, setError] = useState("");
   const [githubUrl, setGithubUrl] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -215,6 +272,12 @@ export default function App() {
   const [githubProjectStatus, setGithubProjectStatus] =
     useState<GithubProjectStatus>("idle");
   const [githubProgress, setGithubProgress] = useState(0);
+  // Demo inputs (alternative to file upload).
+  const [demos, setDemos] = useState<Demo[]>([]);
+  const [demoId, setDemoId] = useState("");
+  const [demoBusy, setDemoBusy] = useState(false);
+  // Demo currently loaded as the scan input (button shows Loaded/disabled).
+  const [loadedDemoId, setLoadedDemoId] = useState("");
 
   const loadRepositories = async () => {
     setRepositoriesLoading(true);
@@ -234,6 +297,9 @@ export default function App() {
         setGithubSession(session);
         if (session.authenticated) void loadRepositories();
       })
+      .catch(() => undefined);
+    void api("/demos")
+      .then((data) => setDemos(data.demos || []))
       .catch(() => undefined);
   }, []);
 
@@ -264,6 +330,7 @@ export default function App() {
         }),
       });
       setInput(selectedInput);
+      setLoadedDemoId("");
       setResult(null);
       setJob(null);
       setGithubProgress(100);
@@ -293,7 +360,9 @@ export default function App() {
     setJob(null);
     setResult(null);
     setError("");
-    setTab("Analytics");
+    setTab("Overview");
+    setRuleFocus(null);
+    setLoadedDemoId("");
     setGithubProjectStatus("idle");
     setGithubProgress(0);
   };
@@ -339,6 +408,7 @@ export default function App() {
         body: JSON.stringify({ input_id: inputId }),
       });
       setInput(inspected);
+      setLoadedDemoId("");
       setResult(null);
       setJob(null);
     } catch (e) {
@@ -371,6 +441,7 @@ export default function App() {
           body: JSON.stringify({ url: githubUrl }),
         }),
       );
+      setLoadedDemoId("");
       setResult(null);
       setJob(null);
       setGithubProgress(100);
@@ -381,6 +452,48 @@ export default function App() {
       setError(e instanceof Error ? e.message : "Could not clone repository");
     }
   };
+  const useInput = (selectedInput: InputInfo) => {
+    setInput(selectedInput);
+    setResult(null);
+    setJob(null);
+  };
+
+  const useDemo = async () => {
+    if (!demoId) return;
+    setError("");
+    setDemoBusy(true);
+    try {
+      const selectedInput = await api("/demos/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demo_id: demoId }),
+      });
+      useInput(selectedInput);
+      setLoadedDemoId(demoId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load demo");
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
+  const scanBody = () => {
+    const scanners = advanced
+      ? selected
+      : [
+          ...AUTO_LOCAL,
+          ...(probeRuntime ? ["runtime"] : []),
+          ...(connectCloud ? ["cloud"] : []),
+        ];
+    const body: Record<string, any> = {
+      input_id: input?.input_id,
+      profile: "standard",
+      scanners,
+      allowPull,
+      allowBuild,
+    };
+    return body;
+  };
 
   const analyse = async () => {
     if (!input) return;
@@ -389,11 +502,7 @@ export default function App() {
       const started = (await api("/scan-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          input_id: input.input_id,
-          profile,
-          scanners: selected,
-        }),
+        body: JSON.stringify(scanBody()),
       })) as Job;
       setJob(started);
     } catch (e) {
@@ -436,6 +545,18 @@ export default function App() {
         : [],
     [result],
   );
+
+  // Repository-relative display: backend report fields are already
+  // relative; raw CIR/canonical paths may still be absolute temp paths.
+  const rel = (path: string) => {
+    const target = result?.canonical?.target || "";
+    if (typeof path !== "string" || !path) return "—";
+    const norm = path.replaceAll("\\", "/");
+    const base = String(target).replaceAll("\\", "/").replace(/\/$/, "");
+    if (base && norm === base) return norm.split("/").pop() || norm;
+    if (base && norm.startsWith(`${base}/`)) return norm.slice(base.length + 1);
+    return path;
+  };
 
   const download = (format: string) => {
     if (result)
@@ -547,6 +668,46 @@ export default function App() {
           ) : (
             <InputSummary input={input} onRemove={() => void reset()} />
           )}
+          <div className="mt-6 border-t border-[#dedbd4] pt-5">
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#282927]">
+              Or try a demo
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <select
+                className="min-w-0 flex-1 rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+                value={demoId}
+                onChange={(event) => setDemoId(event.target.value)}
+                aria-label="Choose a demo file"
+              >
+                <option value="">Choose a demo file…</option>
+                {demos.map((demo) => (
+                  <option key={demo.id} value={demo.id}>
+                    {demo.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="light"
+                disabled={
+                  !demoId ||
+                  demoBusy ||
+                  (loadedDemoId !== "" && loadedDemoId === demoId)
+                }
+                onClick={() => void useDemo()}
+              >
+                {demoBusy
+                  ? "Loading…"
+                  : loadedDemoId !== "" && loadedDemoId === demoId
+                    ? "Loaded"
+                    : "Load demo as input"}
+              </Button>
+            </div>
+            {demoId && (
+              <p className="mt-2 text-xs text-[#74716a]">
+                {demos.find((d) => d.id === demoId)?.description || ""}
+              </p>
+            )}
+          </div>
         </Card>
 
         <Card className="flex flex-col p-5 sm:p-7">
@@ -686,47 +847,114 @@ export default function App() {
           <p className="text-xs font-semibold uppercase tracking-[.2em] text-[#74716a]">
             Analysis configuration
           </p>
-          <h2 className="mt-2 text-xl font-medium">Choose discovery depth</h2>
+          <h2 className="mt-2 text-xl font-medium">Automatic discovery</h2>
         </div>
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {["quick", "standard", "deep"].map((option) => (
-              <button
-                key={option}
-                className={`rounded-full border px-4 py-2 text-sm capitalize transition ${profile === option ? "border-[#181a19] bg-[#181a19] text-white" : "border-[#d4d0c8] bg-white/50 hover:bg-white"}`}
-                onClick={() => setProfile(option)}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {layers.map(([key, label]) => (
-              <label
-                key={key}
-                className="flex items-center gap-2 text-sm text-[#5e5d58]"
-              >
+          <div className="grid gap-4 text-sm text-[#5e5d58] lg:grid-cols-2">
+            <div className="rounded-xl border border-[#d4d0c8] bg-white/50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#8b867d]">
+                Detected locally (automatic)
+              </p>
+              {input ? (
+                <ul className="mt-2 space-y-1">
+                  <li>✓ Source code{input.languages.length ? ` (${input.languages.join(", ")})` : ""}</li>
+                  <li>✓ Dependencies</li>
+                  <li>
+                    ✓ {(input.artifact_counts?.binary ?? 0) > 0 ? `${input.artifact_counts?.binary} binaries` : "Binaries (when present)"}
+                  </li>
+                  <li>
+                    ✓ {(input.artifact_counts?.config ?? 0) > 0 ? `${input.artifact_counts?.config} configuration files` : "Configuration (when present)"}
+                  </li>
+                  <li>
+                    ✓ {(input.artifact_counts?.cert ?? 0) > 0 ? `${input.artifact_counts?.cert} certificates/keys` : "Certificates/keys (when present)"}
+                  </li>
+                  {(input.archives?.length ?? 0) > 0 && (
+                    <li>✓ {input.archives?.length} archives (expanded safely)</li>
+                  )}
+                  {surfaceNames(input.surfaces).length > 0 && (
+                    <li className="text-xs text-[#8b867d]">
+                      Surfaces: {surfaceNames(input.surfaces).join(", ")}
+                    </li>
+                  )}
+                </ul>
+              ) : (
+                <p className="mt-2 text-xs text-[#8b867d]">
+                  Upload a file, folder, or repository to see detected
+                  artifact types. Local analysis needs no manual selection.
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-[#d4d0c8] bg-white/50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#8b867d]">
+                External discovery (opt-in)
+              </p>
+              <label className="mt-2 flex items-center gap-2">
                 <input
                   className="accent-[#181a19]"
                   type="checkbox"
-                  checked={selected.includes(key)}
-                  onChange={() =>
-                    setSelected((current) =>
-                      current.includes(key)
-                        ? current.filter((item) => item !== key)
-                        : [...current, key],
-                    )
-                  }
+                  checked={allowPull}
+                  onChange={() => setAllowPull((v) => !v)}
                 />
-                {label}
-                {["container", "runtime", "cloud"].includes(key) && (
-                  <em className="text-[10px] not-italic text-[#a19b90]">
-                    opt-in
-                  </em>
-                )}
+                Pull/analyze referenced container images
               </label>
-            ))}
+              <label className="mt-1 flex items-center gap-2">
+                <input
+                  className="accent-[#181a19]"
+                  type="checkbox"
+                  checked={probeRuntime}
+                  onChange={() => setProbeRuntime((v) => !v)}
+                />
+                Probe runtime endpoints
+              </label>
+              <label className="mt-1 flex items-center gap-2">
+                <input
+                  className="accent-[#181a19]"
+                  type="checkbox"
+                  checked={connectCloud}
+                  onChange={() => setConnectCloud((v) => !v)}
+                />
+                Connect cloud infrastructure
+              </label>
+              <label className="mt-1 flex items-center gap-2 text-xs text-[#8b867d]">
+                <input
+                  className="accent-[#181a19]"
+                  type="checkbox"
+                  checked={advanced}
+                  onChange={() => setAdvanced((v) => !v)}
+                />
+                Advanced: manual scanner overrides
+              </label>
+            </div>
           </div>
+          {advanced && (
+            <div className="grid gap-2 rounded-xl border border-dashed border-[#c6c1b8] p-3 sm:grid-cols-2 xl:grid-cols-4">
+              {layers.map(([key, label]) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 text-sm text-[#5e5d58]"
+                >
+                  <input
+                    className="accent-[#181a19]"
+                    type="checkbox"
+                    checked={selected.includes(key)}
+                    onChange={() =>
+                      setSelected((current) =>
+                        current.includes(key)
+                          ? current.filter((item) => item !== key)
+                          : [...current, key],
+                      )
+                    }
+                  />
+                  {label}
+                  {["container", "runtime", "cloud"].includes(key) && (
+                    <em className="text-[10px] not-italic text-[#a19b90]">
+                      opt-in
+                    </em>
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
         <Button
           className="w-full lg:w-auto"
@@ -763,7 +991,7 @@ export default function App() {
           <p className="mt-3 text-xs text-[#74716a]">
             {job.status === "failed"
               ? job.error
-              : `Selected layers: ${job.scanners.join(", ")}`}
+              : `Planned scanners: ${job.scanners.join(", ")}${(job as any).persisted ? " · stored in scan history" : ""}`}
           </p>
         </section>
       )}
@@ -781,9 +1009,6 @@ export default function App() {
               Explore the analysis across multiple views.
             </h2>
           </div>
-          <Button disabled={!result} onClick={() => download("pdf")}>
-            Download report <ArrowRight size={16} />
-          </Button>
         </div>
         {!result ? (
           <div className="mt-6 grid min-h-48 place-items-center rounded-2xl border border-dashed border-[#c6c1b8] text-center text-[#74716a]">
@@ -795,8 +1020,8 @@ export default function App() {
                   : "Your results will appear here"}
               </h3>
               <p className="mt-2 max-w-md text-sm">
-                Select a project, choose a profile, and start analysis. Nothing
-                is retained after refresh.
+                Select a project and start analysis. Completed scans persist
+                in the local scan history.
               </p>
             </div>
           </div>
@@ -807,59 +1032,66 @@ export default function App() {
                 <button
                   key={name}
                   className={`shrink-0 rounded-full px-4 py-2.5 text-sm transition ${tab === name ? "bg-[#181a19] text-white" : "bg-white/45 text-[#5e5d58] hover:bg-white"}`}
-                  onClick={() => setTab(name)}
+                  onClick={() => {
+                    setRuleFocus(null);
+                    setTab(name);
+                  }}
                 >
                   {name}
                 </button>
               ))}
             </div>
-            {tab === "Analytics" && <Analytics cards={cards} result={result} />}
-            {tab === "Risk level" && <Risk result={result} />}
-            {tab === "Graph" && <Graph result={result} />}
-            {tab === "Findings" && <Findings items={result.findings} />}
-            {tab === "Assets" && (
-              <DataTable
-                title="Crypto assets"
-                items={result.assets}
-                columns={[
-                  "canonical",
-                  "usage_state",
-                  "confidence",
-                  "library",
-                  "key_size",
-                  "mode",
-                ]}
+            {tab === "Overview" && (
+              <Overview cards={cards} result={result} rel={rel} />
+            )}
+            {tab === "Findings" && (
+              <GroupedFindings
+                result={result}
+                rel={rel}
+                focusRule={ruleFocus}
+                onClearFocus={() => setRuleFocus(null)}
+                jump={jump}
               />
             )}
-            {tab === "Operations" && (
-              <DataTable
-                title="Cryptographic operations"
-                items={result.operations}
-                columns={[
-                  "operation_type",
-                  "operation_id",
-                  "asset_id",
-                  "confidence",
-                ]}
+            {tab === "Crypto Inventory" && (
+              <Inventory
+                result={result}
+                rel={rel}
+                focusRule={ruleFocus}
+                onClearFocus={() => setRuleFocus(null)}
+                jump={jump}
               />
             )}
-            {tab === "Recommendations" && (
-              <Recommendations items={result.recommendations} />
+            {tab === "Crypto Graph" && (
+              <CryptoGraph result={result} rel={rel} jump={jump} />
             )}
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["html", "markdown", "json", "cir", "sarif", "csv"].map(
-                (format) => (
+            {tab === "Migration" && (
+              <Migration
+                result={result}
+                focusRule={ruleFocus}
+                onClearFocus={() => setRuleFocus(null)}
+                jump={jump}
+              />
+            )}
+            {tab === "Coverage" && <CoverageView result={result} />}
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {["pdf", "json", "cir"].map((format) => (
                   <Button
                     key={format}
-                    variant="light"
-                    onClick={() => download(format)}
+                    variant={exportFormat === format ? "dark" : "light"}
+                    onClick={() => setExportFormat(format)}
                   >
                     {format.toUpperCase()}
                   </Button>
-                ),
-              )}
-              <Button variant="light" disabled>
-                Export image · soon
+                ))}
+              </div>
+              <Button
+                className="w-full sm:w-auto"
+                disabled={!result}
+                onClick={() => download(exportFormat)}
+              >
+                Download report <ArrowRight size={16} />
               </Button>
             </div>
           </>
@@ -890,33 +1122,6 @@ function InputSummary({
           <Trash2 size={17} />
         </button>
       </div>
-      <dl className="mt-7 grid gap-4 border-t border-[#dedbd4] pt-5 text-sm sm:grid-cols-3">
-        <div>
-          <dt className="text-xs uppercase tracking-wider text-[#8b867d]">
-            Architecture
-          </dt>
-          <dd className="mt-1">{input.architecture}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wider text-[#8b867d]">
-            Languages
-          </dt>
-          <dd className="mt-1 break-words">
-            {input.languages.join(", ") || "Mixed / unknown"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wider text-[#8b867d]">
-            Extensions
-          </dt>
-          <dd className="mt-1 break-words">
-            {input.extensions.join(" · ") || "No extension data"}
-          </dd>
-        </div>
-      </dl>
-      <p className="mt-6 flex items-center gap-2 text-xs text-[#74716a]">
-        <Check size={15} /> Input details stay visible for this page session.
-      </p>
     </div>
   );
 }
@@ -983,25 +1188,45 @@ function GithubProjectStatus({
             <b className="block text-[#303c31]">Size</b>
             {bytes(input.total_bytes)}
           </span>
-          <span>
-            <b className="block text-[#303c31]">Architecture</b>
-            {input.architecture}
-          </span>
-          <span>
-            <b className="block text-[#303c31]">Languages</b>
-            {input.languages.join(", ") || "Mixed"}
-          </span>
         </div>
       )}
     </div>
   );
 }
 
-function Analytics({ cards, result }: { cards: any[]; result: Result }) {
+function Overview({
+  cards,
+  result,
+  rel,
+}: {
+  cards: any[];
+  result: Result;
+  rel: (path: string) => string;
+}) {
   const risk = result.analytics.risk;
-  const by = result.report.by_severity || {};
+  const rep = result.report || {};
+  const by = rep.by_severity || {};
+  const rawScore = Number(risk?.score ?? 0);
+  // Risk score is 0..10 on the wire (legacy values may exceed 10);
+  // normalize to 0..1 for the progress ring.
+  const fraction = Number.isFinite(rawScore)
+    ? Math.min(1, Math.max(0, rawScore <= 10 ? rawScore / 10 : rawScore / 100))
+    : 0;
+  const percent = Math.round(fraction * 100);
+  const ringColor: Record<string, string> = {
+    critical: "#b8424d",
+    high: "#a96f52",
+    medium: "#d78b3e",
+    low: "#b88945",
+    info: "#6586a4",
+  };
+  const ring =
+    ringColor[String(risk?.level || "info").toLowerCase()] || ringColor.info;
+  const R = 60;
+  const CIRC = 2 * Math.PI * R;
   return (
-    <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_.8fr_1fr]">
+    <div className="mt-5 space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr_1fr]">
       <Card className="p-5">
         <h3 className="text-xs uppercase tracking-[.18em]">Overview</h3>
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -1013,31 +1238,51 @@ function Analytics({ cards, result }: { cards: any[]; result: Result }) {
             </div>
           ))}
         </div>
-        <dl className="mt-6 grid grid-cols-2 gap-3 border-t border-[#dedbd4] pt-5 text-sm">
-          <div>
-            <dt className="text-xs text-[#8b867d]">Target</dt>
-            <dd className="mt-1 truncate">{result.canonical.target}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-[#8b867d]">Files scanned</dt>
-            <dd className="mt-1">{result.analytics.files_scanned}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-[#8b867d]">Registry</dt>
-            <dd className="mt-1">
-              {result.analytics.registry_version || "not provided"}
-            </dd>
-          </div>
-        </dl>
+        <div className="mt-5 border-t border-[#dedbd4] pt-4">
+          <h4 className="text-xs uppercase tracking-[.18em] text-[#8b867d]">
+            Summary
+          </h4>
+          <p className="mt-2 text-sm leading-6 text-[#5e5d58]">
+            {rep.summary || "No summary available for this scan."}
+          </p>
+        </div>
       </Card>
       <Card className="p-5">
         <h3 className="text-xs uppercase tracking-[.18em]">Risk summary</h3>
-        <div className="mx-auto mt-5 grid h-36 w-36 place-items-center rounded-full border-[14px] border-[#d5d1c8] text-center shadow-inner">
-          <div>
-            <b className="block text-2xl">{risk.score}</b>
-            <span className="text-xs capitalize text-[#74716a]">
-              {risk.level}
-            </span>
+        <div className="relative mx-auto mt-5 h-36 w-36">
+          <svg viewBox="0 0 144 144" className="h-full w-full -rotate-90">
+            <circle
+              cx="72"
+              cy="72"
+              r={R}
+              fill="none"
+              stroke="#e3e0d8"
+              strokeWidth="14"
+            />
+            <circle
+              cx="72"
+              cy="72"
+              r={R}
+              fill="none"
+              stroke={ring}
+              strokeWidth="14"
+              strokeLinecap="round"
+              strokeDasharray={CIRC}
+              strokeDashoffset={CIRC * (1 - fraction)}
+              style={{ transition: "stroke-dashoffset 0.6s ease" }}
+            />
+          </svg>
+          <div className="absolute inset-0 grid place-items-center text-center">
+            <div>
+              <b
+                className={`block text-2xl ${riskAccent(risk.level).split(" ")[1]}`}
+              >
+                {percent}%
+              </b>
+              <span className="text-xs capitalize text-[#74716a]">
+                {risk.level}
+              </span>
+            </div>
           </div>
         </div>
         <div className="mt-5 space-y-2">
@@ -1051,107 +1296,1231 @@ function Analytics({ cards, result }: { cards: any[]; result: Result }) {
         </div>
       </Card>
       <Card className="p-5">
-        <h3 className="text-xs uppercase tracking-[.18em]">Recent findings</h3>
+        <h3 className="text-xs uppercase tracking-[.18em]">Top issues</h3>
         <div className="mt-5 space-y-4">
-          {result.findings.slice(0, 5).map((finding: any, index: number) => (
+          {(rep.top_issues || []).slice(0, 5).map((issue: any, index: number) => (
             <div
               className="flex items-center gap-3 text-sm"
-              key={`${finding.rule_id}-${index}`}
+              key={`${issue.rule_id}-${index}`}
             >
               <i
-                className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotTone(finding.severity)}`}
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotTone(issue.severity)}`}
               />
-              <span className="min-w-0 flex-1 truncate">{finding.title}</span>
+              <span className="min-w-0 flex-1 truncate" title={issue.title}>
+                {issue.title} · {issue.count} occurrence
+                {issue.count === 1 ? "" : "s"}
+              </span>
               <b className="text-xs capitalize text-[#74716a]">
-                {finding.severity}
+                {issue.severity}
               </b>
             </div>
           ))}
+          {!(rep.top_issues || []).length &&
+            result.findings.slice(0, 5).map((finding: any, index: number) => (
+              <div
+                className="flex items-center gap-3 text-sm"
+                key={`${finding.rule_id}-${index}`}
+              >
+                <i
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotTone(finding.severity)}`}
+                />
+                <span className="min-w-0 flex-1 truncate">{finding.title}</span>
+                <b className="text-xs capitalize text-[#74716a]">
+                  {finding.severity}
+                </b>
+              </div>
+            ))}
+          {!(rep.top_issues || []).length && !result.findings.length && (
+            <p className="text-sm text-[#74716a]">No findings.</p>
+          )}
         </div>
+        {(rep.migration_counts ||
+          (rep.recommendations || []).length > 0) && (
+          <div className="mt-5 border-t border-[#dedbd4] pt-4 text-sm text-[#74716a]">
+            Migration:{" "}
+            {rep.migration_counts
+              ? `${rep.migration_counts.Immediate ?? 0} immediate · ${rep.migration_counts["High priority"] ?? 0} high priority · ${rep.migration_counts.Planned ?? 0} planned`
+              : `${(rep.recommendations || []).length} action(s)`}
+          </div>
+        )}
       </Card>
+      </div>
     </div>
   );
 }
 
-function Risk({ result }: { result: Result }) {
+function GroupedFindings({
+  result,
+  rel,
+  focusRule,
+  onClearFocus,
+  jump,
+}: {
+  result: Result;
+  rel: (path: string) => string;
+  focusRule?: string | null;
+  onClearFocus?: () => void;
+  jump?: (tab: string, rule: string | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [severity, setSeverity] = useState("all");
+  const [view, setView] = useState<"findings" | "files" | "areas">("findings");
+  const groups: any[] = result.report?.finding_groups || [];
+  // Exact finding -> P1 risk record join via CIR operation id.
+  const riskByOp: Record<string, any> = {};
+  for (const r of result.risks || []) {
+    if (r && r.operation_id) riskByOp[String(r.operation_id)] = r;
+  }
+  // Finding group -> migration action join via shared rule_id.
+  const migrationByRule: Record<string, any> = {};
+  const allActions: any[] = result.report?.migration_actions ||
+    result.report?.recommendations ||
+    [];
+  for (const a of allActions) {
+    if (a && a.rule_id && !migrationByRule[a.rule_id]) migrationByRule[a.rule_id] = a;
+  }
+  for (const gname of Object.keys(result.report?.migration_groups || {})) {
+    for (const a of result.report.migration_groups[gname] || []) {
+      if (a && a.rule_id && !migrationByRule[a.rule_id]) migrationByRule[a.rule_id] = a;
+    }
+  }
+  const visibleGroups = groups.filter((group: any) => {
+    if (focusRule && group.rule_id !== focusRule) return false;
+    if (severity !== "all" && group.severity !== severity) return false;
+    if (!query.trim()) return true;
+    const haystack =
+      `${group.rule_id} ${group.title} ${group.severity} ${group.occurrences.map((o: any) => o.file).join(" ")}`.toLowerCase();
+    return haystack.includes(query.toLowerCase());
+  });
+  const fallback = !groups.length
+    ? result.findings.filter((finding: any) => {
+        if (focusRule && finding.rule_id !== focusRule) return false;
+        if (severity !== "all" && finding.severity !== severity) return false;
+        if (!query.trim()) return true;
+        return `${finding.rule_id} ${finding.title} ${finding.file}`.toLowerCase().includes(query.toLowerCase());
+      })
+    : [];
   return (
-    <div className="mt-5 grid gap-4 md:grid-cols-2">
-      {result.risks.length ? (
-        result.risks.map((item: any) => (
-          <Card className="p-5" key={item.risk_id}>
-            <span
-              className={`inline-flex rounded-full px-3 py-1 text-xs capitalize ${tone(item.class)}`}
+    <Card className="mt-5 p-5">
+      {focusRule && (
+        <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#d4d0c8] bg-white/60 px-4 py-2.5 text-sm">
+          <span className="min-w-0 flex-1 truncate">
+            Focused on rule <b>{focusRule}</b>
+          </span>
+          <button
+            className="shrink-0 rounded-full bg-[#e8e4dc] px-3 py-1 text-xs text-[#5e5d58] hover:bg-[#dedbd4]"
+            onClick={() => onClearFocus && onClearFocus()}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-52 flex-1 items-center gap-2 rounded-full border border-[#d4d0c8] bg-white/60 px-3 py-2">
+          <Search size={15} />
+          <input
+            className="w-full bg-transparent text-sm outline-none placeholder:text-[#aaa69d]"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search findings, rules, files…"
+          />
+        </div>
+        <div className="flex gap-1">
+          {["all", "critical", "high", "medium", "low", "info"].map((level) => (
+            <button
+              key={level}
+              className={`rounded-full px-3 py-1.5 text-xs capitalize ${severity === level ? "bg-[#181a19] text-white" : "bg-[#e8e4dc] text-[#68645c]"}`}
+              onClick={() => setSeverity(level)}
             >
-              {item.class}
-            </span>
-            <h3 className="mt-4 text-lg font-medium">{item.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-[#74716a]">
-              {item.description ||
-                item.rationale ||
-                "Risk details supplied by the P1 risk engine."}
+              {level}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 flex gap-1">
+        {(["findings", "files", "areas"] as const).map((v) => (
+          <button
+            key={v}
+            className={`rounded-full px-3 py-1.5 text-xs capitalize ${view === v ? "bg-[#181a19] text-white" : "bg-[#e8e4dc] text-[#68645c]"}`}
+            onClick={() => setView(v)}
+          >
+            {v === "areas" ? "Affected areas" : v}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 space-y-3">
+        {view === "areas" ? (
+          <AffectedAreas result={result} />
+        ) : view === "files" ? (
+          <FilesView
+            groups={visibleGroups}
+            query={query}
+            fallback={fallback}
+            rel={rel}
+          />
+        ) : visibleGroups.length ? (
+          visibleGroups.map((group: any) => (
+            <FindingCard
+              key={`${group.rule_id}-${group.severity}`}
+              group={group}
+              rel={rel}
+              riskByOp={riskByOp}
+              methodology={result.report?.methodology}
+              migration={migrationByRule[group.rule_id]}
+              jump={jump}
+            />
+          ))
+        ) : fallback.length ? (
+          fallback.slice(0, 50).map((finding: any, index: number) => (
+            <div
+              key={index}
+              className="flex items-center gap-3 rounded-xl border border-[#dedbd4] bg-white/45 p-4 text-sm"
+            >
+              <i
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotTone(finding.severity)}`}
+              />
+              <div className="min-w-0 flex-1">
+                <b className="block truncate">{finding.title}</b>
+                <span className="text-xs text-[#74716a]">
+                  {finding.rule_id} · {rel(finding.file)}:{finding.line}
+                </span>
+              </div>
+              <b className="text-xs capitalize text-[#74716a]">
+                {finding.severity}
+              </b>
+            </div>
+          ))
+        ) : (
+          <Empty label="No findings match this filter." />
+        )}
+      </div>
+    </Card>
+  );
+}
+function Occurrence({
+  occ,
+  rel,
+  riskByOp,
+  methodology,
+}: {
+  occ: any;
+  rel: (path: string) => string;
+  riskByOp: Record<string, any>;
+  methodology?: any;
+}) {
+  const risk = occ.op_id ? riskByOp[occ.op_id] : undefined;
+  const conf =
+    typeof occ.confidence === "number"
+      ? `${Math.round(occ.confidence * 100)}%`
+      : null;
+  const assumptions = String(risk?.rationale || "")
+    .split(";")
+    .map((s: string) => s.trim())
+    .filter(Boolean);
+  return (
+    <div className="text-sm">
+      <code className="text-xs">
+        {rel(occ.file)}:{occ.line}
+      </code>
+      <div className="mt-1 flex flex-wrap gap-2 text-xs text-[#74716a]">
+        <span>
+          Risk: <b className="capitalize text-[#292a28]">{occ.severity}</b>
+        </span>
+        {conf && <span>Confidence: {conf}</span>}
+        {occ.usage_state && <span>Usage: {occ.usage_state}</span>}
+        {occ.algorithm && <span>Algorithm: {occ.algorithm}</span>}
+      </div>
+      {occ.snippet && (
+        <pre className="mt-1 overflow-x-auto rounded-lg bg-[#ece9e2] p-2 text-xs">
+          {occ.snippet.slice(0, 300)}
+        </pre>
+      )}
+      {risk && (
+        <details className="mt-2 rounded-lg border border-[#e4e0d8] bg-white/60 px-3 py-2">
+          <summary className="cursor-pointer text-xs font-medium">
+            Why this risk?
+          </summary>
+          <div className="mt-2 space-y-1 text-xs text-[#5e5d58]">
+            <p>
+              Risk <b className="capitalize">{risk.class}</b> · Score{" "}
+              {risk.score} / 10
+              {typeof risk.confidence === "number" &&
+                ` · Confidence ${Math.round(risk.confidence * 100)}%`}
             </p>
-            <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-[#dedbd4] pt-4 text-sm">
-              <div>
-                <dt className="text-xs text-[#8b867d]">Score</dt>
-                <dd>{item.score}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-[#8b867d]">Confidence</dt>
-                <dd>{item.confidence ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-[#8b867d]">Operation</dt>
-                <dd className="truncate">{item.operation_id || "—"}</dd>
-              </div>
-            </dl>
-          </Card>
-        ))
-      ) : (
-        <Empty label="No risk records were returned for this scan." />
+            {assumptions.length > 0 && (
+              <ul className="list-disc space-y-0.5 pl-5">
+                {assumptions.slice(0, 8).map((a: string, i: number) => (
+                  <li key={i}>{a}</li>
+                ))}
+              </ul>
+            )}
+            <details className="pt-1">
+              <summary className="cursor-pointer font-medium">
+                Show scoring methodology
+              </summary>
+              <p className="mt-1 break-words">
+                {risk.description || "No engine record available."}
+              </p>
+              {methodology?.risk_model && (
+                <p className="mt-1 break-words text-[#8b867d]">
+                  {methodology.risk_model}
+                </p>
+              )}
+            </details>
+          </div>
+        </details>
       )}
     </div>
   );
 }
-function Graph({ result }: { result: Result }) {
-  const graph = result.graph;
+
+function FindingCard({
+  group,
+  rel,
+  riskByOp,
+  methodology,
+  migration,
+  jump,
+}: {
+  group: any;
+  rel: (path: string) => string;
+  riskByOp: Record<string, any>;
+  methodology?: any;
+  migration?: any;
+  jump?: (tab: string, rule: string | null) => void;
+}) {
   return (
-    <Card className="mt-5 p-5">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {graph.nodes.length ? (
-          graph.nodes.map((node: any) => (
+    <details className="rounded-xl border border-[#dedbd4] bg-white/45 p-4">
+      <summary className="cursor-pointer text-sm">
+        <span
+          className={`mr-2 inline-flex rounded-full px-2.5 py-0.5 text-xs capitalize text-white ${tone(group.severity).split(" ")[0]}`}
+        >
+          {group.severity}
+        </span>
+        <b>{group.title}</b>
+        <span className="text-[#74716a]">
+          {" "}
+          · {group.count} occurrence{group.count === 1 ? "" : "s"} across{" "}
+          {group.file_count} file{group.file_count === 1 ? "" : "s"}
+        </span>
+      </summary>
+      <div className="mt-3 space-y-3 border-t border-[#e4e0d8] pt-3">
+        {group.occurrences.slice(0, 25).map((occ: any, index: number) => (
+          <Occurrence
+            key={index}
+            occ={occ}
+            rel={rel}
+            riskByOp={riskByOp}
+            methodology={methodology}
+          />
+        ))}
+        {group.count > 25 && (
+          <p className="text-xs text-[#74716a]">
+            … and {group.count - 25} more occurrence(s).
+          </p>
+        )}
+      </div>
+      {(migration?.why_text || migration) && (
+        <div className="mt-3 rounded-lg bg-white/60 p-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#8b867d]">
+            Why this matters
+          </p>
+          <p className="mt-1 leading-6 text-[#5e5d58]">
+            {migration.why_text || migration.action}
+          </p>
+          {jump && (
+            <button
+              className="mt-2 rounded-full bg-[#181a19] px-3 py-1.5 text-xs text-white hover:bg-[#30312f]"
+              onClick={() => jump("Migration", group.rule_id)}
+            >
+              View migration action
+            </button>
+          )}
+        </div>
+      )}
+    </details>
+  );
+}
+
+function FilesView({
+  groups,
+  query,
+  fallback,
+  rel,
+}: {
+  groups: any[];
+  query: string;
+  fallback: any[];
+  rel: (path: string) => string;
+}) {
+  const rank: Record<string, number> = {
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+    info: 4,
+  };
+  const byFile: Record<
+    string,
+    { file: string; count: number; rules: string[]; worst: string }
+  > = {};
+  for (const g of groups) {
+    for (const o of g.occurrences || []) {
+      const slot = (byFile[o.file] ||= {
+        file: o.file,
+        count: 0,
+        rules: [],
+        worst: "info",
+      });
+      slot.count += 1;
+      if (!slot.rules.includes(g.rule_id)) slot.rules.push(g.rule_id);
+      if ((rank[o.severity] ?? 9) < (rank[slot.worst] ?? 9)) {
+        slot.worst = o.severity;
+      }
+    }
+  }
+  const rows = Object.values(byFile)
+    .filter(
+      (r) =>
+        !query.trim() ||
+        `${r.file} ${r.rules.join(" ")}`.toLowerCase().includes(query.toLowerCase()),
+    )
+    .sort((a, b) => b.count - a.count || a.file.localeCompare(b.file));
+  if (!rows.length && !fallback.length) {
+    return <Empty label="No findings match this filter." />;
+  }
+  if (!rows.length) {
+    return <Empty label="No files match this filter." />;
+  }
+  return (
+    <div className="space-y-2">
+      {rows.slice(0, 100).map((r) => (
+        <div
+          key={r.file}
+          className="flex items-center gap-3 rounded-xl border border-[#dedbd4] bg-white/45 p-4 text-sm"
+        >
+          <i className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotTone(r.worst)}`} />
+          <div className="min-w-0 flex-1">
+            <code className="block truncate text-xs">{rel(r.file)}</code>
+            <span className="text-xs text-[#74716a]">
+              {r.count} occurrence{r.count === 1 ? "" : "s"} ·{" "}
+              {r.rules.join(", ")}
+            </span>
+          </div>
+          <b className="shrink-0 text-xs capitalize text-[#74716a]">
+            {r.worst}
+          </b>
+        </div>
+      ))}
+      {rows.length > 100 && (
+        <p className="text-xs text-[#74716a]">
+          … and {rows.length - 100} more files.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AffectedAreas({ result }: { result: Result }) {
+  const items: any[] = result.report?.components || [];
+  const fallback: any[] = !items.length ? result.report?.top_files || [] : [];
+  return (
+    <div>
+      <h3 className="text-xs uppercase tracking-[.18em]">Affected areas</h3>
+      {items.length ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {items.map((comp: any) => (
             <div
+              key={comp.module}
               className="rounded-xl border border-[#dedbd4] bg-white/45 p-4"
-              key={node.id}
             >
               <div className="flex items-center gap-2">
                 <i
-                  className={`h-2.5 w-2.5 rounded-full ${dotTone(node.risk)}`}
+                  className={`h-2.5 w-2.5 rounded-full ${dotTone(comp.highest_severity)}`}
                 />
-                <b className="truncate text-sm">{node.label}</b>
+                <b className="truncate text-sm">{comp.module}</b>
+                <span className="ml-auto text-xs text-[#74716a]">
+                  {comp.findings} finding{comp.findings === 1 ? "" : "s"} ·{" "}
+                  {comp.file_count} file{comp.file_count === 1 ? "" : "s"}
+                </span>
               </div>
-              <span className="mt-2 block text-xs capitalize text-[#8b867d]">
-                {node.type}
-              </span>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {Object.entries(comp.by_severity || {}).map(([level, count]) => (
+                  <span
+                    key={level}
+                    className={`rounded-full px-2 py-0.5 text-[11px] capitalize ${tone(String(level))}`}
+                  >
+                    {level}: {String(count)}
+                  </span>
+                ))}
+              </div>
+              {(comp.algorithms || []).length > 0 && (
+                <p className="mt-2 text-xs text-[#74716a]">
+                  {(comp.algorithms || []).join(", ")}
+                </p>
+              )}
             </div>
-          ))
+          ))}
+        </div>
+      ) : fallback.length ? (
+        <div className="mt-4 space-y-2">
+          {fallback.map((row: any) => (
+            <div key={row.file} className="flex gap-3 text-sm">
+              <span className="min-w-0 flex-1 truncate">{row.file}</span>
+              <b>{row.count}</b>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Empty label="No affected components were returned." />
+      )}
+    </div>
+  );
+}
+const GRAPH_TYPE_ORDER = [
+  "Service",
+  "Endpoint",
+  "Library",
+  "CertificateKey",
+  "CryptoAsset",
+  "CryptoOperation",
+];
+const GRAPH_INIT_LIMIT = 150;
+
+function GraphNode({ data }: any) {
+  return (
+    <div
+      className="rounded-xl border border-[#d4d0c8] bg-[#f8f6f1] px-3 py-2 shadow-sm"
+      style={{ minWidth: 150, maxWidth: 230 }}
+    >
+      <Handle type="target" position={Position.Top} />
+      <div className="flex items-center gap-2">
+        <i
+          className={`h-2 w-2 shrink-0 rounded-full ${dotTone(data.risk || "info")}`}
+        />
+        <b className="truncate text-xs" title={data.label}>
+          {data.label}
+        </b>
+      </div>
+      <span className="mt-0.5 block text-[10px] text-[#8b867d]">
+        {data.type}
+      </span>
+      <Handle type="source" position={Position.Bottom} />
+    </div>
+  );
+}
+
+const graphNodeTypes = { crypto: GraphNode };
+
+function CryptoGraph({
+  result,
+  rel,
+  jump,
+}: {
+  result: Result;
+  rel: (path: string) => string;
+  jump?: (tab: string, rule: string | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const graph = result.graph || { nodes: [], edges: [] };
+  const nodes: any[] = graph.nodes || [];
+  const edges: any[] = graph.edges || [];
+  const folded: string[] = graph.folded_files || [];
+  const riskRank: Record<string, number> = {
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+    info: 4,
+    none: 5,
+  };
+  const typesPresent = GRAPH_TYPE_ORDER.filter((t) =>
+    nodes.some((n) => n && n.type === t),
+  );
+  const ranked = [...nodes].sort(
+    (a, b) =>
+      (riskRank[String(a?.risk || "info").toLowerCase()] ?? 9) -
+        (riskRank[String(b?.risk || "info").toLowerCase()] ?? 9) ||
+      String(a?.label || "").localeCompare(String(b?.label || "")),
+  );
+  const capped = showAll ? ranked : ranked.slice(0, GRAPH_INIT_LIMIT);
+  const cappedIds = new Set(capped.map((n) => String(n.id)));
+  const q = query.trim().toLowerCase();
+  const visible = capped.filter(
+    (n) =>
+      (typeFilter === "All" || n.type === typeFilter) &&
+      (!q ||
+        `${n.label || ""} ${n.id || ""} ${n.type || ""}`
+          .toLowerCase()
+          .includes(q)),
+  );
+  const visibleIds = new Set(visible.map((n) => String(n.id)));
+  // Deterministic column layout by node type; rows stack within a column.
+  const colOf = (t: string) => {
+    const i = GRAPH_TYPE_ORDER.indexOf(t);
+    return i === -1 ? GRAPH_TYPE_ORDER.length : i;
+  };
+  const rowCount: Record<number, number> = {};
+  const flowNodes = visible.map((n) => {
+    const col = colOf(String(n.type));
+    const row = rowCount[col] || 0;
+    rowCount[col] = row + 1;
+    return {
+      id: String(n.id),
+      type: "crypto",
+      position: { x: col * 280 + 20, y: row * 120 + 20 },
+      data: {
+        label: String(n.label || n.id),
+        type: String(n.type || ""),
+        risk: String(n.risk || "info"),
+      },
+      selected: String(n.id) === selectedId,
+    };
+  });
+  const flowEdges = edges
+    .filter((e) => visibleIds.has(String(e.source)) && visibleIds.has(String(e.target)))
+    .slice(0, 500)
+    .map((e: any) => ({
+      id: String(e.id || `${e.source}|${e.target}`),
+      source: String(e.source),
+      target: String(e.target),
+      label:
+        [e.type, e.detail].filter(Boolean).join(" · ").slice(0, 60) || undefined,
+    }));
+  const selected = nodes.find((n) => String(n?.id) === selectedId);
+  const selectedMeta = (selected?.metadata || {}) as Record<string, any>;
+  const relatedGroups = (result.report?.finding_groups || []).filter(
+    (g: any) => selected?.rule_id && g.rule_id === selected.rule_id,
+  );
+  const migrationByRule: Record<string, any> = {};
+  for (const a of result.report?.migration_actions ||
+    result.report?.recommendations ||
+    []) {
+    if (a && a.rule_id && !migrationByRule[a.rule_id]) migrationByRule[a.rule_id] = a;
+  }
+  const relatedMigration =
+    (selected?.rule_id && migrationByRule[selected.rule_id]) || null;
+  return (
+    <Card className="mt-5 p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="mr-auto font-medium">Crypto Graph</h3>
+        <span className="text-xs text-[#74716a]">
+          {nodes.length} nodes · {edges.length} relationships ·{" "}
+          {folded.length} folded paths
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="flex min-w-52 flex-1 items-center gap-2 rounded-full border border-[#d4d0c8] bg-white/60 px-3 py-2">
+          <Search size={15} />
+          <input
+            className="w-full bg-transparent text-sm outline-none placeholder:text-[#aaa69d]"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search graph…"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {["All", ...typesPresent].map((t) => (
+            <button
+              key={t}
+              className={`rounded-full px-3 py-1.5 text-xs ${typeFilter === t ? "bg-[#181a19] text-white" : "bg-[#e8e4dc] text-[#68645c]"}`}
+              onClick={() => setTypeFilter(t)}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      {nodes.length ? (
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          <div
+            className="h-[560px] overflow-hidden rounded-xl border border-[#dedbd4] bg-white/60"
+          >
+            <ReactFlow
+              nodes={flowNodes}
+              edges={flowEdges}
+              nodeTypes={graphNodeTypes}
+              onNodeClick={(_, node) => setSelectedId(node.id)}
+              onPaneClick={() => setSelectedId(null)}
+              fitView
+              minZoom={0.2}
+              maxZoom={2}
+              nodesDraggable={false}
+              proOptions={{ hideAttribution: false }}
+            >
+              <Background />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
+          <div className="rounded-xl border border-[#dedbd4] bg-white/45 p-4 text-sm">
+            {selected ? (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-[#8b867d]">
+                  {selected.type}
+                </p>
+                <b className="mt-1 block break-words text-base">
+                  {selected.label}
+                </b>
+                <div className="mt-3 space-y-1.5 text-sm">
+                  <p>
+                    Risk:{" "}
+                    <b className="capitalize">{selected.risk || "—"}</b>
+                  </p>
+                  {selected.confidence != null && (
+                    <p>
+                      Confidence: {Math.round(Number(selected.confidence) * 100)}%
+                    </p>
+                  )}
+                  {Object.entries(selectedMeta)
+                    .filter(([, v]) => v != null && v !== "")
+                    .slice(0, 8)
+                    .map(([k, v]) => (
+                      <p key={k} className="break-words text-xs text-[#5e5d58]">
+                        <span className="text-[#8b867d]">
+                          {k.replaceAll("_", " ")}:{" "}
+                        </span>
+                        {Array.isArray(v) ? v.join(", ") : String(v)}
+                      </p>
+                    ))}
+                  {selectedMeta.location_file && (
+                    <p className="break-words text-xs">
+                      <span className="text-[#8b867d]">Used in: </span>
+                      <code>{rel(selectedMeta.location_file)}</code>
+                    </p>
+                  )}
+                </div>
+                {(relatedGroups.length > 0 || relatedMigration) && (
+                  <div className="mt-4 border-t border-[#e4e0d8] pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#8b867d]">
+                      Related
+                    </p>
+                    {relatedGroups.slice(0, 3).map((g: any) => (
+                      <p key={g.rule_id} className="mt-1 truncate text-sm" title={g.title}>
+                        {g.title}
+                      </p>
+                    ))}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {relatedGroups.length > 0 && jump && (
+                        <button
+                          className="rounded-full border border-[#d4d0c8] bg-white/60 px-3 py-1.5 text-xs hover:bg-white"
+                          onClick={() => jump("Findings", selected.rule_id)}
+                        >
+                          View finding
+                        </button>
+                      )}
+                      {relatedMigration && jump && (
+                        <button
+                          className="rounded-full bg-[#181a19] px-3 py-1.5 text-xs text-white hover:bg-[#30312f]"
+                          onClick={() => jump("Migration", selected.rule_id)}
+                        >
+                          View migration
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-[#74716a]">
+                Click a node to inspect it. Drag to pan, scroll to zoom.
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <Empty label="No graph nodes available." />
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[#74716a]">
+        {!showAll && nodes.length > GRAPH_INIT_LIMIT ? (
+          <button
+            className="rounded-full bg-[#e8e4dc] px-3 py-1.5 text-[#292a28] hover:bg-[#dedbd4]"
+            onClick={() => setShowAll(true)}
+          >
+            Show all {nodes.length} nodes (currently top {GRAPH_INIT_LIMIT} by risk)
+          </button>
         ) : (
-          <Empty label="No graph nodes available." />
+          <span>
+            Showing {visible.length} of {nodes.length} nodes
+            {showAll && nodes.length > GRAPH_INIT_LIMIT ? " (all)" : ""}
+          </span>
+        )}
+        {folded.length > 0 && (
+          <details>
+            <summary className="cursor-pointer">
+              {folded.length} folded file paths
+            </summary>
+            <ul className="mt-1 max-h-32 list-disc space-y-0.5 overflow-y-auto pl-5">
+              {folded.slice(0, 50).map((f) => (
+                <li key={f} className="break-all">
+                  {rel(f)}
+                </li>
+              ))}
+              {folded.length > 50 && <li>… and {folded.length - 50} more.</li>}
+            </ul>
+          </details>
         )}
       </div>
-      <p className="mt-5 text-xs text-[#74716a]">
-        {graph.nodes.length} nodes · {graph.edges.length} relationships ·{" "}
-        {graph.folded_files?.length || 0} folded paths.
-      </p>
     </Card>
   );
 }
-function Findings({ items }: { items: any[] }) {
+function Inventory({
+  result,
+  rel,
+  focusRule,
+  onClearFocus,
+  jump,
+}: {
+  result: Result;
+  rel: (path: string) => string;
+  focusRule?: string | null;
+  onClearFocus?: () => void;
+  jump?: (tab: string, rule: string | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [section, setSection] = useState<"algorithms" | "operations" | "libraries">(
+    "algorithms",
+  );
+  const rows: any[] = result.report?.inventory || [];
+  // Algorithm -> best migration rule: prefer the rule of the finding
+  // group with the most occurrences for that algorithm.
+  const ruleForAlgorithm: Record<string, string> = {};
+  const ruleHits: Record<string, Record<string, number>> = {};
+  for (const g of result.report?.finding_groups || []) {
+    for (const o of g.occurrences || []) {
+      if (!o.algorithm) continue;
+      const per = (ruleHits[o.algorithm] ||= {});
+      per[g.rule_id] = (per[g.rule_id] || 0) + 1;
+    }
+  }
+  for (const [algo, per] of Object.entries(ruleHits)) {
+    ruleForAlgorithm[algo] = Object.entries(per).sort((a, b) => b[1] - a[1])[0][0];
+  }
+  const migrationByRule: Record<string, any> = {};
+  for (const a of result.report?.migration_actions ||
+    result.report?.recommendations ||
+    []) {
+    if (a && a.rule_id && !migrationByRule[a.rule_id]) migrationByRule[a.rule_id] = a;
+  }
+  const actionStatus = (row: any): { label: string; rule: string | null } => {
+    const rule =
+      ruleForAlgorithm[row.algorithm] ||
+      (result.report?.finding_groups || []).find((g: any) =>
+        (g.occurrences || []).some((o: any) => o.algorithm === row.algorithm),
+      )?.rule_id ||
+      null;
+    const action = rule ? migrationByRule[rule] : undefined;
+    if (!action) return { label: "No action", rule };
+    const sev = String(action.severity || "").toLowerCase();
+    if (sev === "critical" || sev === "high") return { label: "Migration required", rule };
+    if (sev === "medium") return { label: "Planned", rule };
+    return { label: "Review", rule };
+  };
+  const filtered = rows.filter((row: any) => {
+    if (focusRule) {
+      const rule = ruleForAlgorithm[row.algorithm];
+      if (rule !== focusRule) {
+        const linked = (result.report?.finding_groups || []).some(
+          (g: any) => g.rule_id === focusRule &&
+            (g.occurrences || []).some((o: any) => o.algorithm === row.algorithm),
+        );
+        if (!linked) return false;
+      }
+    }
+    if (!query.trim()) return true;
+    return `${row.algorithm} ${row.type} ${row.risk}`.toLowerCase().includes(query.toLowerCase());
+  });
+  const fallbackAssets: any[] = !rows.length ? result.assets || [] : [];
+  if (fallbackAssets.length) {
+    return (
+      <DataTable
+        title="Crypto assets"
+        items={fallbackAssets}
+        columns={[
+          "canonical",
+          "usage_state",
+          "confidence",
+          "library",
+          "key_size",
+          "mode",
+        ]}
+      />
+    );
+  }
   return (
-    <DataTable
-      title="Findings"
-      items={items}
-      columns={["severity", "rule_id", "title", "file", "line", "confidence"]}
-    />
+    <Card className="mt-5 overflow-hidden">
+      <div className="flex flex-col gap-3 border-b border-[#dedbd4] p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <h3 className="font-medium">Cryptographic inventory</h3>
+        <div className="flex w-full items-center gap-2 rounded-full border border-[#d4d0c8] bg-white/60 px-3 py-1.5 sm:w-auto sm:min-w-52">
+          <Search size={15} />
+          <input
+            className="w-full bg-transparent text-sm outline-none placeholder:text-[#aaa69d]"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Filter…"
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 px-5 pb-5 pt-5 sm:px-6">
+        {(
+          [
+            ["algorithms", "Algorithms"],
+            ["operations", "Operations"],
+            ["libraries", "Libraries & Config"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${section === key ? "bg-[#181a19] text-white" : "bg-[#e8e4dc] text-[#68645c] hover:bg-[#dedbd4]"}`}
+            onClick={() => setSection(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {focusRule && (
+        <div className="mx-5 mb-5 mt-0 flex items-center gap-3 rounded-xl border border-[#d4d0c8] bg-white/60 px-4 py-2 text-sm sm:mx-6">
+          <span className="min-w-0 flex-1 truncate">
+            Focused on rule <b>{focusRule}</b>
+          </span>
+          <button
+            className="shrink-0 rounded-full bg-[#e8e4dc] px-3 py-1 text-xs text-[#5e5d58] hover:bg-[#dedbd4]"
+            onClick={() => onClearFocus && onClearFocus()}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      {section === "algorithms" && (
+        <AlgorithmsTable
+          rows={filtered}
+          actionStatus={actionStatus}
+          jump={jump}
+        />
+      )}
+      {section === "operations" && (
+        <OperationsTable result={result} rel={rel} query={query} focusRule={focusRule} />
+      )}
+      {section === "libraries" && (
+        <LibrariesConfig result={result} rel={rel} query={query} />
+      )}
+    </Card>
+  );
+}
+
+function AlgorithmsTable({
+  rows,
+  actionStatus,
+  jump,
+}: {
+  rows: any[];
+  actionStatus: (row: any) => { label: string; rule: string | null };
+  jump?: (tab: string, rule: string | null) => void;
+}) {
+  if (!rows.length) {
+    return <Empty label="No cryptographic inventory was returned." />;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead className="bg-[#ece9e2] text-xs uppercase tracking-wider text-[#74716a]">
+          <tr>
+            <th className="px-5 py-3 font-medium">Algorithm</th>
+            <th className="px-5 py-3 font-medium">Type</th>
+            <th className="px-5 py-3 font-medium">Uses</th>
+            <th className="px-5 py-3 font-medium">Files</th>
+            <th className="px-5 py-3 font-medium">Risk</th>
+            <th className="px-5 py-3 font-medium">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, 100).map((row: any) => {
+            const status = actionStatus(row);
+            return (
+              <tr className="border-t border-[#e4e0d8]" key={row.algorithm}>
+                <td className="px-5 py-3 font-medium">{row.algorithm}</td>
+                <td className="px-5 py-3">{row.type}</td>
+                <td className="px-5 py-3">{row.uses}</td>
+                <td className="px-5 py-3" title={(row.files || []).map((f: any) => f.file).join(", ")}>
+                  {row.file_count}
+                </td>
+                <td className="px-5 py-3">
+                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs ${tone(row.risk.toLowerCase())}`}>
+                    {row.risk}
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-xs">
+                  {status.rule && jump ? (
+                    <button
+                      className="rounded-full bg-[#e8e4dc] px-2.5 py-1 text-[#292a28] hover:bg-[#dedbd4]"
+                      onClick={() => jump("Migration", status.rule)}
+                      title={`Open migration for ${status.rule}`}
+                    >
+                      {status.label}
+                    </button>
+                  ) : (
+                    <span className="text-[#74716a]">{status.label}</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {rows.length > 100 && (
+        <p className="px-5 py-3 text-xs text-[#74716a]">
+          … and {rows.length - 100} more algorithms (see exports).
+        </p>
+      )}
+    </div>
+  );
+}
+
+function humanizeOperation(value: string) {
+  return String(value || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function OperationsTable({
+  result,
+  rel,
+  query,
+  focusRule,
+}: {
+  result: Result;
+  rel: (path: string) => string;
+  query: string;
+  focusRule?: string | null;
+}) {
+  const assetsById: Record<string, any> = {};
+  for (const a of result.assets || []) {
+    if (a && a.asset_id) assetsById[String(a.asset_id)] = a;
+  }
+  const riskByOp: Record<string, any> = {};
+  for (const r of result.risks || []) {
+    if (r && r.operation_id) riskByOp[String(r.operation_id)] = r;
+  }
+  const opRule: Record<string, string> = {};
+  for (const g of result.report?.finding_groups || []) {
+    for (const o of g.occurrences || []) {
+      if (o.op_id && !opRule[o.op_id]) opRule[o.op_id] = g.rule_id;
+    }
+  }
+  let rows = (result.operations || []).map((op: any) => {
+    const asset = assetsById[String(op?.asset_id)] || {};
+    const risk = riskByOp[String(op?.operation_id)];
+    const cls = String(risk?.class || "Informational");
+    const sev = { Critical: "critical", High: "high", Medium: "medium", Low: "low" }[cls] || "info";
+    return {
+      id: String(op?.operation_id || ""),
+      operation: humanizeOperation(op?.operation_type) || "—",
+      algorithm: asset.canonical || "UNKNOWN",
+      file: op?.location?.file ? rel(op.location.file) : "—",
+      line: op?.location?.line ?? "—",
+      confidence:
+        typeof op?.confidence === "number"
+          ? `${Math.round(op.confidence * 100)}%`
+          : "—",
+      usage: op?.risk_inputs?.usage_state || asset.usage_state || "—",
+      severity: sev,
+      evidence: Array.isArray(op?.evidence) ? op.evidence.length : 0,
+    };
+  });
+  if (focusRule) {
+    rows = rows.filter((r: any) => opRule[r.id] === focusRule);
+  }
+  if (query.trim()) {
+    const q = query.toLowerCase();
+    rows = rows.filter((r: any) =>
+      `${r.operation} ${r.algorithm} ${r.file}`.toLowerCase().includes(q),
+    );
+  }
+  rows.sort((a: any, b: any) => a.file.localeCompare(b.file));
+  if (!rows.length) {
+    return <Empty label="No cryptographic operations were returned." />;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead className="bg-[#ece9e2] text-xs uppercase tracking-wider text-[#74716a]">
+          <tr>
+            <th className="px-5 py-3 font-medium">Operation</th>
+            <th className="px-5 py-3 font-medium">Algorithm</th>
+            <th className="px-5 py-3 font-medium">File</th>
+            <th className="px-5 py-3 font-medium">Confidence</th>
+            <th className="px-5 py-3 font-medium">Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, 200).map((r: any) => (
+            <tr
+              className="border-t border-[#e4e0d8]"
+              key={r.id}
+              title={`Operation ${r.id} · usage ${r.usage} · evidence signals ${r.evidence}`}
+            >
+              <td className="px-5 py-3 capitalize">{r.operation}</td>
+              <td className="px-5 py-3 font-medium">{r.algorithm}</td>
+              <td className="max-w-xs truncate px-5 py-3 text-xs" title={`${r.file}:${r.line}`}>
+                {r.file}
+              </td>
+              <td className="px-5 py-3">{r.confidence}</td>
+              <td className="px-5 py-3">
+                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs ${tone(r.severity)}`}>
+                  {r.severity}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > 200 && (
+        <p className="px-5 py-3 text-xs text-[#74716a]">
+          … and {rows.length - 200} more operations (see exports).
+        </p>
+      )}
+    </div>
+  );
+}
+function LibrariesConfig({
+  result,
+  rel,
+  query,
+}: {
+  result: Result;
+  rel: (path: string) => string;
+  query: string;
+}) {
+  // Libraries from recorded asset implementations (never invented).
+  const libs: Record<
+    string,
+    { name: string; assets: number; confirmed: number; files: string[] }
+  > = {};
+  for (const a of result.assets || []) {
+    const name = String(a?.implementation?.library || a?.library || "").trim();
+    if (!name) continue;
+    const slot = (libs[name] ||= { name, assets: 0, confirmed: 0, files: [] });
+    slot.assets += 1;
+    const usage = String(a?.usage_state || "");
+    if (usage === "Confirmed" || usage === "Probable") slot.confirmed += 1;
+    const file = a?.location?.file ? rel(a.location.file) : "";
+    if (file && !slot.files.includes(file)) slot.files.push(file);
+  }
+  // Protocols from inventory rows typed as protocol/certificate.
+  const protocols = (result.report?.inventory || []).filter((r: any) =>
+    ["Protocol", "Certificate"].includes(String(r?.type || "")),
+  );
+  // Configuration files actually observed with findings.
+  const configExt = [".yaml", ".yml", ".json", ".conf", ".cnf", ".toml", ".ini", ".env", ".xml"];
+  const configFiles: Record<string, { file: string; count: number; rules: string[] }> = {};
+  for (const g of result.report?.finding_groups || []) {
+    for (const o of g.occurrences || []) {
+      const file = String(o.file || "");
+      const lower = file.toLowerCase();
+      if (!configExt.some((ext) => lower.endsWith(ext))) continue;
+      const slot = (configFiles[file] ||= { file, count: 0, rules: [] });
+      slot.count += 1;
+      if (!slot.rules.includes(g.rule_id)) slot.rules.push(g.rule_id);
+    }
+  }
+  const q = query.trim().toLowerCase();
+  const libRows = Object.values(libs)
+    .filter((l) => !q || l.name.toLowerCase().includes(q))
+    .sort((a, b) => b.assets - a.assets || a.name.localeCompare(b.name));
+  const statusOf = (l: { assets: number; confirmed: number }) =>
+    l.confirmed === l.assets && l.assets > 0
+      ? "Confirmed use"
+      : l.confirmed > 0
+        ? "Partially confirmed"
+        : "Provided capability";
+  return (
+    <div className="space-y-5 p-5">
+      <div>
+        <h4 className="text-xs uppercase tracking-[.18em] text-[#5e5d58]">
+          Libraries / Dependencies
+        </h4>
+        {libRows.length ? (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-sm">
+              <thead className="bg-[#ece9e2] text-xs uppercase tracking-wider text-[#74716a]">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Library</th>
+                  <th className="px-4 py-2 font-medium">Assets</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {libRows.slice(0, 50).map((l) => (
+                  <tr className="border-t border-[#e4e0d8]" key={l.name}>
+                    <td className="px-4 py-2 font-medium">{l.name}</td>
+                    <td className="px-4 py-2">{l.assets}</td>
+                    <td className="px-4 py-2 text-xs text-[#74716a]">
+                      {statusOf(l)}
+                      {l.confirmed > 0 && l.confirmed < l.assets
+                        ? ` (${l.confirmed}/${l.assets} confirmed)`
+                        : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-[#74716a]">
+            No library attributions recorded for this scan.
+          </p>
+        )}
+      </div>
+      <div>
+        <h4 className="text-xs uppercase tracking-[.18em] text-[#5e5d58]">
+          Protocols / Configuration
+        </h4>
+        {protocols.length || Object.keys(configFiles).length ? (
+          <div className="mt-3 space-y-2">
+            {protocols
+              .filter((r: any) => !q || String(r.algorithm).toLowerCase().includes(q))
+              .slice(0, 30)
+              .map((r: any) => (
+                <div
+                  key={r.algorithm}
+                  className="flex items-center gap-3 rounded-xl border border-[#dedbd4] bg-white/45 p-3 text-sm"
+                >
+                  <b className="font-medium">{r.algorithm}</b>
+                  <span className="text-xs text-[#74716a]">{r.type}</span>
+                  <span className="ml-auto text-xs text-[#74716a]">
+                    {r.confirmed_uses > 0 ? "Configuration detected" : "Unconfirmed"}
+                  </span>
+                </div>
+              ))}
+            {Object.values(configFiles)
+              .filter((c) => !q || c.file.toLowerCase().includes(q))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 30)
+              .map((c) => (
+                <div
+                  key={c.file}
+                  className="flex items-center gap-3 rounded-xl border border-[#dedbd4] bg-white/45 p-3 text-sm"
+                >
+                  <code className="min-w-0 flex-1 truncate text-xs">
+                    {rel(c.file)}
+                  </code>
+                  <span className="shrink-0 text-xs text-[#74716a]">
+                    {c.rules.join(", ")}
+                  </span>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-[#74716a]">
+            No protocol or configuration detections recorded.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 function DataTable({
@@ -1207,38 +2576,414 @@ function DataTable({
     </Card>
   );
 }
-function Recommendations({ items }: { items: any[] }) {
+function MigrationCard({
+  item,
+  jump,
+}: {
+  item: any;
+  jump?: (tab: string, rule: string | null) => void;
+}) {
+  const targets: string[] = item.target_algorithms || [];
+  const files: string[] = item.affected_files || [];
+  const blockers: string[] = item.blockers || [];
+  const refs: string[] = item.refs || [];
+  const pattern = String(item.migration_pattern || "").replace(/[-_]/g, " ").trim();
+  const rows: Array<[string, string]> = [];
+  if (item.rule_id) rows.push(["Current", String(item.rule_id)]);
+  if (targets.length) rows.push(["Target", targets[0]]);
+  const priority = String(item.priority || item.severity || "").trim();
+  if (priority) rows.push(["Priority", priority]);
+  if (item.effort) rows.push(["Effort", String(item.effort)]);
+  if (item.compatibility) rows.push(["Compatibility", String(item.compatibility)]);
   return (
-    <div className="mt-5 grid gap-4 md:grid-cols-2">
-      {items.length ? (
-        items.map((item: any, index: number) => (
-          <Card className="p-5" key={item.recommendation_id || index}>
-            <span className="inline-flex rounded-full bg-[#e5e0d5] px-3 py-1 text-xs text-[#68645c]">
-              {item.pqc_target || "Recommendation"}
-            </span>
-            <h3 className="mt-4 text-lg font-medium">
-              {item.title ||
-                item.target_algorithms?.join(", ") ||
-                "Migration recommendation"}
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-[#74716a]">
-              {item.reason ||
-                item.description ||
-                item.rationale ||
-                "Recommendation details supplied by the P1 engine."}
-            </p>
-            <dl className="mt-5 border-t border-[#dedbd4] pt-4 text-sm">
-              <dt className="text-xs text-[#8b867d]">Assets</dt>
-              <dd className="mt-1">{item.asset_ids?.join(", ") || "—"}</dd>
-            </dl>
-          </Card>
-        ))
-      ) : (
-        <Empty label="No recommendations were returned." />
+    <div className="rounded-xl border border-[#dedbd4] bg-white/45 p-4">
+      <span
+        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs capitalize text-white ${tone(String(item.severity || "info")).split(" ")[0]}`}
+      >
+        {String(item.severity || "info")}
+      </span>
+      <h4 className="mt-2 font-medium leading-6">
+        {item.title || item.rule_id || "Migration action"}
+      </h4>
+      {files.length > 0 && (
+        <div className="mt-2 text-xs">
+          <p className="uppercase tracking-wider text-[#8b867d]">Affected</p>
+          <ul className="mt-1 space-y-0.5">
+            {files.slice(0, 5).map((f) => (
+              <li key={f} className="truncate" title={f}>
+                <code>{f}</code>
+              </li>
+            ))}
+            {files.length > 5 && (
+              <li className="text-[#74716a]">+{files.length - 5} more</li>
+            )}
+          </ul>
+        </div>
       )}
+      {rows.length > 0 && (
+        <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-[#e4e0d8] pt-3 text-sm">
+          {rows.map(([k, v]) => (
+            <div key={k}>
+              <dt className="text-xs text-[#8b867d]">{k}</dt>
+              <dd className="mt-0.5 break-words">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {item.why_text && (
+        <div className="mt-3 text-sm">
+          <p className="text-xs uppercase tracking-wider text-[#8b867d]">Why</p>
+          <p className="mt-1 leading-6 text-[#5e5d58]">{item.why_text}</p>
+        </div>
+      )}
+      {pattern && (
+        <p className="mt-2 text-sm">
+          <span className="text-xs uppercase tracking-wider text-[#8b867d]">
+            Transition:{" "}
+          </span>
+          <span className="capitalize text-[#5e5d58]">{pattern}</span>
+        </p>
+      )}
+      {blockers.length > 0 && (
+        <div className="mt-2 text-sm">
+          <p className="text-xs uppercase tracking-wider text-[#8b867d]">
+            Blockers
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[#5e5d58]">
+            {blockers.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {refs.length > 0 && (
+        <p className="mt-2 space-x-2 text-xs">
+          {refs.slice(0, 3).map((r) => (
+            <a
+              key={r}
+              href={r}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#3d5a73] underline"
+            >
+              {r.replace(/^https?:\/\//, "").split("/")[0]}
+            </a>
+          ))}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-[#e4e0d8] pt-3">
+        {jump && item.rule_id && (
+          <button
+            className="rounded-full border border-[#d4d0c8] bg-white/60 px-3 py-1.5 text-xs hover:bg-white"
+            onClick={() => jump("Findings", item.rule_id)}
+          >
+            View evidence
+          </button>
+        )}
+        {item.action && (
+          <details className="w-full">
+            <summary className="cursor-pointer text-xs text-[#74716a]">
+              Full recommendation text
+            </summary>
+            <p className="mt-1 text-xs leading-5 text-[#5e5d58]">{item.action}</p>
+          </details>
+        )}
+      </div>
     </div>
   );
 }
+
+function Migration({
+  result,
+  focusRule,
+  onClearFocus,
+  jump,
+}: {
+  result: Result;
+  focusRule?: string | null;
+  onClearFocus?: () => void;
+  jump?: (tab: string, rule: string | null) => void;
+}) {
+  const groups: Record<string, any[]> = result.report?.migration_groups || {};
+  const counts: Record<string, number> = result.report?.migration_counts || {};
+  const items: any[] = result.report?.recommendations || result.recommendations || [];
+  const order = ["Immediate", "High priority", "Planned", "Informational"];
+  const hasGroups = order.some((name) => (groups[name] || []).length);
+  const inFocus = (item: any) => !focusRule || item?.rule_id === focusRule;
+  return (
+    <div className="mt-5 space-y-4">
+      {focusRule && (
+        <div className="flex items-center gap-3 rounded-xl border border-[#d4d0c8] bg-[#f8f6f1]/90 px-4 py-2.5 text-sm">
+          <span className="min-w-0 flex-1 truncate">
+            Focused on rule <b>{focusRule}</b>
+          </span>
+          <button
+            className="shrink-0 rounded-full bg-[#e8e4dc] px-3 py-1 text-xs text-[#5e5d58] hover:bg-[#dedbd4]"
+            onClick={() => onClearFocus && onClearFocus()}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      {hasGroups ? (
+        order.map((name) => {
+          const visible = (groups[name] || []).filter(inFocus);
+          if (focusRule && !visible.length) return null;
+          return (
+            <Card className="p-5" key={name}>
+              <h3 className="text-xs uppercase tracking-[.18em]">
+                {name} ({counts[name] ?? (groups[name] || []).length})
+              </h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {visible.slice(0, 12).map((item: any, index: number) => (
+                  <MigrationCard
+                    key={index}
+                    item={item}
+                    jump={jump}
+                  />
+                ))}
+              </div>
+              {(groups[name] || []).length === 0 && (
+                <p className="mt-2 text-sm text-[#74716a]">No items.</p>
+              )}
+              {visible.length > 12 && (
+                <p className="mt-3 text-xs text-[#74716a]">
+                  … and {visible.length - 12} more item(s).
+                </p>
+              )}
+            </Card>
+          );
+        })
+      ) : items.length ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {items.slice(0, 20).map((item: any, index: number) => (
+            <Card className="p-5" key={item.recommendation_id || index}>
+              <span className="inline-flex rounded-full bg-[#e5e0d5] px-3 py-1 text-xs text-[#68645c]">
+                {item.pqc_target || item.severity || "Recommendation"}
+              </span>
+              <h3 className="mt-4 text-lg font-medium">
+                {item.title ||
+                  item.target_algorithms?.join(", ") ||
+                  "Migration recommendation"}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-[#74716a]">
+                {item.action ||
+                  item.reason ||
+                  item.description ||
+                  "Recommendation details supplied by the P1 engine."}
+              </p>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Empty label="No migration recommendations were returned." />
+      )}
+      <p className="text-xs text-[#74716a]">
+        {result.report?.migration_groups
+          ? "Triage order reflects P1 recommendation priority, not a migration sequence."
+          : "Migration guidance comes from the P1 recommendation engine."}
+      </p>
+    </div>
+  );
+}
+
+function CoverageView({ result }: { result: Result }) {
+  const cov: any = result.report?.coverage_summary || result.coverage || {};
+  const method: any = result.report?.methodology || {};
+  const analyzed = cov.files_analyzed ?? result.analytics.files_scanned;
+  const discovered = cov.files_discovered ?? analyzed;
+  const skippedCount = cov.files_skipped ?? 0;
+  const noEvidence = cov.files_without_evidence ?? 0;
+  const pct =
+    discovered > 0 ? `${((analyzed / discovered) * 100).toFixed(1)}%` : "—";
+  const buckets = cov.skipped_by_bucket || cov.skipped_by_reason || {};
+  const status = cov.scanner_status || result.coverage?.scanner_status || {};
+  const limitations = result.limitations || {};
+  const permissionGated: string[] = limitations.permission_gated ||
+    result.coverage?.permissions_required ||
+    [];
+  const failedScanners: string[] = cov.failed_scanners ||
+    limitations.failed_scanners ||
+    [];
+  const unavailable: string[] = limitations.unavailable_tools || [];
+  const statusChip = (state: string) => {
+    const s = String(state || "");
+    if (s === "success") return { mark: "✓", label: "Complete", cls: "bg-[#e5e0d5] text-[#3f6340]" };
+    if (s.startsWith("failed")) return { mark: "✗", label: `Failed (${s.slice(7, 60)})`, cls: "bg-[#f3ddd4] text-[#762f32]" };
+    if (s === "unavailable") return { mark: "○", label: "Unavailable", cls: "bg-[#e8e4dc] text-[#68645c]" };
+    return { mark: "•", label: s || "Unknown", cls: "bg-[#e8e4dc] text-[#68645c]" };
+  };
+  const tools: Record<string, string> = method.tool_versions ||
+    result.analytics?.tool_versions ||
+    {};
+  return (
+    <div className="mt-5 space-y-4">
+      <Card className="p-5">
+        <h3 className="text-xs uppercase tracking-[.18em]">Scan coverage</h3>
+        <p className="mt-3 text-sm">
+          <b className="text-xl">
+            {analyzed} / {discovered}
+          </b>{" "}
+          files analyzed <b>{pct}</b>
+        </p>
+        <p className="mt-1 text-xs text-[#74716a]">
+          {analyzed} analyzed + {skippedCount} skipped + {noEvidence} without
+          cryptographic evidence = {discovered} discovered
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left text-sm">
+            <thead className="bg-[#ece9e2] text-xs uppercase tracking-wider text-[#74716a]">
+              <tr>
+                <th className="px-4 py-2 font-medium">Scanner</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(status).length ? (
+                Object.entries(status).map(([name, state]) => {
+                  const chip = statusChip(String(state));
+                  return (
+                    <tr className="border-t border-[#e4e0d8]" key={name}>
+                      <td className="px-4 py-2 capitalize">{name}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs ${chip.cls}`}
+                          title={String(state)}
+                        >
+                          {chip.mark} {chip.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td className="px-4 py-2 text-[#74716a]" colSpan={2}>
+                    No scanner status recorded for this scan.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      {(permissionGated.length > 0 ||
+        skippedCount > 0 ||
+        failedScanners.length > 0) && (
+        <Card className="p-5">
+          <h3 className="text-xs uppercase tracking-[.18em]">Not analyzed</h3>
+          <div className="mt-3 space-y-2 text-sm">
+            {permissionGated.map((name) => (
+              <div
+                key={name}
+                className="flex items-center gap-3 rounded-xl border border-[#dedbd4] bg-white/45 p-3"
+              >
+                <b className="capitalize">{name}</b>
+                <span className="ml-auto text-xs text-[#74716a]">
+                  Permission required · 1 artifact detected
+                </span>
+              </div>
+            ))}
+            {Object.keys(buckets).length > 0 && (
+              <div className="rounded-xl border border-[#dedbd4] bg-white/45 p-3">
+                <p className="text-sm">
+                  Skipped/unsupported <b>{skippedCount}</b> file
+                  {skippedCount === 1 ? "" : "s"}
+                </p>
+                <ul className="mt-1 space-y-0.5 text-xs text-[#74716a]">
+                  {Object.entries(buckets).map(([reason, count]) => (
+                    <li key={reason}>
+                      {String(count)} × {reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {failedScanners.map((name) => (
+              <p key={name} className="text-sm text-[#762f32]">
+                Failed scanner: {name}
+              </p>
+            ))}
+          </div>
+        </Card>
+      )}
+      <Card className="p-5">
+        <details>
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[.18em]">
+            Advanced scan details
+          </summary>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-[#8b867d]">Scanner versions</dt>
+              <dd className="mt-1 text-xs">
+                {Object.keys(tools).length
+                  ? Object.entries(tools).map(([k, v]) => (
+                      <span key={k} className="mr-2">
+                        {k} {String(v)}
+                      </span>
+                    ))
+                  : "Not recorded"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[#8b867d]">Profile</dt>
+              <dd className="mt-1">
+                {method.profile || cov.profile || "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[#8b867d]">Cache</dt>
+              <dd className="mt-1">
+                {(method.cache_hit ?? cov.cache_hit) ? "hit" : "miss"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[#8b867d]">Registry version</dt>
+              <dd className="mt-1">
+                {method.registry_version ||
+                  result.analytics?.registry_version ||
+                  "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[#8b867d]">Started / Finished</dt>
+              <dd className="mt-1 text-xs">
+                {result.report?.started_at || "—"} /{" "}
+                {result.report?.finished_at || "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[#8b867d]">Elapsed</dt>
+              <dd className="mt-1">
+                {method.elapsed_sec ?? cov.elapsed_sec ?? "—"}
+                {typeof (method.elapsed_sec ?? cov.elapsed_sec) === "number"
+                  ? "s"
+                  : ""}
+              </dd>
+            </div>
+            {permissionGated.length > 0 && (
+              <div>
+                <dt className="text-xs text-[#8b867d]">Permission-gated</dt>
+                <dd className="mt-1">{permissionGated.join(", ")}</dd>
+              </div>
+            )}
+            {(failedScanners.length > 0 || unavailable.length > 0) && (
+              <div>
+                <dt className="text-xs text-[#8b867d]">
+                  Failed / unavailable scanners
+                </dt>
+                <dd className="mt-1">
+                  {[...failedScanners, ...unavailable].join(", ")}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </details>
+      </Card>
+    </div>
+  );
+}
+
 function Empty({ label }: { label: string }) {
   return <div className="p-8 text-center text-sm text-[#74716a]">{label}</div>;
 }

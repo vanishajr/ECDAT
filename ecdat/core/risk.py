@@ -54,6 +54,11 @@ __all__ = [
     "score_operation",
     "score_cir",
     "to_cir_risk",
+    "assess_classical_posture",
+    "assess_misuse_severity",
+    "assess_protocol_posture",
+    "assess_quantum_exposure",
+    "score_operation_v2",
 ]
 
 # -- algorithm -> quantum vulnerability (0.0 safe .. 1.0 broken by CRQC) ----
@@ -163,6 +168,34 @@ _CLASSIFICATION_HINTS = {
 
 _NOTES_X_RE = re.compile(r"data_lifetime_years\s*=\s*([\d.]+)")
 _NOTES_Y_RE = re.compile(r"migration_years\s*=\s*([\d.]+)")
+
+# Phase 10: user-supplied scan context rides in operation context notes as
+# ``user:<key>=<value>`` pairs (see ScanContext in core/orchestrator.py).
+# User values win over every observed/inferred signal and are tagged
+# ``user-supplied`` in the record provenance. Provenance vocabulary:
+# observed (detector/context evidence), inferred (hints, gap-fillers,
+# caller defaults recorded as explicit assumptions), user-supplied
+# (Phase 10 ScanContext), unknown (no basis; scored conservatively).
+_USER_RE_TMPL = r"user:%s\s*=\s*([^;]+)"
+_USER_EXPOSURE_RE = re.compile(_USER_RE_TMPL % "exposure")
+_USER_CRIT_RE = re.compile(_USER_RE_TMPL % "(?:criticality|business_criticality)")
+_USER_X_RE = re.compile(_USER_RE_TMPL % "(?:data_lifetime_years|data_lifetime)")
+_USER_Y_RE = re.compile(_USER_RE_TMPL % "(?:migration_years|migration_time)")
+
+
+def _user_note(context: dict, pattern) -> str | None:
+    """First ``user:<key>=`` value in context notes, if any."""
+    try:
+        notes = str(context.get("notes", "") or "")
+    except Exception:
+        return None
+    if not notes:
+        return None
+    match = pattern.search(notes)
+    if not match:
+        return None
+    value = " ".join(match.group(1).split())
+    return value or None
 
 
 def _norm(text) -> str:
@@ -303,6 +336,13 @@ def _risk_inputs(op: dict) -> dict:
 
 
 def _exposure_weight(context: dict, location: dict, risk_inputs: dict):
+    user = _user_note(context, _USER_EXPOSURE_RE)
+    if user is not None:
+        key = _EXPOSURE_ALIASES.get(user.strip().lower(),
+                                    user.strip().lower())
+        if key in EXPOSURE_W:
+            return EXPOSURE_W[key], key, False, "user-supplied"
+        return EXPOSURE_W["internal"], "internal", True, "user-supplied"
     raw = _first(context, "exposure", "environment_exposure",
                  default=_first(location, "exposure",
                                 default=_first(risk_inputs, "exposure", default=None)))
@@ -310,19 +350,26 @@ def _exposure_weight(context: dict, location: dict, risk_inputs: dict):
         # Lowest-precedence hint: an external dependency is at least
         # third-party exposed even when exposure is otherwise undeclared.
         if risk_inputs.get("external_dependency") is True:
-            return EXPOSURE_W["third-party"], "third-party", True
-        return EXPOSURE_W["internal"], "internal", True
+            return EXPOSURE_W["third-party"], "third-party", True, "inferred"
+        return EXPOSURE_W["internal"], "internal", True, "inferred"
     key = str(raw).strip().lower()
     key = _EXPOSURE_ALIASES.get(key, key)
     if key in EXPOSURE_W:
-        return EXPOSURE_W[key], key, False
-    return EXPOSURE_W["internal"], "internal", True
+        return EXPOSURE_W[key], key, False, "observed"
+    return EXPOSURE_W["internal"], "internal", True, "inferred"
 
 
 def _criticality_weight(context: dict, risk_inputs: dict):
+    user = _user_note(context, _USER_CRIT_RE)
+    if user is not None:
+        key = user.strip().lower()
+        if key in CRIT_W:
+            return CRIT_W[key], key, False, "user-supplied"
+        return CRIT_W["medium"], "medium", True, "user-supplied"
     raw = _first(context, "criticality", "business_criticality", "crit",
                  default=None)
     assumed = False
+    provenance = "observed"
     if raw is None:
         # CIR v0.1 gap-fillers: data_classification, then sensitive_data.
         classification = str(_first(context, "data_classification", default="") or "")
@@ -336,10 +383,11 @@ def _criticality_weight(context: dict, risk_inputs: dict):
         else:
             raw = "medium"
             assumed = True
+        provenance = "inferred"
     key = str(raw or "medium").strip().lower()
     if key in CRIT_W:
-        return CRIT_W[key], key, assumed
-    return CRIT_W["medium"], "medium", True
+        return CRIT_W[key], key, assumed, provenance
+    return CRIT_W["medium"], "medium", True, "inferred"
 
 
 def _usage_state(op: dict) -> str:
@@ -371,6 +419,19 @@ def _mosca_inputs(op: dict, context: dict, Z_default: float):
     Z = _first(context, "crqc_years", "collapse_years", "Z",
                default=_first(op, "crqc_years", "Z", default=None))
     assumptions = []
+    prov_x = "observed" if X is not None else ""
+    prov_y = "observed" if Y is not None else ""
+    prov_z = "observed" if Z is not None else ""
+    user_x = _user_note(context, _USER_X_RE)
+    user_y = _user_note(context, _USER_Y_RE)
+    if user_x is not None:
+        X = user_x
+        prov_x = "user-supplied"
+        assumptions.append("data lifetime X user-supplied via scan context")
+    if user_y is not None:
+        Y = user_y
+        prov_y = "user-supplied"
+        assumptions.append("migration lead time Y user-supplied via scan context")
     if X is None:
         # CIR v0.1 carries X/Y inside free-text notes
         # ("data_lifetime_years=8; migration_years=3; ...") when set.
@@ -378,12 +439,14 @@ def _mosca_inputs(op: dict, context: dict, Z_default: float):
         match = _NOTES_X_RE.search(notes)
         if match:
             X = match.group(1)
+            prov_x = "observed"
             assumptions.append("data lifetime X parsed from context notes")
         else:
             classification = str(_first(context, "data_classification", default="") or "")
             hint = _CLASSIFICATION_HINTS.get(classification.strip().lower())
             if hint is not None:
                 X = hint[1]
+                prov_x = "inferred"
                 assumptions.append(
                     f"data lifetime X hinted {hint[1]:g}y by data_classification")
     if Y is None:
@@ -391,22 +454,30 @@ def _mosca_inputs(op: dict, context: dict, Z_default: float):
         match = _NOTES_Y_RE.search(notes)
         if match:
             Y = match.group(1)
+            prov_y = "observed"
             assumptions.append("migration lead time Y parsed from context notes")
     if X is None:
         X, assumptions = _DEFAULT_X, assumptions + [
             f"data lifetime X assumed {_DEFAULT_X:g}y (undeclared)"]
+        prov_x = "inferred"
     if Y is None:
         Y = _DEFAULT_Y
         assumptions.append(f"migration lead time Y assumed {_DEFAULT_Y:g}y (undeclared)")
+        prov_y = "inferred"
     if Z is None:
         Z = Z_default
+        prov_z = "inferred"
         assumptions.append(f"QC timeline Z assumed {Z_default:g}y (caller default)")
     try:
         X, Y, Z = float(X), float(Y), float(Z)
     except (TypeError, ValueError):
         X, Y, Z = _DEFAULT_X, _DEFAULT_Y, float(Z_default)
+        prov_x, prov_y, prov_z = "inferred", "inferred", "inferred"
         assumptions.append("non-numeric Mosca input replaced by defaults")
-    return X, Y, Z, assumptions
+    provenance = {"data_lifetime_years": prov_x or "inferred",
+                  "migration_years": prov_y or "inferred",
+                  "crqc_years": prov_z or "inferred"}
+    return X, Y, Z, assumptions, provenance
 
 
 def _class_for(score: float) -> str:
@@ -450,6 +521,14 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
             "explanation": (f"{canonical} [{op_id}] is marked {state}: suppressed "
                             "noise, no risk carried."),
             "assumptions": ["suppressed findings carry no risk by policy"],
+            "provenance": {
+                "exposure": "unknown",
+                "criticality": "unknown",
+                "data_lifetime_years": "unknown",
+                "migration_years": "unknown",
+                "crqc_years": "unknown",
+                "quantum_vuln": "unknown",
+            },
         }
 
     Q = quantum_vuln(canonical, _first(op, "key_size", "keySize", default=None),
@@ -458,11 +537,13 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
     # PBKDF2 iteration/salt weakness folds into Q via the weak floor.
     if _norm(canonical) in ("PBKDF2", "PBKDF") and _looks_weak_pbkdf2(op):
         Q = max(Q, QUANTUM_VULN["PBKDF2-WEAK"])
-    E, exposure, exposure_assumed = _exposure_weight(context, location,
-                                                       risk_inputs)
-    B, criticality, crit_assumed = _criticality_weight(context, risk_inputs)
+    E, exposure, exposure_assumed, exposure_prov = _exposure_weight(
+        context, location, risk_inputs)
+    B, criticality, crit_assumed, crit_prov = _criticality_weight(
+        context, risk_inputs)
     C, blended = _confidence(op, state)
-    X, Y, Z, mosca_assumptions = _mosca_inputs(op, context, float(Z_default))
+    X, Y, Z, mosca_assumptions, mosca_prov = _mosca_inputs(
+        op, context, float(Z_default))
     triggered = bool(mosca_trigger(X, Y, Z))
     boost = 1.0 if triggered else 0.0
 
@@ -471,8 +552,10 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
     klass = _class_for(score)
 
     assumptions = list(mosca_assumptions)
+    q_prov = "observed"
     if Q == QUANTUM_VULN["UNKNOWN"]:
         assumptions.append(f"algorithm {canonical!r} unmapped -> Q=0.5 conservative")
+        q_prov = "unknown"
     if exposure_assumed:
         assumptions.append("exposure unmapped -> internal (0.5)")
     if crit_assumed:
@@ -504,6 +587,15 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
         f" C={C:.2f} ({state}), Mosca X+Y={X:g}+{Y:g} {'>' if triggered else '<='} Z={Z:g}"
         f" -> boost={boost:.0f}.{floor_note} Score {score:.3f} -> {klass}."
     )
+    provenance = {
+        "exposure": exposure_prov,
+        "criticality": crit_prov,
+        "data_lifetime_years": mosca_prov.get("data_lifetime_years",
+                                              "inferred"),
+        "migration_years": mosca_prov.get("migration_years", "inferred"),
+        "crqc_years": mosca_prov.get("crqc_years", "inferred"),
+        "quantum_vuln": q_prov,
+    }
     return {
         "operation_id": op_id,
         "canonical_name": canonical,
@@ -513,6 +605,7 @@ def score_operation(op: dict, Z_default: float = 10) -> dict:
         "class": klass,
         "explanation": explanation,
         "assumptions": assumptions,
+        "provenance": provenance,
     }
 
 
@@ -624,3 +717,305 @@ def to_cir_risk(record: dict, asset_id: str | None = None,
     if out["class"] not in ("Critical", "High", "Medium", "Low", "Informational"):
         out["class"] = "Informational"
     return out
+
+
+# -- Phase 10: explainable risk dimensions (additive; v1 untouched) ---------
+
+_CLASSICAL_POLICY = "NIST SP 800-131A Rev.2"
+_PROTOCOL_POLICY = "RFC 9325 (TLS posture)"
+_NON_DEPLOYMENT_SCOPES = frozenset({
+    "TEST", "FIXTURE", "BENCHMARK", "DEMO", "EXAMPLE",
+    "DOCUMENTATION", "GENERATED",
+})
+
+
+def _op_canonical(op: dict) -> str:
+    return str(_first(op, "canonical_name", "canonical", "algorithm",
+                      "name", default="UNKNOWN") or "UNKNOWN")
+
+
+def _op_key_size(op: dict):
+    return _first(op, "key_size", "keySize", "bits", default=None)
+
+
+def _op_text(op: dict) -> str:
+    bits: list[str] = [
+        str(_first(op, "canonical_name", "canonical", "algorithm", default="")),
+        str(_first(op, "mode", default="") or ""),
+        str(_first(op, "protocol_version", "protocol", default="") or ""),
+        str(_first(op, "variant", "hash", default="") or ""),
+        str(_first(op, "operation", "operation_type", default="") or ""),
+    ]
+    params = op.get("parameters")
+    if isinstance(params, dict):
+        for key in ("mode", "hash", "digest", "protocol", "protocol_version"):
+            if params.get(key):
+                bits.append(str(params[key]))
+    return _norm(" ".join(bits))
+
+
+def assess_classical_posture(operation: dict) -> dict:
+    """Standards-based classical posture for one operation dict. Pure.
+
+    Returns ``{level, score 0..1, reason, policy}`` where level is one of
+    ``secure/legacy/deprecated/broken/unknown``. Follows NIST SP 800-131A
+    Rev.2 key-length/mode guidance (classical floor only; quantum and
+    misuse are separate dimensions).
+    """
+    if not isinstance(operation, dict):
+        raise TypeError("assess_classical_posture expects an operation dict")
+    canonical = _op_canonical(operation)
+    text = _op_text(operation)
+    key_size = _op_key_size(operation)
+    size = None
+    try:
+        size = int(key_size) if key_size is not None else None
+    except (TypeError, ValueError):
+        size = None
+
+    def out(level, score, reason):
+        return {"level": level, "score": round(float(score), 3),
+                "reason": reason, "policy": _CLASSICAL_POLICY}
+
+    if "ECB" in text:
+        return out("broken", 1.0, f"{canonical}: ECB mode leaks structure (classical-broken)")
+    if any(k in text for k in ("MD5",)):
+        return out("broken", 1.0, f"{canonical}: MD5 collision-broken")
+    if any(k in text for k in ("RC4", "ARC4")):
+        return out("broken", 1.0, f"{canonical}: RC4 key-recovery broken")
+    if "DES" in text and "DESCRIBE" not in text and "3DES" not in text \
+            and "DESEDE" not in text and "AES" not in text:
+        return out("broken", 1.0, f"{canonical}: single-DES brute-force broken")
+    if any(k in text for k in ("SHA1", "SHA-1")):
+        return out("deprecated", 0.7, f"{canonical}: SHA-1 collision-deprecated")
+    if any(k in text for k in ("3DES", "DESEDE", "TRIPLEDES")):
+        return out("deprecated", 0.7, f"{canonical}: 3DES disallowed for new use")
+    if any(k in text for k in ("BLOWFISH", "RIPEMD")):
+        return out("deprecated", 0.6, f"{canonical}: legacy primitive, migrate")
+    if "RSA" in text or "DSA" in text or "DIFFIE" in text or text.strip() in ("DH",):
+        if size is not None and size < 2048:
+            return out("broken", 0.9, f"{canonical}-{size}: below 2048-bit floor")
+        return out("secure", 0.15, f"{canonical}: classical strength ok (quantum handled separately)")
+    if any(k in text for k in ("ECDSA", "ECDH", "X25519", "X448", "ED25519",
+                               "ED448", "ELGAMAL")):
+        if size is not None and size < 224:
+            return out("broken", 0.9, f"{canonical}-{size}: below 224-bit EC floor")
+        return out("secure", 0.15, f"{canonical}: classical strength ok (quantum handled separately)")
+    if any(k in text for k in ("AES", "CHACHA", "POLY1305", "HMAC", "SHA256",
+                               "SHA384", "SHA512", "SHA-2", "SHA-3", "SHA3",
+                               "KECCAK", "BLAKE", "HKDF", "BCRYPT", "SCRYPT",
+                               "ARGON2", "PBKDF2", "ML-KEM", "ML-DSA",
+                               "SLH-DSA", "FN-DSA", "HQC", "KYBER", "HYBRID")):
+        if "AES" in text and size is not None and size < 128:
+            return out("broken", 0.9, f"AES-{size}: below 128-bit floor")
+        return out("secure", 0.1, f"{canonical}: approved primitive/parameters")
+    if text.strip() in ("UNKNOWN", "", "OPENSSL", "LIBRARY", "PROVIDER"):
+        return out("unknown", 0.5, f"{canonical}: unmapped, conservative")
+    return out("unknown", 0.5, f"{canonical}: unmapped, conservative")
+
+
+def assess_misuse_severity(operation: dict) -> dict:
+    """Misuse dimension: structured rule hits outrank algorithm presence.
+
+    Returns ``{level, score 0..1, findings, reason}`` with level one of
+    ``none/low/medium/high``. A strong primitive used incorrectly scores
+    high here even when its classical posture is ``secure``.
+    """
+    if not isinstance(operation, dict):
+        raise TypeError("assess_misuse_severity expects an operation dict")
+    try:
+        from ecdat.core.misuse import check_operation as _check
+        findings = _check(operation)
+    except Exception:
+        findings = []
+    if not findings:
+        return {"level": "none", "score": 0.0, "findings": [],
+                "reason": "no misuse rule fired"}
+    severities = {str(f.get("severity", "")).lower() for f in findings
+                  if isinstance(f, dict)}
+    if "high" in severities or "critical" in severities:
+        level, score = "high", 0.9
+    elif "medium" in severities:
+        level, score = "medium", 0.5
+    else:
+        level, score = "low", 0.25
+    ids = sorted(str(f.get("rule_id", "?")) for f in findings
+                 if isinstance(f, dict))
+    return {"level": level, "score": score, "findings": findings,
+            "reason": f"misuse rules fired: {', '.join(ids)}"}
+
+
+def assess_protocol_posture(operation: dict) -> dict:
+    """Protocol/configuration posture for one operation dict. Pure.
+
+    Returns ``{level, score 0..1, reason, policy}`` with level one of
+    ``secure/acceptable/legacy/broken/not-applicable``.
+    """
+    if not isinstance(operation, dict):
+        raise TypeError("assess_protocol_posture expects an operation dict")
+    text = _op_text(operation)
+    params = operation.get("parameters") if isinstance(
+        operation.get("parameters"), dict) else {}
+
+    def out(level, score, reason):
+        return {"level": level, "score": round(float(score), 3),
+                "reason": reason, "policy": _PROTOCOL_POLICY}
+
+    if any(k in text for k in ("TLS1.3", "TLSV1.3")):
+        return out("secure", 0.05, "TLS 1.3 negotiated/configured")
+    if any(k in text for k in ("TLS1.2", "TLSV1.2")):
+        # Weak ciphers inside TLS 1.2 still downgrade via classical/misuse.
+        return out("acceptable", 0.3, "TLS 1.2: acceptable only with strong suites")
+    if "TLS" in text or "SSL" in text:
+        return out("broken", 0.95, "legacy/broken TLS/SSL (1.0/1.1/SSLv2/v3 family)")
+    if text and ("CBC" in text or "RC4" in text or "DES" in text) and "TLS" in text:
+        return out("broken", 0.9, "TLS with legacy cipher")
+    if params.get("protocol_version") or params.get("protocol") \
+            or operation.get("protocol_version") or operation.get("protocol"):
+        return out("acceptable", 0.3, "protocol present, no insecure version signal")
+    return out("not-applicable", 0.0, "no protocol semantics in operation")
+
+
+def assess_quantum_exposure(operation: dict, Z_default: float = 10) -> dict:
+    """Quantum exposure dimension: Q plus Mosca urgency. Pure.
+
+    Returns ``{q, mosca_trigger, level, score, reason}`` with level one of
+    ``critical/high/medium/low/minimal``. Score blends Q (70%) with the
+    Mosca boost (30%) so long-lived data migrates first.
+    """
+    if not isinstance(operation, dict):
+        raise TypeError("assess_quantum_exposure expects an operation dict")
+    canonical = _op_canonical(operation)
+    q = quantum_vuln(canonical, _op_key_size(operation),
+                     _first(operation, "mode", default=None),
+                     _first(operation, "protocol_version", "protocol", default=None))
+    if _norm(canonical) in ("PBKDF2", "PBKDF") and _looks_weak_pbkdf2(operation):
+        q = max(q, QUANTUM_VULN["PBKDF2-WEAK"])
+    context = _as_dict(operation.get("context"))
+    try:
+        X, Y, Z, _assumptions, _prov = _mosca_inputs(
+            operation, context, float(Z_default))
+    except Exception:
+        X, Y, Z = 5.0, 3.0, float(Z_default)
+    triggered = bool(mosca_trigger(X, Y, Z))
+    score = round(min(1.0, max(0.0, 0.7 * q + 0.3 * (1.0 if triggered else 0.0))), 3)
+    if q >= 0.8:
+        level = "critical"
+    elif q >= 0.6:
+        level = "high"
+    elif q >= 0.4:
+        level = "medium"
+    elif q >= 0.2:
+        level = "low"
+    else:
+        level = "minimal"
+    return {"q": round(float(q), 3), "mosca_trigger": triggered,
+            "mosca": {"X": X, "Y": Y, "Z": Z},
+            "level": level, "score": score,
+            "reason": (f"{canonical}: Q={q:.2f}, Mosca X+Y={X:g}+{Y:g} "
+                       f"{'>' if triggered else '<='} Z={Z:g}")}
+
+
+def _deployment_impact(operation: dict, context: dict, location: dict,
+                       risk_inputs: dict) -> dict:
+    E, exposure, _ea, _ep = _exposure_weight(context, location, risk_inputs)
+    B, criticality, _ca, _cp = _criticality_weight(context, risk_inputs)
+    score = round((E + B) / 2.0, 3)
+    scope = None
+    try:
+        scope = operation.get("scope")
+        if scope is None:
+            scope = _as_dict(operation.get("context")).get("scope")
+        if scope is None:
+            from ecdat.core.scope import classify_scope as _scope
+            loc = _as_dict(operation.get("location"))
+            scope = _scope(loc.get("file", loc.get("path")),
+                           _as_dict(operation.get("implementation")).get("language"))
+    except Exception:
+        scope = scope or "UNKNOWN"
+    scope = str(scope or "UNKNOWN").upper()
+    capped = False
+    if scope in _NON_DEPLOYMENT_SCOPES:
+        score = round(score * 0.4, 3)
+        capped = True
+    reason = f"E={E:.2f} ({exposure}), B={B:.2f} ({criticality})"
+    if capped:
+        reason += f"; non-deployment scope {scope} reduces deployment impact"
+    return {"score": score, "exposure": exposure, "criticality": criticality,
+            "scope": scope, "capped": capped, "reason": reason}
+
+
+def score_operation_v2(op: dict, Z_default: float = 10) -> dict:
+    """Score one operation with named, inspectable dimensions. Pure.
+
+    Additive Phase 10 API: :func:`score_operation` is untouched. Returns
+    ``{operation_id, canonical_name, dimensions, score, score_10, class,
+    explanation, assumptions, provenance}`` where ``dimensions`` holds
+    ``classical_posture/misuse_severity/protocol_posture/quantum_exposure/
+    deployment_impact/migration_urgency``. Detection confidence stays
+    outside the risk value (reported separately in ``provenance`` notes).
+    """
+    if not isinstance(op, dict):
+        raise TypeError("score_operation_v2 expects a CIR operation dict")
+    base = score_operation(op, Z_default)
+    classical = assess_classical_posture(op)
+    misuse = assess_misuse_severity(op)
+    protocol = assess_protocol_posture(op)
+    quantum = assess_quantum_exposure(op, Z_default)
+    context = _as_dict(op.get("context"))
+    location = _as_dict(op.get("location"))
+    deployment = _deployment_impact(op, context, location, _risk_inputs(op))
+    urgency_score = round(min(1.0, (quantum["score"] + (0.5 if quantum["mosca_trigger"]
+                                                       else 0.0)) / 1.5), 3)
+    migration = {"score": urgency_score,
+                 "mosca_trigger": quantum["mosca_trigger"],
+                 "mosca": dict(quantum.get("mosca", {})),
+                 "reason": ("urgent: Mosca fired on quantum-exposed primitive"
+                            if quantum["mosca_trigger"] and quantum["q"] >= 0.4
+                            else "routine migration timing")}
+    score = round(min(1.0, max(0.0,
+                               0.30 * quantum["score"] + 0.25 * classical["score"]
+                               + 0.25 * misuse["score"] + 0.10 * protocol["score"]
+                               + 0.10 * deployment["score"])), 3)
+    klass = _class_for(score)
+    state = _usage_state(op)
+    if _norm(state) in _SUPPRESSED:
+        score, klass = 0.0, "Informational"
+    if _norm(state) in ("PROVIDEDONLY", "PROVIDED-ONLY") and score > 0.39:
+        score = min(score, 0.39)
+        klass = "Low" if score >= 0.2 else "Informational"
+    assumptions = list(base.get("assumptions", []))
+    if deployment.get("capped"):
+        assumptions.append(
+            f"scope {deployment.get('scope')} is non-deployment: deployment "
+            "impact shown reduced, evidence retained")
+    if misuse["findings"]:
+        assumptions.append(
+            "misuse takes precedence: strong primitive used incorrectly "
+            "still scores via the misuse dimension")
+    explanation = (
+        f"{base.get('canonical_name')} [{base.get('operation_id')}] v2: "
+        f"classical={classical['level']}({classical['score']:.2f}), "
+        f"misuse={misuse['level']}({misuse['score']:.2f}), "
+        f"protocol={protocol['level']}({protocol['score']:.2f}), "
+        f"quantum={quantum['level']}({quantum['score']:.2f}), "
+        f"deployment={deployment['score']:.2f}, "
+        f"migration={migration['score']:.2f} -> {score:.3f} {klass}.")
+    return {
+        "operation_id": base.get("operation_id"),
+        "canonical_name": base.get("canonical_name"),
+        "dimensions": {
+            "classical_posture": classical,
+            "misuse_severity": misuse,
+            "protocol_posture": protocol,
+            "quantum_exposure": quantum,
+            "deployment_impact": deployment,
+            "migration_urgency": migration,
+        },
+        "score": score,
+        "score_10": round(score * 10.0, 2),
+        "class": klass,
+        "explanation": explanation,
+        "assumptions": assumptions,
+        "provenance": base.get("provenance", {}),
+    }

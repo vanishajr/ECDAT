@@ -1,0 +1,9 @@
+id: S027
+name: tls12_nginx
+fixture: synthetic/S027_tls12_nginx
+expected:
+  operations:
+  - algorithm: TLS1.2
+  forbidden_operations: []
+  recommendation:
+    required: false

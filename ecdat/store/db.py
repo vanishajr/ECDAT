@@ -6,9 +6,8 @@ Tables: scans, findings (+ index on findings(scan_id, severity)).
 Schema versions:
   v1: scans(id, target, started_at, finished_at, raw_json, created_at)
       + findings (+ severity index).
-  v2: adds scans.cir_json (nullable TEXT). NULL means a mock/legacy
-      scan with no CIR sidecar; non-NULL is the full enriched CIR JSON
-      for a real (P2/P1) scan stored under the same scan ID.
+  v2: adds scans.cir_json (nullable TEXT). Non-NULL values contain the
+      full enriched CIR JSON for a P2/P1 scan stored under the same ID.
 
 No second normalized asset/operation model: the canonical document
 stays the queryable index and the CIR sidecar preserves full fidelity
@@ -26,7 +25,7 @@ from pathlib import Path
 
 __all__ = ["connect", "init_schema", "open_db", "SCHEMA_VERSION"]
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS scans (
@@ -50,11 +49,20 @@ CREATE TABLE IF NOT EXISTS findings (
 );
 CREATE INDEX IF NOT EXISTS idx_findings_scan_severity
     ON findings(scan_id, severity);
+CREATE TABLE IF NOT EXISTS scan_meta (
+    scan_id TEXT PRIMARY KEY REFERENCES scans(id) ON DELETE CASCADE,
+    plan_json TEXT,
+    diagnostics_json TEXT
+);
 """
 
 _MIGRATIONS = {
     # version -> SQL applied when stored user_version is lower.
     2: "ALTER TABLE scans ADD COLUMN cir_json TEXT",
+    # Phase 11: durable scan plan + diagnostics (scan history/reopen).
+    3: ("CREATE TABLE IF NOT EXISTS scan_meta ("
+        "scan_id TEXT PRIMARY KEY REFERENCES scans(id) ON DELETE CASCADE,"
+        " plan_json TEXT, diagnostics_json TEXT)"),
 }
 
 

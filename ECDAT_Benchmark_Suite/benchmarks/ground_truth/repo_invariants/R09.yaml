@@ -1,0 +1,5 @@
+id: R09
+repo: spring-security
+assertions:
+  no_crash: true
+  legacy_implementation_not_equal_production_use: true

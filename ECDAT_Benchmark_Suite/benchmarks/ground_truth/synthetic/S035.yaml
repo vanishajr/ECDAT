@@ -1,0 +1,10 @@
+id: S035
+name: implementation_source
+fixture: synthetic/S035_implementation_source
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: AES
+    usage: Confirmed
+  recommendation:
+    required: false

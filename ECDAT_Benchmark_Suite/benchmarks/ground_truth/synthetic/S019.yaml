@@ -1,0 +1,11 @@
+id: S019
+name: rsa4096_c
+fixture: synthetic/S019_rsa4096_c
+expected:
+  operations:
+  - algorithm: RSA
+    key_size: 4096
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

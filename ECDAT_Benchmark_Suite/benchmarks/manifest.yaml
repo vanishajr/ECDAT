@@ -1,0 +1,38 @@
+version: 1
+modes:
+  fast:
+    synthetic: true
+    real_repos:
+    - R12
+    profiles:
+    - standard
+  nightly:
+    synthetic: true
+    real_repos:
+    - R06
+    - R07
+    - R08
+    - R09
+    - R12
+    profiles:
+    - quick
+    - standard
+  full:
+    synthetic: true
+    real_repos:
+    - R01
+    - R02
+    - R03
+    - R04
+    - R05
+    - R06
+    - R07
+    - R08
+    - R09
+    - R10
+    - R11
+    - R12
+    profiles:
+    - quick
+    - standard
+    - deep

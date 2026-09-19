@@ -1,0 +1,13 @@
+id: D03
+name: dataflow_3
+fixture: synthetic/D03_dataflow_3
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

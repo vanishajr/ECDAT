@@ -2,7 +2,7 @@
 
 Single-process + ThreadPool facade over the Agent C analysis stages. CIR
 v0.1 (cir.schema.json) is the source of truth: ``scan`` runs inventory ->
-triage -> cheap synthetic extract -> fuse (Agent B fusion usage) ->
+triage -> pattern extract -> fuse (Agent B fusion usage) ->
 assets/operations -> graph. Risks/recommendations are NOT embedded by
 default (``include_risk`` / ``include_recommend`` default False -- they
 are a downstream stage via :func:`enrich_cir`).
@@ -134,7 +134,7 @@ _KEY_EXTS = {".pem", ".der", ".crt", ".cer", ".key", ".p12", ".pfx",
 _MAX_TEXT_BYTES = 2 * 1024 * 1024
 _MAX_FILES = 5000
 
-# Synthetic-stage reliability per surface (fusion input only, never
+# Pattern-stage reliability per surface (fusion input only, never
 # serialized: CIR evidence carries tool/detail/confidence/snippet alone).
 # Values mirror the DETECTOR_RELIABILITY scale of the stage each surface
 # stands in for. Consequence by design: the cheap pass peaks at Probable;
@@ -152,7 +152,7 @@ _SURFACE_RELIABILITY = {
 _DIRECT_SIGNALS = {"source-api-call", "binary-import"}
 
 # (raw_hint, operation_type, pattern, usage, role, confidence, library,
-#  signal_type). Library is a synthetic-attribution heuristic (documented
+#  signal_type). Library attribution is a heuristic (documented
 #  in scan()); version/api are filled per-hit only when observed.
 _PATTERNS: list[tuple] = [
     ("RSA", "Encrypt", re.compile(r"\bRSA\b.{0,60}?(1024|2048|3072|4096)", re.I),
@@ -272,7 +272,7 @@ def _service_for(target: Path) -> str:
 
 
 def _extract(path: Path, kind: str, service: str) -> list[dict]:
-    """Cheap synthetic extract: pattern hits shaped for fusion grouping."""
+    """Extract pattern hits shaped for fusion grouping."""
     text = _read_text(path)
     if not text:
         return []
@@ -359,7 +359,7 @@ def _fuse(hits: list[dict], service: str) -> tuple[list[dict], list[dict], list[
         first = members[0]
         dep_only = first.get("role") == "provides"
         evidence_in = [{
-            "detector": "agentC-synthetic-cheap",
+            "detector": "pattern-extract",
             "signal_type": ("call" if m.get("signal_type") in _DIRECT_SIGNALS
                             else str(m.get("signal_type", "pattern-match"))),
             "confidence": m.get("confidence", 0.5),
@@ -387,7 +387,7 @@ def _fuse(hits: list[dict], service: str) -> tuple[list[dict], list[dict], list[
         ) else "internal"
         best = max(members, key=lambda m: m.get("confidence", 0.0))
         signals = [{
-            "tool": "agentC-synthetic-cheap",
+            "tool": "pattern-extract",
             "detail": (f"{m.get('signal_type', 'pattern-match')} "
                        f"{m['canonical_name']} at {m['file']}:{m['line']}"),
             "confidence": m.get("confidence", 0.5),
@@ -602,6 +602,38 @@ def _severity_for(usage_state: str, risk_class: str | None) -> str:
     return "high"
 
 
+def _human_title(canonical: str, operation_type: str = "",
+                 key_size=None, mode: str = "") -> str:
+    """Human-readable finding title from data ECDAT already produces.
+
+    Never invents new facts: the canonical name (plus key size / mode
+    when the asset records them) and the operation type are the only
+    inputs. Internal op/asset IDs stay in finding metadata, never in
+    the title.
+    """
+    name = str(canonical or "UNKNOWN").strip() or "UNKNOWN"
+    upper = name.upper()
+    if upper == "RSA" and isinstance(key_size, int):
+        return f"{key_size}-bit RSA usage detected"
+    nouns = {
+        "ENCRYPT": "encryption", "DECRYPT": "decryption",
+        "SIGN": "signing", "VERIFY": "verification",
+        "KEYEXCHANGE": "key exchange", "HASH": "hashing",
+        "KDF": "key derivation", "TLS": "TLS configuration",
+        "STORAGE": "key/certificate storage",
+        "KEYMANAGEMENT": "key management",
+    }
+    noun = nouns.get(re.sub(r"[^A-Za-z]", "", str(operation_type or "")).upper(), "")
+    if noun and noun not in ("encryption", "signing") and upper not in (
+            "TLS1.0", "TLS-1.0", "TLS1.3", "TLS-1.3"):
+        return f"{name} {noun} detected"
+    if upper in ("TLS1.0", "TLS-1.0"):
+        return "Legacy TLS 1.0/1.1 usage detected"
+    if upper in ("TLS1.3", "TLS-1.3"):
+        return "TLS 1.3 usage detected"
+    return f"{name} usage detected"
+
+
 def _rule_id_for(canonical: str, key_size=None, mode: str = "",
                  protocol: str = "") -> str:
     slug = re.sub(r"[^A-Za-z0-9]+", "-", str(canonical or "UNKNOWN")).strip("-").upper()
@@ -664,7 +696,8 @@ def to_canonical(cir: dict) -> dict:
         finding = {
             "rule_id": _rule_id_for(canonical, asset.get("key_size"),
                                     asset.get("mode", ""), asset.get("protocol", "")),
-            "title": f"{canonical} [{op_id}]",
+            "title": _human_title(canonical, op.get("operation_type", ""),
+                                  asset.get("key_size"), asset.get("mode", "")),
             "severity": _severity_for(usage_state,
                                       risks.get(op_id, {}).get("class")),
             "file": str(location.get("file", first.get("file", "unknown")) or "unknown"),

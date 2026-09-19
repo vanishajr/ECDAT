@@ -6,9 +6,8 @@ or stdout. Exit 0 on success, 1 when the scan id is unknown (or when
 PDF output has no --output file), 3 on validation failure. Unknown
 --format values are rejected by argparse (exit 2).
 
-Risk/migration sections reuse the Task 6 mock helpers and are
-labeled mock/placeholder. PDF is a minimal stdlib executive summary,
-never written to stdout.
+Risk and migration sections use the stored P1 analysis records. PDF is
+a minimal stdlib executive summary, never written to stdout.
 """
 
 from __future__ import annotations
@@ -64,23 +63,37 @@ def run(args: argparse.Namespace) -> int:
         print(f"error: validation failed: {exc.message}", file=sys.stderr)
         return VALIDATION_FAILED
 
-    real_risk: dict | None = None
-    if cir is not None:
-        try:
-            from ecdat.adapters import risk_view as _risk_view
-
-            posture = _risk_view.summarize_wire_risks(
-                cir.get("risks", []) or [], len(doc.get("findings", [])))
-            real_risk = {
-                "score": posture["score"],
-                "level": posture["level"],
-                "risk_count": posture.get("risk_count", 0),
-                "model": posture.get("model", ""),
-                "source": posture.get("source", ""),
-            }
-        except Exception:
-            real_risk = None
-    report = aggregate.build_report(doc, real_risk=real_risk)
+    if cir is None:
+        print(f"error: scan {args.scan_id} has no analysis record", file=sys.stderr)
+        return ERROR
+    from ecdat.adapters import risk_view
+    from ecdat.adapters.migration_adapter import build_real_items
+    real_risk = risk_view.summarize_wire_risks(
+        cir.get("risks", []) or [], len(doc.get("findings", [])))
+    try:
+        from ecdat.store.repository import ScanRepository as _Repo
+        with _Repo(Path(args.db).expanduser()) as _repo:
+            _stored = _repo.get_payload(args.scan_id) or {}
+        _plan, _diagnostics = _stored.get("plan"), _stored.get("diagnostics")
+    except Exception:
+        _plan, _diagnostics = None, None
+    try:
+        from ecdat.commands.ci_cmd import _limitations_from as _lim
+        _coverage = aggregate.coverage_payload(_plan, _diagnostics)
+        _limitations = dict(_lim(_diagnostics))
+    except Exception:
+        _coverage, _limitations = {}, {}
+    _label = ""
+    try:
+        _label = str(((_plan or {}).get("display_target")
+                       or (_diagnostics or {}).get("display_target", "")) or "")
+    except Exception:
+        _label = ""
+    report = aggregate.build_report(
+        doc, real_risk=real_risk,
+        recommendations=build_real_items(cir, str(doc.get("target", ""))),
+        cir=cir, limitations=_limitations, coverage=_coverage,
+        display_label=_label)
     try:
         content = render(report, args.format)
     except ValueError as exc:
@@ -93,7 +106,7 @@ def run(args: argparse.Namespace) -> int:
         if isinstance(content, bytes):
             out.write_bytes(content)
         else:
-            out.write_text(content + "\n")
+            out.write_text(content + "\n", encoding="utf-8")
     else:
         print(content)  # text formats only; pdf always has --output here
     return 0

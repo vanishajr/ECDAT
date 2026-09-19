@@ -19,6 +19,11 @@ __all__ = [
 ]
 
 # Per-detector reliability weights (stable contract, see task spec).
+# Phase 8 calibration: the original eight entries are untouched; the added
+# keys register ECDAT's own detector families so production evidence
+# fuses through this table instead of the 0.7 default. Values mirror the
+# architecture evidence table (direct source API calls and live runtime
+# probes rank highest; dependency-only capability ranks lowest).
 DETECTOR_RELIABILITY: dict[str, float] = {
     "semgrep": 0.9,
     "tree-sitter": 0.88,
@@ -28,6 +33,18 @@ DETECTOR_RELIABILITY: dict[str, float] = {
     "syft": 0.6,
     "sslyze": 0.92,
     "gitleaks": 0.85,
+    "source": 0.92,
+    "config": 0.85,
+    "certificate": 0.85,
+    "binary": 0.8,
+    "strings": 0.6,
+    "dependency": 0.5,
+    "container": 0.6,
+    "runtime": 0.92,
+    "cloud": 0.75,
+    "secret": 0.85,
+    "dockerfile": 0.5,
+    "bom": 0.5,
 }
 
 _DEFAULT_RELIABILITY = 0.7

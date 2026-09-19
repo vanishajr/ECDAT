@@ -1,0 +1,12 @@
+id: S009
+name: des_cbc_c
+fixture: synthetic/S009_des_cbc_c
+expected:
+  operations:
+  - algorithm: DES
+    mode: CBC
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: true

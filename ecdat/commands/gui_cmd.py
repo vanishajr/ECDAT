@@ -23,7 +23,8 @@ def run(args: argparse.Namespace) -> int:
         )
         return ERROR
     try:
-        server = make_server(host=host, port=port)
+        server = make_server(host=host, port=port,
+                             db_path=getattr(args, "db", None))
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return ERROR

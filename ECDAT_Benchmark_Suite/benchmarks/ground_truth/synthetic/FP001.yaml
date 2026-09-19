@@ -1,0 +1,12 @@
+id: FP001
+name: adversarial_names
+fixture: synthetic/FP001_adversarial_names
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: AES
+    usage: Confirmed
+  - algorithm: RSA
+    usage: Confirmed
+  recommendation:
+    required: false

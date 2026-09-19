@@ -1,4 +1,4 @@
-"""Minimal/mock CycloneDX CBOM renderers (JSON + XML).
+"""CycloneDX CBOM renderers (JSON + XML).
 
 Pure functions over a validated canonical v1 dict. This is a
 minimal subset honestly derivable from canonical v1 — one component
@@ -14,10 +14,7 @@ import xml.etree.ElementTree as ET
 
 SPEC_VERSION = "1.6"
 NAMESPACE = "http://cyclonedx.org/schema/bom/1.6"
-MOCK_NOTE = (
-    "Minimal/mock CBOM representation derived from ECDAT canonical v1 "
-    "findings; pending richer CIR from Person 1."
-)
+CBOM_NOTE = "Cryptographic asset inventory derived from ECDAT canonical findings."
 
 
 def _bom_ref(doc: dict, finding: dict, index: int) -> str:
@@ -61,7 +58,7 @@ def _bom_dict(doc: dict) -> dict:
         "specVersion": SPEC_VERSION,
         "version": 1,
         "metadata": {
-            "description": MOCK_NOTE,
+            "description": CBOM_NOTE,
             "timestamp": doc["finished_at"],
             "tools": tools,
             "component": {
@@ -103,7 +100,7 @@ def to_cbom_xml(doc: dict) -> str:
         },
     )
     metadata = ET.SubElement(bom, "metadata")
-    _text_el(metadata, "description", MOCK_NOTE)
+    _text_el(metadata, "description", CBOM_NOTE)
     _text_el(metadata, "timestamp", doc["finished_at"])
     tools = ET.SubElement(metadata, "tools")
     for name, version in sorted(doc["tool_versions"].items()):

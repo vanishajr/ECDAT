@@ -30,8 +30,9 @@ from urllib.request import Request, urlopen
 
 from ecdat.adapters.graph_adapter import adapt_cir_graph
 from ecdat.adapters.risk_view import summarize_wire_risks
-from ecdat.adapters.scanner_policy import DEFAULT_SCANNERS, OPT_IN_SCANNERS, PROJECT_SCANNERS
-from ecdat.adapters.pipeline import RealScanError, run_real_scan
+from ecdat.adapters.scanner_policy import DEFAULT_SCANNERS, OPT_IN_SCANNERS
+from ecdat.adapters.pipeline import RealScanError
+from ecdat.core.orchestrator import ScanPermissions, ScanRequest, get_orchestrator
 from ecdat.exports import cbom, csv_gen, sarif
 from ecdat.reports import aggregate, html, markdown, pdf
 from ecdat.scanners.path_policy import iter_project_files
@@ -136,25 +137,40 @@ def _architecture(paths: list[Path]) -> str:
 
 
 def _inspect(root: Path, label: str) -> dict[str, Any]:
-    files = list(iter_project_files(root))
+    """Phase 2: real inventory summary (not just file counts/extensions).
+
+    Legacy keys (name/file_count/total_bytes/extensions/languages/
+    architecture) are preserved for existing GUI clients; the inventory
+    roll-up (artifact counts by category, detected surfaces, archives,
+    skip reasons) is added alongside. ``name`` stays the user-supplied
+    label so temp upload paths are never the primary identity.
+    """
+    from ecdat.core.inventory import inventory_target
+
+    records, summary = inventory_target(root)
+    files = [Path(r.abs_path) for r in records if Path(r.abs_path).is_file()]
+    if not files:
+        files = list(iter_project_files(root))
     extensions = sorted({p.suffix.lower() for p in files if p.suffix})[:16]
-    languages = []
-    mapping = {".py": "Python", ".js": "JavaScript", ".ts": "TypeScript", ".java": "Java", ".go": "Go", ".rs": "Rust", ".c": "C", ".cpp": "C++", ".cs": "C#"}
-    for suffix, language in mapping.items():
-        if any(p.suffix.lower() == suffix for p in files):
-            languages.append(language)
     return {
         "name": label,
-        "file_count": len(files),
-        "total_bytes": sum(p.stat().st_size for p in files),
+        "display_name": label,
+        "file_count": summary.total,
+        "total_bytes": summary.total_bytes,
         "extensions": extensions,
-        "languages": languages,
+        "languages": list(summary.languages),
         "architecture": _architecture(files),
+        "artifact_counts": dict(summary.by_category),
+        "surfaces": dict(summary.by_surface),
+        "archives": list(summary.archives),
+        "skipped_count": len(summary.skipped),
+        "skipped": summary.skipped[:50],
+        "inventory_truncated": summary.truncated,
     }
 
 
 class AppState:
-    def __init__(self) -> None:
+    def __init__(self, db_path: str | Path | None = None) -> None:
         self.root = Path(tempfile.mkdtemp(prefix="ecdat-web-"))
         self.lock = threading.RLock()
         self.inputs: dict[str, dict[str, Any]] = {}
@@ -162,6 +178,13 @@ class AppState:
         self.results: dict[str, dict[str, Any]] = {}
         self.oauth_states: dict[str, dict[str, Any]] = {}
         self.github_sessions: dict[str, dict[str, Any]] = {}
+        # Phase 11: durable scan model shared with CLI/CI. Same default
+        # DB file as the CLI so GUI and CLI histories unify; override
+        # with --db / ECDAT_DB (tests use a temp file).
+        if db_path is None:
+            db_path = os.getenv("ECDAT_DB") or str(
+                Path.home() / ".ecdat" / "ecdat.db")
+        self.db_path = str(db_path)
 
     def close(self) -> None:
         shutil.rmtree(self.root, ignore_errors=True)
@@ -202,6 +225,16 @@ atexit.register(STATE.close)
 
 
 def _profile_scanners(profile: str, requested: list[str] | None) -> list[str]:
+    """Resolve GUI scanner selection (Phase 3: automatic local discovery).
+
+    Local/static coverage (source, dependencies, binaries, configs,
+    certs/keys) is automatic for every profile - the user no longer
+    decides it with checkboxes. An explicit ``requested`` list is still
+    honored as the Advanced/debug override. Depth (quick/standard/deep)
+    changes analysis effort inside the orchestrator, never which local
+    artifacts ECDAT knows about. External families (container pull,
+    runtime probing, cloud APIs) still require explicit opt-in.
+    """
     if requested:
         known = set(DEFAULT_SCANNERS) | set(OPT_IN_SCANNERS)
         unknown = sorted(set(requested) - known)
@@ -209,18 +242,45 @@ def _profile_scanners(profile: str, requested: list[str] | None) -> list[str]:
             raise ValueError(f"unknown scanner layer(s): {', '.join(unknown)}")
         return requested
     profile = profile.lower()
-    if profile == "quick":
-        return list(PROJECT_SCANNERS)
-    if profile in {"standard", "deep"}:
-        return list(PROJECT_SCANNERS)
+    if profile in {"quick", "standard", "deep"}:
+        return list(DEFAULT_SCANNERS)
     raise ValueError("profile must be quick, standard, or deep")
 
 
-def _result_payload(cir: dict, canonical: dict) -> dict[str, Any]:
+def _coverage_payload(plan: dict | None,
+                      diagnostics: dict | None) -> dict[str, Any]:
+    """Phase 12 coverage/diagnostics view (delegates to the shared
+    aggregate helper so CLI reports and the GUI agree byte-for-byte)."""
+    return aggregate.coverage_payload(plan, diagnostics)
+
+
+def _limitations_payload(diagnostics: dict | None) -> dict[str, Any]:
+    try:
+        from ecdat.commands.ci_cmd import _limitations_from
+        return dict(_limitations_from(diagnostics))
+    except Exception:
+        return {}
+
+
+def _result_payload(cir: dict, canonical: dict,
+                    plan: dict | None = None,
+                    diagnostics: dict | None = None) -> dict[str, Any]:
     risks = list(cir.get("risks", []) or [])
     graph, folded_files = adapt_cir_graph(cir, risks)
     risk = summarize_wire_risks(risks, len(canonical.get("findings", [])))
-    report = aggregate.build_report(canonical, real_risk=risk)
+    from ecdat.adapters.migration_adapter import build_real_items
+    coverage = _coverage_payload(plan, diagnostics)
+    limitations = _limitations_payload(diagnostics)
+    try:
+        _label = str(((plan or {}).get("display_target")
+                       or (diagnostics or {}).get("display_target", "")) or "")
+    except Exception:
+        _label = ""
+    report = aggregate.build_report(
+        canonical, real_risk=risk,
+        recommendations=build_real_items(cir, str(canonical.get("target", ""))),
+        cir=cir, limitations=limitations, coverage=coverage,
+        display_label=_label)
     return {
         "scan_id": canonical["scan_id"],
         "canonical": canonical,
@@ -240,31 +300,91 @@ def _result_payload(cir: dict, canonical: dict) -> dict[str, Any]:
         "recommendations": cir.get("recommendations", []),
         "risks": risks,
         "graph": {**graph, "folded_files": folded_files},
+        "coverage": coverage,
+        "limitations": limitations,
+        "plan": plan if isinstance(plan, dict) else {},
         "report": report,
     }
 
 
 def _run_job(job_id: str) -> None:
+    """Phase 1: GUI scans through the shared ScanOrchestrator.
+
+    Same pipeline as CLI/CI; progress events drive the job's
+    progress/stage so the GUI reflects real architecture stages.
+    """
     with STATE.lock:
         job = STATE.jobs[job_id]
-        job.update({"status": "running", "progress": 20, "stage": "Running discovery"})
+        job.update({"status": "running", "progress": 5, "stage": "Preparing input"})
+
+    def _on_progress(event) -> None:
+        with STATE.lock:
+            current = STATE.jobs.get(job_id)
+            if current is None:
+                return
+            # Orchestrator emits 0-100; keep job shape stable for the GUI.
+            current.update({
+                "progress": int(event.progress),
+                "stage": str(event.message or event.stage),
+            })
+
     try:
         input_data = STATE.input_for(job["input_id"])
         target = Path(input_data["target"])
-        with STATE.lock:
-            job.update({"progress": 55, "stage": "Fusing evidence and scoring risk"})
-        cir, canonical = run_real_scan(
-            target,
-            scanners=job["scanners"],
-            allow_container="container" in job["scanners"],
-            allow_cloud="cloud" in job["scanners"],
-            allow_runtime="runtime" in job["scanners"],
+        scanners = list(job["scanners"])
+        try:
+            from ecdat.core.orchestrator import ScanContext as _ScanContext
+            stored = job.get("context") or {}
+            context = _ScanContext(
+                environment=stored.get("environment"),
+                owner=stored.get("owner"),
+                exposure=stored.get("exposure"),
+                business_criticality=stored.get("business_criticality"),
+                data_lifetime_years=stored.get("data_lifetime_years"),
+                migration_years=stored.get("migration_years"),
+            )
+        except Exception:
+            from ecdat.core.orchestrator import ScanContext as _ScanContext
+            context = _ScanContext()
+        try:
+            risk_z = float(job.get("risk_z", 10.0))
+        except (TypeError, ValueError):
+            risk_z = 10.0
+        request = ScanRequest(
+            target=str(target),
+            scanners=scanners,
+            permissions=ScanPermissions(
+                allow_container="container" in scanners,
+                allow_cloud="cloud" in scanners,
+                allow_runtime="runtime" in scanners,
+                allow_pull=bool(job.get("allow_pull", False)),
+                allow_build=bool(job.get("allow_build", False)),
+            ),
+            profile=str(job.get("profile", "standard") or "standard"),
+            risk_z=risk_z,
+            context=context,
+            caller="gui",
+            display_name=str(input_data.get("label") or "Selected input"),
         )
-        payload = _result_payload(cir, canonical)
+        with STATE.lock:
+            job.update({"progress": 10, "stage": "Planning scan"})
+        result = get_orchestrator().scan(request, progress=_on_progress)
+        cir, canonical = result.as_tuple()
+        payload = _result_payload(cir, canonical, result.plan.as_dict(),
+                                  result.diagnostics)
+        persisted = False
+        try:
+            from ecdat.store.repository import ScanRepository as _Repo
+            with _Repo(STATE.db_path) as repo:
+                repo.save_scan(canonical, cir, result.plan.as_dict(),
+                               result.diagnostics, replace=True)
+            persisted = True
+        except Exception:
+            persisted = False  # memory payload still serves this process
         with STATE.lock:
             STATE.results[canonical["scan_id"]] = payload
-            job.update({"status": "completed", "progress": 100, "stage": "Analysis complete", "scan_id": canonical["scan_id"]})
-    except Exception as exc:  # surfaced to user; never turn into mock output
+            job.update({"status": "completed", "progress": 100, "stage": "Analysis complete", "scan_id": canonical["scan_id"], "persisted": persisted})
+    except Exception as exc:  # surfaced to user; never hide scan failure
         with STATE.lock:
             job.update({"status": "failed", "progress": 100, "stage": "Analysis failed", "error": str(exc)})
 
@@ -320,7 +440,14 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"ok": True, "time": _now()})
             return
         if path == "/api/scanner-capabilities":
-            self._json(200, {"default": list(PROJECT_SCANNERS), "optional": {"binary": "explicit executable/library analysis", **OPT_IN_SCANNERS}, "github_oauth": bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))})
+            self._json(200, {"default": list(DEFAULT_SCANNERS), "optional": dict(OPT_IN_SCANNERS), "github_oauth": bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))})
+            return
+        if path == "/api/demos":
+            try:
+                from ecdat.web.demos import list_demos as _demos
+                self._json(200, {"demos": _demos()})
+            except Exception as exc:
+                self._json(500, {"error": f"demos unavailable: {exc}"})
             return
         if path.startswith("/api/jobs/"):
             job_id = path.rsplit("/", 1)[-1]
@@ -331,11 +458,38 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._json(200, {k: v for k, v in job.items() if k != "input_id"})
             return
+        if path == "/api/scans":
+            try:
+                from ecdat.store.repository import ScanRepository as _Repo
+                with _Repo(STATE.db_path) as repo:
+                    history = repo.list_scans(limit=100)
+                self._json(200, {"scans": history})
+            except Exception as exc:
+                self._json(500, {"error": f"scan history unavailable: {exc}"})
+            return
         if path.startswith("/api/results/"):
             parts = path.split("/")
             scan_id = parts[3] if len(parts) > 3 else ""
             with STATE.lock:
                 result = STATE.results.get(scan_id)
+            if result is None:
+                # Phase 11 reopen: completed scans survive process-level
+                # navigation via the shared repository, not just memory.
+                try:
+                    from ecdat.store.repository import (
+                        ScanRepository as _Repo)
+                    with _Repo(STATE.db_path) as repo:
+                        stored = repo.get_payload(scan_id)
+                    if stored and stored.get("canonical") \
+                            and stored.get("cir"):
+                        result = _result_payload(stored["cir"],
+                                                 stored["canonical"],
+                                                 stored.get("plan"),
+                                                 stored.get("diagnostics"))
+                        with STATE.lock:
+                            STATE.results[scan_id] = result
+                except Exception:
+                    result = None
             if result is None:
                 self._json(404, {"error": "results are no longer available"})
                 return
@@ -369,9 +523,9 @@ class Handler(BaseHTTPRequestHandler):
         elif fmt == "csv":
             body, kind = csv_gen.to_csv(result["canonical"]).encode(), "text/csv; charset=utf-8"
         elif fmt == "sarif":
-            body, kind = json.dumps(sarif.to_sarif(result["canonical"]), indent=2).encode(), "application/sarif+json"
+            body, kind = sarif.to_sarif(result["canonical"]).encode(), "application/sarif+json"
         elif fmt == "cbom-json":
-            body, kind = json.dumps(cbom.to_cbom_json(result["canonical"]), indent=2).encode(), "application/json"
+            body, kind = cbom.to_cbom_json(result["canonical"]).encode(), "application/json"
         elif fmt == "cbom-xml":
             body, kind = cbom.to_cbom_xml(result["canonical"]).encode(), "application/xml"
         else:
@@ -392,6 +546,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._upload()
             elif path == "/api/inputs/inspect":
                 self._inspect_input()
+            elif path == "/api/demos/select":
+                self._demo_select()
+            elif path == "/api/scan-plan":
+                self._scan_plan()
             elif path == "/api/scan-jobs":
                 self._start_job()
             elif path == "/api/github/public":
@@ -437,6 +595,8 @@ class Handler(BaseHTTPRequestHandler):
         self._json(201, {"input_id": input_data["input_id"], "name": name})
 
     def _inspect_input(self) -> None:
+        from ecdat.core.inventory import safe_extract_archive
+
         body = self._read_json()
         data = STATE.input_for(str(body.get("input_id", "")))
         root = Path(data["directory"])
@@ -444,13 +604,56 @@ class Handler(BaseHTTPRequestHandler):
         if len(archives) == 1 and len([p for p in root.rglob("*") if p.is_file()]) == 1:
             extracted = root / "extracted"
             extracted.mkdir(exist_ok=True)
-            if archives[0].name.lower().endswith(".zip"):
-                _safe_extract_zip(archives[0], extracted)
-            else:
-                _safe_extract_tar(archives[0], extracted)
+            # Single hardened implementation (limits + traversal/link
+            # safety); failures stay loud instead of half-extracting.
+            safe_extract_archive(archives[0], extracted)
             root = extracted
         data["target"] = root
         self._json(200, {"input_id": data["input_id"], **_inspect(root, data["label"])})
+
+    def _demo_select(self) -> None:
+        """Load a bundled demo directory as the scan input (judges)."""
+        from ecdat.web.demos import get_demo as _get_demo
+
+        body = self._read_json()
+        directory, meta = _get_demo(str(body.get("demo_id", "")))
+        data = STATE.new_input()
+        root = Path(data["directory"]) / "demo"
+        root.mkdir(parents=True, exist_ok=True)
+        for path in sorted(directory.iterdir()):
+            if not path.is_file() or path.name == "meta.json":
+                continue
+            shutil.copy2(path, root / _safe_name(path.name))
+        data["target"] = root
+        data["label"] = str(meta.get("name") or directory.name)
+        self._json(200, {"input_id": data["input_id"],
+                         **_inspect(root, data["label"])})
+
+    def _scan_plan(self) -> None:
+        """Phase 3: scan-plan preview for GUI use (no scanning)."""
+        body = self._read_json()
+        data = STATE.input_for(str(body.get("input_id", "")))
+        target = data.get("target") or data["directory"]
+        profile = str(body.get("profile", "standard") or "standard")
+        requested = body.get("scanners")
+        scanners = _profile_scanners(
+            profile, requested if isinstance(requested, list) else None)
+        request = ScanRequest(
+            target=str(target),
+            scanners=scanners,
+            permissions=ScanPermissions(
+                allow_container="container" in scanners,
+                allow_cloud="cloud" in scanners,
+                allow_runtime="runtime" in scanners,
+                allow_pull=bool(body.get("allowPull", False)),
+                allow_build=bool(body.get("allowBuild", False)),
+            ),
+            profile=profile,
+            caller="gui-plan",
+            display_name=str(data.get("label") or "Selected input"),
+        )
+        self._json(200, {"input_id": data["input_id"],
+                         "plan": get_orchestrator().plan(request).as_dict()})
 
     def _start_job(self) -> None:
         body = self._read_json()
@@ -459,9 +662,27 @@ class Handler(BaseHTTPRequestHandler):
         if not data.get("target"):
             raise ValueError("inspect the selected input before analysis")
         requested = body.get("scanners")
-        scanners = _profile_scanners(str(body.get("profile", "standard")), requested if isinstance(requested, list) else None)
+        profile = str(body.get("profile", "standard") or "standard").lower()
+        scanners = _profile_scanners(profile, requested if isinstance(requested, list) else None)
+        # Phase 7 external-discovery opt-ins (default False): pulling
+        # image refs, probing runtime endpoints is already gated by
+        # scanner selection, cloud APIs by scanner selection.
+        allow_pull = bool(body.get("allowPull", False))
+        allow_build = bool(body.get("allowBuild", False))
+        # Phase 10 user-supplied risk context (all optional; visibly
+        # tagged user-supplied in risk provenance, never defaulted up).
+        try:
+            from ecdat.core.orchestrator import context_from_args as _ctx
+            context = _ctx(body if isinstance(body, dict) else {}).as_dict()
+        except Exception:
+            context = {}
+        try:
+            from ecdat.core.orchestrator import risk_z_from_args as _z
+            risk_z = _z(body if isinstance(body, dict) else {})
+        except Exception:
+            risk_z = 10.0
         job_id = uuid.uuid4().hex
-        job = {"job_id": job_id, "input_id": input_id, "status": "queued", "progress": 5, "stage": "Preparing input", "scanners": scanners, "created_at": _now()}
+        job = {"job_id": job_id, "input_id": input_id, "status": "queued", "progress": 5, "stage": "Preparing input", "scanners": scanners, "profile": profile, "allow_pull": allow_pull, "allow_build": allow_build, "context": context, "risk_z": risk_z, "created_at": _now()}
         with STATE.lock:
             STATE.jobs[job_id] = job
         threading.Thread(target=_run_job, args=(job_id,), daemon=True).start()
@@ -674,9 +895,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(b'{"ok":true}')
 
 
-def make_server(host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
+def make_server(host: str = "127.0.0.1", port: int = 8765,
+                db_path: str | Path | None = None) -> ThreadingHTTPServer:
     if host not in LOOPBACK_HOSTS:
         raise ValueError("ECDAT web API is localhost-only")
+    if db_path is not None:
+        STATE.db_path = str(db_path)
     return ThreadingHTTPServer((host, port), Handler)
 
 

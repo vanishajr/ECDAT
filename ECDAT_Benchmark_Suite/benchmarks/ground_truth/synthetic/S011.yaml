@@ -1,0 +1,11 @@
+id: S011
+name: rc4_c
+fixture: synthetic/S011_rc4_c
+expected:
+  operations:
+  - algorithm: RC4
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: true

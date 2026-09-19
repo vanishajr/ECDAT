@@ -1,0 +1,9 @@
+id: D09
+name: environment_selected
+fixture: synthetic/D09_environment_selected
+expected:
+  operations:
+  - usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

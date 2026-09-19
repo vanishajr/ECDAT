@@ -55,14 +55,22 @@ def deterministic_scan_id(
     registry_version: str,
     tool_versions: dict,
     operation_ids: list[str],
+    context_seed: str = "",
 ) -> str:
-    """Stable ``scan:<16hex>`` over scan inputs (no uuid4 anywhere)."""
+    """Stable ``scan:<16hex>`` over scan inputs (no uuid4 anywhere).
+
+    Phase 10: an explicit user context (risk-relevant scan input) joins
+    the seed so context-bearing scans get their own IDs instead of
+    colliding with default-context scans of the same target. Empty seed
+    preserves every historical ID byte-for-byte.
+    """
     tools = ",".join(f"{k}={tool_versions[k]}" for k in sorted(tool_versions))
     seed = "|".join([
         str(target),
         str(registry_version),
         tools,
         ",".join(sorted(str(o) for o in operation_ids)),
+        str(context_seed or ""),
     ]).encode("utf-8")
     return "scan:" + hashlib.blake2s(seed, digest_size=8).hexdigest()
 
@@ -82,7 +90,7 @@ def files_from_cir(cir: dict) -> list[str]:
     return sorted(files)
 
 
-def normalize_cir(cir: dict, target: str) -> dict:
+def normalize_cir(cir: dict, target: str, context_seed: str = "") -> dict:
     """Assign deterministic ID + valid timestamps + true stats counts.
 
     Returns a new dict; the input is not mutated. Risks/recommendations
@@ -98,7 +106,8 @@ def normalize_cir(cir: dict, target: str) -> dict:
     ]
     tools = doc.get("tool_versions", {}) or {}
     doc["scan_id"] = deterministic_scan_id(
-        target, str(doc.get("registry_version", "")), tools, op_ids)
+        target, str(doc.get("registry_version", "")), tools, op_ids,
+        context_seed)
     doc["target"] = str(target)
     doc["started_at"] = to_rfc3339(doc.get("started_at"))
     doc["finished_at"] = to_rfc3339(doc.get("finished_at"))
@@ -126,6 +135,7 @@ def synthesize_asset_only_findings(cir: dict) -> list[dict]:
     """
     # P3-owned reuse of P1's pure mapping (vendored module is read-only
     # reference; importing the function avoids a second rule vocabulary).
+    from ecdat.core.api import _human_title  # noqa: PLC2701
     from ecdat.core.api import _rule_id_for  # noqa: PLC2701
     from ecdat.core.api import _severity_for  # noqa: PLC2701
 
@@ -154,7 +164,9 @@ def synthesize_asset_only_findings(cir: dict) -> list[dict]:
             "rule_id": _rule_id_for(
                 canonical, asset.get("key_size"),
                 asset.get("mode", ""), asset.get("protocol", "")),
-            "title": f"{canonical} [{asset_id}]",
+            "title": _human_title(canonical, "",
+                                  asset.get("key_size"),
+                                  asset.get("mode", "")),
             "severity": _severity_for(usage_state, None),
             "file": str(location.get("file") or first.get("file")
                         or "unknown") or "unknown",

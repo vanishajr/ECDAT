@@ -1,0 +1,12 @@
+id: D10
+name: dynamic_algorithm
+fixture: synthetic/D10_dynamic_algorithm
+expected:
+  operations: []
+  forbidden_operations:
+  - algorithm: AES
+    usage: Confirmed
+  - algorithm: RSA
+    usage: Confirmed
+  recommendation:
+    required: false

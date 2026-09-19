@@ -1,0 +1,12 @@
+id: S010
+name: triple_des_c
+fixture: synthetic/S010_triple_des_c
+expected:
+  operations:
+  - algorithm: 3DES
+    mode: CBC
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: true

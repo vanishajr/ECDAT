@@ -2,7 +2,7 @@
 
 Reads P1 wire risks from a stored enriched CIR and projects the
 aggregate posture the GUI/CLI render. No scoring happens here — the
-numbers are P1's, verbatim. Mock scans never touch this module.
+numbers are P1's, verbatim.
 
 Wire risk shape (P1 ``to_cir_risk``): {risk_id, class (Critical|High|
 Medium|Low|Informational), title, confidence, operation_id, asset_id?,

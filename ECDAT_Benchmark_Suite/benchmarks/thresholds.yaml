@@ -1,0 +1,18 @@
+synthetic:
+  operation_precision_min: 0.98
+  operation_recall_min: 0.98
+real_slices:
+  operation_precision_min: 0.95
+  operation_recall_min: 0.9
+classification:
+  usage_state_accuracy_min: 0.95
+risk:
+  critical_risk_recall_min: 1.0
+recommendations:
+  required_recommendation_recall_min: 0.95
+  unnecessary_recommendation_rate_max: 0.05
+determinism:
+  required: true
+performance:
+  allowed_runtime_regression_fraction: 0.1
+  allowed_peak_rss_regression_fraction: 0.1

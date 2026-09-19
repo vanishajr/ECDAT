@@ -8,7 +8,7 @@ from typing import Optional
 from ecdat.scanners.base import Scanner, ScannerFinding, create_evidence_signal, normalize_finding
 from ecdat.core.cir_models import UsageState, Location, Implementation, Context, Exposure
 from ecdat.core.signature_registry import normalize_algorithm, get_category, is_library_only
-from ecdat.scanners.dependency.crypto_packages import CRYPTO_PACKAGES
+from ecdat.scanners.dependency.crypto_packages import SYFT_CRYPTO_PACKAGES as CRYPTO_PACKAGES
 
 
 class SyftScanner(Scanner[ScannerFinding]):

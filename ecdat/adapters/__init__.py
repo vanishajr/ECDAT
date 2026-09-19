@@ -11,7 +11,7 @@ modules (read-only reference) and never in presentation code:
     migration_adapter : P1 internal recs -> P3 migration envelope
     graph_adapter  : CIR wire graph -> P3 GUI graph vocabulary
 
-Every adapter fails loudly on invalid input. No mock fallback anywhere.
+Every adapter fails loudly on invalid input.
 """
 
 from __future__ import annotations

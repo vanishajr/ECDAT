@@ -19,10 +19,22 @@ class GenericConfigScanner(Scanner[ScannerFinding]):
             "tls", "ssl", "https", "cert", "key", "ca", "crt", "pem", "der",
             "p12", "pfx", "jks", "keystore", "truststore", "cipher", "protocol"
         ]
+        # Word-boundary patterns: plain substrings over-match
+        # ("ca" in "category", "key" in "keywords"). A keyword must
+        # appear as a standalone token (or separator-delimited segment).
+        self._tls_token_res = [
+            re.compile(r"(?<![a-z0-9])" + re.escape(kw) + r"(?![a-z0-9])")
+            for kw in self._tls_keywords
+        ]
 
     def can_scan_file(self, path: Path) -> bool:
         suffixes = (".yaml", ".yml", ".json", ".toml", ".ini", ".conf", ".config", ".properties")
-        return path.suffix in suffixes
+        if path.suffix in suffixes:
+            return True
+        # Phase 5: dot-env files carry TLS/service bindings but have no
+        # usable suffix (``Path(".env").suffix == ""``).
+        name = path.name.lower()
+        return name.startswith(".env") or name.endswith(".env")
 
     def is_available(self) -> bool:
         return True
@@ -118,27 +130,33 @@ class GenericConfigScanner(Scanner[ScannerFinding]):
                 continue
 
             line_lower = line_stripped.lower()
-            for kw in self._tls_keywords:
-                if kw in line_lower and "=" in line_stripped:
-                    key, _, value = line_stripped.partition("=")
-                    canonical = self._guess_canonical(key, value)
-                    if canonical:
-                        findings.append(ScannerFinding(
-                            canonical=canonical,
-                            original=key.strip(),
-                            usage_state=UsageState.PROVIDED_ONLY,
-                            confidence=0.3,
-                            evidence=[create_evidence_signal(
-                                tool="config-generic",
-                                detail=f"Config line {i+1}: {key.strip()}={value.strip()[:100]}",
-                                confidence=0.3,
-                                snippet=line_stripped[:200],
-                            )],
-                            location=Location(file=str(file_path), line=i + 1),
-                            implementation=Implementation(library="generic", provider=file_path.suffix[1:]),
-                            context=Context(exposure=Exposure.INTERNAL),
-                        ))
-                    break
+            if "=" not in line_stripped:
+                continue
+            if not any(rx.search(line_lower) for rx in self._tls_token_res):
+                continue
+            key, _, value = line_stripped.partition("=")
+            canonical = self._guess_canonical(key, value)
+            if not canonical:
+                continue
+            findings.append(ScannerFinding(
+                canonical=canonical,
+                # NOTE: original carries the canonical guess, not the
+                # raw key: normalize_finding re-derives canonical from
+                # original, so a raw key ("category") would destroy
+                # the classification. Raw key/value stay in detail.
+                original=canonical,
+                usage_state=UsageState.PROVIDED_ONLY,
+                confidence=0.3,
+                evidence=[create_evidence_signal(
+                    tool="config-generic",
+                    detail=f"Config line {i+1}: {key.strip()}={value.strip()[:100]}",
+                    confidence=0.3,
+                    snippet=line_stripped[:200],
+                )],
+                location=Location(file=str(file_path), line=i + 1),
+                implementation=Implementation(library="generic", provider=file_path.suffix[1:]),
+                context=Context(exposure=Exposure.INTERNAL),
+            ))
 
         return findings
 
@@ -165,14 +183,16 @@ class GenericConfigScanner(Scanner[ScannerFinding]):
         value_lower = value.lower()
         path_lower = path.lower()
 
-        crypto_indicators = ["tls", "ssl", "https", "cert", "key", "ca", "crt", "pem", "der", "p12", "pfx", "jks", "keystore", "truststore", "cipher", "protocol"]
-
-        if any(kw in path_lower for kw in crypto_indicators) or any(kw in value_lower for kw in crypto_indicators):
-            canonical = self._guess_canonical(path, value)
-            if canonical:
-                findings.append(ScannerFinding(
-                    canonical=canonical,
-                    original=path,
+        # Token match (not substring): "keywords" must not match "key",
+        # applied to dotted path segments and the value.
+        haystacks = path_lower.replace(".", " ") + " " + value_lower
+        if not any(rx.search(haystacks) for rx in self._tls_token_res):
+            return
+        canonical = self._guess_canonical(path, value)
+        if canonical:
+            findings.append(ScannerFinding(
+                canonical=canonical,
+                original=canonical,
                     usage_state=UsageState.PROVIDED_ONLY,
                     confidence=0.35,
                     evidence=[create_evidence_signal(
@@ -186,13 +206,18 @@ class GenericConfigScanner(Scanner[ScannerFinding]):
                     context=Context(exposure=Exposure.INTERNAL),
                 ))
 
+    def _token(self, word: str, text: str) -> bool:
+        """Token-boundary match (avoids 'ca' in 'category')."""
+        return bool(re.search(r"(?<![a-z0-9])" + re.escape(word) + r"(?![a-z0-9])",
+                             text.lower()))
+
     def _guess_canonical(self, key: str, value: str) -> str | None:
         key_lower = key.lower()
         value_lower = value.lower()
 
-        if "cipher" in key_lower:
+        if self._token("cipher", key_lower):
             return "TLS"
-        if "protocol" in key_lower or "version" in key_lower:
+        if self._token("protocol", key_lower) or self._token("version", key_lower):
             if "1.3" in value_lower:
                 return "TLS1.3"
             if "1.2" in value_lower:
@@ -200,13 +225,13 @@ class GenericConfigScanner(Scanner[ScannerFinding]):
             if "1.1" in value_lower or "1.0" in value_lower:
                 return "TLS1.2"
             return "TLS"
-        if "cert" in key_lower or "crt" in key_lower or "pem" in key_lower:
+        if self._token("cert", key_lower) or "crt" in key_lower.split() or self._token("pem", key_lower):
             return "X.509"
-        if "key" in key_lower and "private" in key_lower:
+        if self._token("key", key_lower) and "private" in key_lower:
             return "Private Key"
-        if "key" in key_lower:
+        if self._token("key", key_lower):
             return "Private Key"
-        if "ca" in key_lower:
+        if key_lower.strip() == "ca" or self._token("ca", key_lower):
             return "X.509"
         if "keystore" in key_lower or "truststore" in key_lower or "jks" in key_lower or "p12" in key_lower or "pfx" in key_lower:
             return "KeyStore"

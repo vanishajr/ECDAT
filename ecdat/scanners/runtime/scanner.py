@@ -8,6 +8,20 @@ from ecdat.scanners.runtime.tls_scanner import TLSScanner
 from ecdat.scanners.runtime.ssh_scanner import SSHScanner
 
 
+def external_tool_status() -> dict[str, str]:
+    """SSLyze/testssl adapter availability (Phase 7).
+
+    The stdlib TLS prober is the strong runtime path; these adapters
+    enrich it only where installed. Never raises, never probes networks.
+    """
+    import shutil
+    return {
+        "sslyze": "available" if shutil.which("sslyze") else "unavailable",
+        "testssl": "available" if shutil.which("testssl.sh") or
+        shutil.which("testssl") else "unavailable",
+    }
+
+
 class RuntimeScanner(Scanner[ScannerFinding]):
     name = "runtime"
     version = "0.1.0"

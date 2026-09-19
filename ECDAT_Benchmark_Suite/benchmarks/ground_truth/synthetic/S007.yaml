@@ -1,0 +1,13 @@
+id: S007
+name: aes256_gcm_decrypt_c
+fixture: synthetic/S007_aes256_gcm_decrypt_c
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: decrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

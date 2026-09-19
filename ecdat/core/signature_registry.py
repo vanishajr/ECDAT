@@ -91,7 +91,11 @@ def get_mode(canonical: str) -> str | None:
 
 
 def infer_usage_state(category: str | None, has_direct_evidence: bool, has_indirect_evidence: bool) -> UsageState:
-    if category == "library":
+    # A directly observed *invocation* of a library entry point (e.g.
+    # EVP_CIPHER_fetch) is a confirmed operation with an unresolved
+    # algorithm — not a mere capability reference. Library-canonical
+    # findings only stay ProvidedOnly on indirect evidence.
+    if category == "library" and not has_direct_evidence:
         return UsageState.PROVIDED_ONLY
 
     if has_direct_evidence:

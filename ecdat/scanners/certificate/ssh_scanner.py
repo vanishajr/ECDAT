@@ -63,6 +63,16 @@ class SSHKeyScanner(Scanner[ScannerFinding]):
             key_data = match.group(3)
 
             canonical, original = self._parse_ssh_key_type(key_type)
+            fingerprint = ""
+            try:
+                import base64
+                from ecdat.scanners.certificate.cert_metadata import (
+                    openssh_fingerprint)
+                fingerprint = openssh_fingerprint(
+                    base64.b64decode(key_data))
+            except Exception:
+                fingerprint = ""
+            notes = f"fingerprint={fingerprint}" if fingerprint else ""
             findings.append(ScannerFinding(
                 canonical=canonical,
                 original=original,
@@ -76,7 +86,8 @@ class SSHKeyScanner(Scanner[ScannerFinding]):
                 )],
                 location=Location(file=str(file_path)),
                 implementation=Implementation(library="SSH", provider="ssh-key"),
-                context=Context(exposure=Exposure.INTERNAL),
+                context=Context(exposure=Exposure.INTERNAL,
+                                notes=notes or None),
             ))
 
         for match in self._private_key_pattern.finditer(content):

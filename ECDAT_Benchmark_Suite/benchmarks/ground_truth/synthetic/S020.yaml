@@ -1,0 +1,10 @@
+id: S020
+name: ecdsa_p256_node
+fixture: synthetic/S020_ecdsa_p256_node
+expected:
+  operations:
+  - algorithm: ECDH
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

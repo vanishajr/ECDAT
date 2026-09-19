@@ -1,0 +1,10 @@
+id: S021
+name: x25519_go
+fixture: synthetic/S021_x25519_go
+expected:
+  operations:
+  - algorithm: X25519
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

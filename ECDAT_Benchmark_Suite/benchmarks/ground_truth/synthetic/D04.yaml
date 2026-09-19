@@ -1,0 +1,13 @@
+id: D04
+name: dataflow_4
+fixture: synthetic/D04_dataflow_4
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

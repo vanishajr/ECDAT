@@ -1,0 +1,9 @@
+id: S026
+name: tls10_nginx
+fixture: synthetic/S026_tls10_nginx
+expected:
+  operations:
+  - algorithm: TLS1.0
+  forbidden_operations: []
+  recommendation:
+    required: true

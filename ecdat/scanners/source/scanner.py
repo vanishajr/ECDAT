@@ -107,6 +107,11 @@ PYTHON_CRYPTO_PATTERNS = {
     "hashlib.blake2b": ("BLAKE2b", OperationType.HASH),
     "hashlib.blake2s": ("BLAKE2s", OperationType.HASH),
     "hashlib.pbkdf2_hmac": ("PBKDF2", OperationType.KDF),
+    "argon2.PasswordHasher": ("Argon2", OperationType.KDF),
+    "argon2.low_level.hash_secret": ("Argon2", OperationType.KDF),
+    "argon2.low_level.verify_secret": ("Argon2", OperationType.KDF),
+    "passlib.hash.argon2": ("Argon2", OperationType.KDF),
+    "passlib.hash.bcrypt": ("bcrypt", OperationType.KDF),
     "hmac.new": ("HMAC", OperationType.HASH),
     "hmac.HMAC": ("HMAC", OperationType.HASH),
     "secrets.token_bytes": ("Random", OperationType.KEY_MANAGEMENT),
@@ -157,28 +162,83 @@ IMPORT_ALIASES = {
 }
 
 
+#: Suffix -> language code for the Phase 4 semantic routers.
+#: Python keeps its dedicated AST path; every other entry routes to the
+#: fast-syntax engine (c_parser) with registry-driven API knowledge.
+SOURCE_LANGUAGE_SUFFIXES = {
+    ".py": "py",
+    ".c": "c", ".h": "c",
+    ".cc": "cpp", ".cpp": "cpp", ".cxx": "cpp",
+    ".hpp": "cpp", ".hxx": "cpp",
+    ".java": "java",
+    ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js",
+    ".ts": "js", ".tsx": "js",
+    ".go": "go",
+    ".cs": "csharp",
+    ".rs": "rust",
+}
+
+
 class SourceScanner(Scanner[ScannerFinding]):
     name = "source"
-    version = "0.1.0"
+    version = "0.2.0"
 
     def __init__(self):
         self._file_cache: dict[str, str] = {}
+        self._last_stats: dict[str, Any] = {}
+        # Phase 5 cross-file context: path -> {sites, defs, impl, classification}
+        self._brace_ctx: dict[str, dict[str, Any]] = {}
+        # Phase 13: bounded content-hash result cache for brace-language
+        # files. Keyed by (path, content sha256, lang, registry version,
+        # scanner version); stores (findings, suppressed, classification)
+        # so repeated scans skip re-parse while stats stay honest.
+        self._brace_cache: dict[tuple, tuple[list, int, str]] = {}
+        self._brace_cache_max = 512
 
     def is_available(self) -> bool:
         return True
 
+    def last_stats(self) -> dict[str, Any]:
+        """Per-run routing stats (traceability, Phase 4)."""
+        return dict(self._last_stats)
+
     def scan(self, target: Path | str, **kwargs) -> list[ScannerFinding]:
         target_path = Path(target)
         findings: list[ScannerFinding] = []
+        self._last_stats = {"by_language": {}, "suppressed_noise": 0,
+                            "semgrep": "not-run", "test_files": 0,
+                            "impl_files": 0, "files": 0}
+        self._brace_ctx = {}
+
+        # Phase 2/4 inventory routing: when the orchestrator passes
+        # ``artifacts`` (ArtifactRecord dicts), only inventory-confirmed
+        # source files are opened. Otherwise fall back to own traversal.
+        allowed: set[str] | None = None
+        artifacts = kwargs.get("artifacts")
+        if artifacts:
+            allowed = set()
+            for item in artifacts:
+                if isinstance(item, dict):
+                    if item.get("category") == "source":
+                        allowed.add(str(item.get("abs_path", "")))
+                else:
+                    if getattr(item, "category", "") == "source":
+                        allowed.add(str(getattr(item, "abs_path", "")))
 
         if target_path.is_file():
-            findings.extend(self._scan_file(target_path))
+            if allowed is None or str(target_path) in allowed:
+                findings.extend(self._scan_file(target_path))
         elif target_path.is_dir():
-            for file_path in iter_project_files_matching(target_path, {".py"}):
+            for file_path in iter_project_files_matching(
+                    target_path, set(SOURCE_LANGUAGE_SUFFIXES)):
                 if self._should_skip(file_path):
+                    continue
+                if allowed is not None and str(file_path) not in allowed:
                     continue
                 findings.extend(self._scan_file(file_path))
 
+        findings = self._merge_semgrep(target_path, findings)
+        findings.extend(self._resolve_custom_invocations())
         return [normalize_finding(f) for f in findings]
 
     def _should_skip(self, path: Path) -> bool:
@@ -198,12 +258,18 @@ class SourceScanner(Scanner[ScannerFinding]):
         return any(part in skip_patterns for part in path.parts)
 
     def _scan_file(self, file_path: Path) -> list[ScannerFinding]:
+        lang = SOURCE_LANGUAGE_SUFFIXES.get(file_path.suffix.lower(), "")
+        if lang and lang != "py":
+            return self._scan_brace_file(file_path, lang)
         findings: list[ScannerFinding] = []
         try:
             content = file_path.read_text(encoding="utf-8")
             self._file_cache[str(file_path)] = content
         except Exception:
             return findings
+        self._last_stats["files"] = self._last_stats.get("files", 0) + 1
+        self._last_stats["by_language"]["py"] = \
+            self._last_stats.get("by_language", {}).get("py", 0) + 1
 
         try:
             tree = ast.parse(content, filename=str(file_path))
@@ -284,9 +350,13 @@ class SourceScanner(Scanner[ScannerFinding]):
             lib = "hashlib"
         elif pattern.startswith("hmac."):
             lib = "hmac"
+        elif pattern.startswith("argon2."):
+            lib = "argon2-cffi"
+        elif pattern.startswith("passlib."):
+            lib = "passlib"
         else:
             lib = "stdlib"
-            
+
         finding = ScannerFinding(
             canonical=canonical_norm,
             original=original,
@@ -315,6 +385,609 @@ class SourceScanner(Scanner[ScannerFinding]):
             if stripped.startswith("class "):
                 return None
         return None
+
+    def _scan_brace_file(self, file_path: Path, lang: str) -> list[ScannerFinding]:
+        """Phase 4 semantic pass for C/C++/Java/JS/Go/C#/Rust.
+
+        Masked fast-syntax analysis (comments/strings never match) over
+        registry-driven API knowledge, with candidate-only constant
+        propagation, one-hop wrapper resolution, and
+        implementation/test-vector/use separation.
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        from ecdat.scanners.source.api_knowledge import (
+            compile_matchers,
+            lex_prefilter,
+            lookup_exact,
+        )
+        from ecdat.scanners.source.api_knowledge import (
+            REGISTRY_VERSION as _AK_REGISTRY,
+        )
+
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            return findings
+        if len(content) > 2 * 1024 * 1024:
+            return findings
+        self._file_cache[str(file_path)] = content
+        # Phase 13: content-hash result cache (hits still update stats).
+        content_hash = hashlib.sha256(content.encode("utf-8",
+                                                     errors="ignore")).hexdigest()
+        cache_key = (str(file_path), content_hash, lang,
+                     str(_AK_REGISTRY), str(self.version))
+        cached = self._brace_cache.get(cache_key)
+        classification = _cp.classify_source_file(file_path)
+        if cached is not None:
+            cached_findings, cached_suppressed, cached_class = cached[:3]
+            cached_ctx = cached[3] if len(cached) > 3 else None
+            if cached_ctx is not None:
+                self._brace_ctx[str(file_path)] = cached_ctx
+            self._last_stats["files"] = self._last_stats.get("files", 0) + 1
+            langs = self._last_stats.setdefault("by_language", {})
+            langs[lang] = langs.get(lang, 0) + 1
+            if cached_class == "test-vector":
+                self._last_stats["test_files"] = \
+                    self._last_stats.get("test_files", 0) + 1
+            elif cached_class == "implementation":
+                self._last_stats["impl_files"] = \
+                    self._last_stats.get("impl_files", 0) + 1
+            self._last_stats["suppressed_noise"] = \
+                self._last_stats.get("suppressed_noise", 0) + cached_suppressed
+            self._last_stats["brace_cache_hits"] = \
+                self._last_stats.get("brace_cache_hits", 0) + 1
+            return list(cached_findings)
+        self._last_stats["files"] = self._last_stats.get("files", 0) + 1
+        langs = self._last_stats.setdefault("by_language", {})
+        langs[lang] = langs.get(lang, 0) + 1
+
+        if classification == "test-vector":
+            self._last_stats["test_files"] = self._last_stats.get("test_files", 0) + 1
+        elif classification == "implementation":
+            self._last_stats["impl_files"] = self._last_stats.get("impl_files", 0) + 1
+
+        masked, suppressed = _cp.mask_source(content)
+        self._last_stats["suppressed_noise"] = \
+            self._last_stats.get("suppressed_noise", 0) + suppressed
+        # Phase 1 prefilter is advisory only: a negative result skips the
+        # API row loop, but call extraction + the Phase 5 fingerprint pass
+        # still run — custom implementations contain no known API tokens
+        # by definition, and caller files need their sites recorded for
+        # the cross-file invocation pass.
+        prefilter_hit = lex_prefilter(masked, lang)
+        if not prefilter_hit:
+            self._last_stats["prefilter_skip"] = \
+                self._last_stats.get("prefilter_skip", 0) + 1
+        lines = content.splitlines()
+        # Phase 1: matchers compiled once per (lang, registry version).
+        compiled = compile_matchers(lang)
+        if not compiled:
+            self._remember_brace(cache_key, [], suppressed, classification)
+            return findings
+        rows = [row for row, _ in compiled]
+        api_names = {row["call"] for row in rows}
+
+        sites = _cp.extract_calls(masked)
+        consts = _cp.collect_constants(masked)
+        matched_sites: set[int] = set()
+        # (finding, site, row_id) for the subsumption post-pass.
+        produced: list[tuple[Any, Any, str]] = []
+
+        # Phase 1: exact-first matching with ordered regex fallback.
+        # Exact-type rows absent from the candidate set cannot match
+        # (their tokens enumerate the regex); regex-type rows are
+        # always checked. This preserves first-row-wins semantics.
+        compiled_by_id: dict[str, tuple[dict, Any]] = {}
+        for row, rx in compiled:
+            compiled_by_id.setdefault(str(row.get("id", "")), (row, rx))
+        for index, site in enumerate(sites):
+            raw_line = lines[site.line - 1] if 0 < site.line <= len(lines) else ""
+            if raw_line.strip().startswith("#"):
+                continue
+            statement = _cp.statement_text(lines, site.line)
+            if self._looks_like_declaration(statement, site.name):
+                continue
+            literals = _cp.string_literals_of_line(raw_line)
+            exact_rows = lookup_exact(site.name, lang)
+            exact_ids = {str(r.get("id", "")) for r in exact_rows}
+            probe = site.name + "("
+            # Prefilter-negative files cannot match any API row; iterate
+            # zero rows so sites/consts stay available for fingerprints
+            # and invocation resolution.
+            for row, rx in (compiled if prefilter_hit else ()):
+                row_id = str(row.get("id", ""))
+                match_type = str(row.get("match_type", "") or "")
+                if match_type in ("exact", "prefix", "constructor",
+                                  "string-parameter") and row_id not in exact_ids:
+                    continue
+                # Rows are written as call patterns (name + opening
+                # paren); match against the site name with a synthetic
+                # paren so both ``\bName\b`` and ``Name\s*\(`` rows work.
+                try:
+                    if not rx.search(probe):
+                        continue
+                except re.error:
+                    continue
+                resolved = _cp.resolve_entry(row, site.args, consts,
+                                             site.name, literals)
+                args = _cp.split_args(site.args)
+                finding = self._build_finding(
+                    file_path=file_path, line=site.line,
+                    function=site.function, lang=lang,
+                    classification=classification,
+                    call_text=site.call_text, api_name=site.name,
+                    resolved=resolved, row=row, args=args,
+                    tool="source:api-call",
+                    detail_prefix="direct source API call",
+                    wrapper_from=None,
+                )
+                if finding is not None:
+                    findings.append(finding)
+                    produced.append((finding, site, str(row.get("id", ""))))
+                    matched_sites.add(index)
+                break
+
+        # Subsumption: a cipher/digest constructor passed as an argument
+        # to a resolved Init call on the same line is evidence for the
+        # Init finding, not an independent second finding.
+        if produced:
+            subsumed: set[int] = set()
+            for idx, (finding, site, row_id) in enumerate(produced):
+                if not row_id.startswith("ossl-evp-ctor-"):
+                    continue
+                ctor_name = site.name
+                for other, other_site, other_row in produced:
+                    if other is finding or other_site.line != site.line:
+                        continue
+                    if other_row.startswith("ossl-evp-ctor-"):
+                        continue
+                    if ctor_name in other_site.args:
+                        subsumed.add(idx)
+                        break
+            if subsumed:
+                produced = [p for i, p in enumerate(produced)
+                            if i not in subsumed]
+                findings = [p[0] for p in produced]
+
+        # Phase 3 demand-driven parameter completion (same-file, bounded):
+        # JCA `KeyPairGenerator.initialize(<bits>)` carries the key size
+        # for a `getInstance("RSA")` call in the same file. Attach it to
+        # RSA findings lacking a key size instead of guessing.
+        if lang == "java" and findings:
+            init_m = re.search(
+                r"\.initialize\s*\(\s*(1024|2048|3072|4096)\b", masked)
+            if init_m:
+                bits = int(init_m.group(1))
+                for finding in findings:
+                    if finding.canonical == "RSA" and finding.key_size is None:
+                        finding.key_size = bits
+
+        # One-hop wrapper resolution: local functions wrapping a crypto
+        # API inherit the wrapped call's resolved semantics at reduced
+        # confidence (Probable); chains are not followed.
+        wrappers = _cp.find_wrappers(
+            [s for i, s in enumerate(sites) if i in matched_sites], api_names)
+        if wrappers:
+            func_semantics: dict[str, dict] = {}
+            for finding, site, row_id in produced:
+                if row_id.startswith("ossl-evp-ctor-"):
+                    continue
+                if site.function and site.function not in func_semantics:
+                    func_semantics[site.function] = {
+                        "canonical": finding.canonical,
+                        "key_size": finding.key_size,
+                        "mode": finding.mode,
+                        "curve": finding.curve,
+                        "protocol": finding.protocol,
+                        "op": finding.operation_type.name
+                        if finding.operation_type else "ENCRYPT",
+                        "confidence": 0.70,
+                    }
+            by_name: dict[str, list] = {}
+            for row, rx in compiled:
+                by_name.setdefault(row["call"], []).append((row, rx))
+            for site in sites:
+                base = site.name.split(".")[-1].split(":")[-1]
+                if base not in wrappers or site.function in wrappers:
+                    continue
+                target_api = wrappers[base]
+                for row, rx in by_name.get(target_api, []):
+                    inherited = dict(func_semantics.get(base, {}))
+                    resolved = _cp.resolve_entry(row, "", consts, target_api)
+                    resolved.update({k: v for k, v in inherited.items() if v})
+                    resolved["confidence"] = 0.70
+                    finding = self._build_finding(
+                        file_path=file_path, line=site.line,
+                        function=site.function, lang=lang,
+                        classification=classification,
+                        call_text=site.call_text, api_name=site.name,
+                        resolved=resolved,
+                        row=row, args=[],
+                        tool="source:wrapper-call",
+                        detail_prefix=f"wrapper call resolving to {target_api}",
+                        wrapper_from=base,
+                    )
+                    if finding is not None:
+                        # Wrappers are never stronger than Probable: they
+                        # prove reachability, not direct parameter use.
+                        if finding.usage_state == UsageState.CONFIRMED:
+                            finding.usage_state = UsageState.PROBABLE
+                        findings.append(finding)
+                    break
+        # Phase 5: structural fingerprint pass for custom implementations
+        # (files that implement crypto without calling a known API).
+        # Families already covered by API findings are skipped.
+        findings.extend(self._fingerprint_findings(
+            file_path, lang, masked, classification, findings))
+        self._remember_brace(cache_key, findings, suppressed, classification)
+        self._stash_brace_ctx(file_path, sites, masked, classification,
+                              findings)
+        return findings
+
+    def _stash_brace_ctx(self, file_path: Path, sites: list,
+                         masked: str, classification: str,
+                         findings: list[ScannerFinding]) -> None:
+        """Record per-file call/definition context for the custom-API pass."""
+        from ecdat.scanners.source import fingerprints as _fp
+        try:
+            defs = _fp.defined_functions(masked)
+        except Exception:
+            defs = []
+        impl: dict[str, float] = {}
+        for finding in findings:
+            try:
+                for ev in (finding.evidence or []):
+                    if str(getattr(ev, "tool", "")) == "source:fingerprint":
+                        impl[str(finding.canonical)] = max(
+                            impl.get(str(finding.canonical), 0.0),
+                            float(finding.confidence or 0.0))
+            except Exception:
+                continue
+        ctx = {
+            "sites": self._ctx_sites(file_path, sites),
+            "defs": defs,
+            "impl": impl,
+            "classification": classification,
+        }
+        self._brace_ctx[str(file_path)] = ctx
+        # Attach context to the cached entry as well.
+        try:
+            for key, value in list(self._brace_cache.items()):
+                if key[0] == str(file_path):
+                    vals = list(value)
+                    while len(vals) < 4:
+                        vals.append(None)
+                    vals[3] = ctx
+                    self._brace_cache[key] = tuple(vals)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _ctx_sites(file_path: Path, sites: list) -> list[tuple]:
+        """Sites with a prototype flag (one file read for the whole file)."""
+        from ecdat.scanners.source import c_parser as _cp
+        try:
+            lines = Path(file_path).read_text(
+                encoding="utf-8", errors="ignore").splitlines()
+        except Exception:
+            lines = []
+        out: list[tuple] = []
+        for s in sites:
+            base = s.name.split(".")[-1].split(":")[-1]
+            is_decl = False
+            try:
+                if lines:
+                    statement = _cp.statement_text(lines, s.line)
+                    is_decl = SourceScanner._looks_like_declaration(
+                        statement, base)
+            except Exception:
+                is_decl = False
+            out.append((base, s.line, s.function, s.call_text, is_decl))
+        return out
+
+    @staticmethod
+    def _site_is_declaration(file_path: Path, site) -> bool:
+        """Prototype check for the custom-invocation pass (mirrors the
+        API loop's `_looks_like_declaration` filter)."""
+        try:
+            from ecdat.scanners.source import c_parser as _cp
+            content = Path(file_path).read_text(encoding="utf-8",
+                                                errors="ignore")
+            lines = content.splitlines()
+            base = site.name.split(".")[-1].split(":")[-1]
+            statement = _cp.statement_text(lines, site.line)
+            return SourceScanner._looks_like_declaration(statement, base)
+        except Exception:
+            return False
+
+    @staticmethod
+    def _family_of(canonical: str) -> str | None:
+        """Map a finding canonical to a fingerprint family (or None)."""
+        from ecdat.scanners.source import fingerprints as _fp
+        upper = str(canonical or "").upper().replace("-", "").replace("_", "")
+        for family in _fp.FINGERPRINT_FAMILIES:
+            fkey = family.upper().replace("-", "").replace("_", "")
+            if upper == fkey or upper.startswith(fkey):
+                return family
+        return None
+
+    def _fingerprint_findings(self, file_path: Path, lang: str,
+                              masked: str, classification: str,
+                              findings: list[ScannerFinding]
+                              ) -> list[ScannerFinding]:
+        """Structural implementation findings for one file (Phase 5)."""
+        from ecdat.scanners.source import fingerprints as _fp
+        if lang not in ("c", "cpp"):
+            return []
+        if classification == "test-vector":
+            # Test files embed vectors/tables as *data*; they never
+            # establish an implementation. Their invocations are still
+            # resolved via the cross-file pass.
+            return []
+        covered = {self._family_of(f.canonical) for f in findings}
+        covered.discard(None)
+        try:
+            hits = _fp.analyze_file(masked, lang)
+        except Exception:
+            return []
+        out: list[ScannerFinding] = []
+        for hit in hits:
+            if hit.canonical in covered:
+                continue
+            self._last_stats["fingerprints"] = \
+                self._last_stats.get("fingerprints", 0) + 1
+            detail = (f"custom {hit.canonical} implementation at "
+                      f"{file_path} [{hit.detail}]")
+            evidence = create_evidence_signal(
+                tool="source:fingerprint", detail=detail,
+                confidence=round(hit.confidence, 3),
+                snippet=f"{hit.canonical} structural fingerprint: "
+                        f"{len(hit.signals)} signal(s)",
+            )
+            out.append(ScannerFinding(
+                canonical=hit.canonical,
+                original=hit.canonical,
+                library="custom",
+                usage_state=UsageState.PROVIDED_ONLY,
+                confidence=round(hit.confidence, 3),
+                evidence=[evidence],
+                location=Location(file=str(file_path), line=1),
+                operation_type=None,
+                implementation=Implementation(
+                    library="custom", api="structural-fingerprint"),
+                context=Context(exposure=Exposure.INTERNAL),
+                dependency_only=True,
+            ))
+        return out
+
+    def _resolve_custom_invocations(self) -> list[ScannerFinding]:
+        """Cross-file invocations of repo-defined crypto functions.
+
+        A call in file B to a function *defined* in file A (where file A
+        carries a structural implementation fingerprint) is a confirmed
+        cryptographic operation — Cryptoscope-style reconstruction for
+        custom APIs. Same-file calls are implementation detail (covered
+        by the fingerprint finding); names without an operation hint
+        are skipped rather than guessed.
+        """
+        from ecdat.scanners.source import fingerprints as _fp
+        # def base name -> (defining file, canonical, confidence)
+        providers: dict[str, tuple[str, str, float]] = {}
+        for path, ctx in self._brace_ctx.items():
+            impl = ctx.get("impl") or {}
+            if not impl:
+                continue
+            for canonical, confidence in impl.items():
+                if float(confidence or 0.0) < 0.65:
+                    continue
+                for def_name, _line in ctx.get("defs") or []:
+                    if _fp.def_name_matches_family(def_name, canonical):
+                        providers.setdefault(
+                            def_name, (path, canonical, float(confidence)))
+        out: list[ScannerFinding] = []
+        for path, ctx in self._brace_ctx.items():
+            classification = str(ctx.get("classification") or "use")
+            for site_entry in ctx.get("sites") or []:
+                base, line, function, call_text = site_entry[:4]
+                is_decl = bool(site_entry[4]) if len(site_entry) > 4 else False
+                if is_decl:
+                    continue  # prototype, not an invocation
+                provider = providers.get(base)
+                if provider is None:
+                    continue
+                def_path, canonical, _conf = provider
+                if def_path == path:
+                    continue  # implementation detail, not an invocation
+                op_name = _fp.op_hint_for_name(base)
+                if op_name is None:
+                    continue
+                try:
+                    op_type = OperationType[op_name]
+                except KeyError:
+                    continue
+                if classification == "test-vector":
+                    usage, confidence = UsageState.POSSIBLE, 0.39
+                else:
+                    usage, confidence = UsageState.CONFIRMED, 0.85
+                out.append(ScannerFinding(
+                    canonical=canonical,
+                    original=canonical,
+                    library="custom",
+                    usage_state=usage,
+                    confidence=confidence,
+                    evidence=[create_evidence_signal(
+                        tool="source:custom-invocation",
+                        detail=(f"invocation of repo-defined {canonical} "
+                                f"function {base} at {path}:{line} "
+                                f"(defined in {def_path})"),
+                        confidence=confidence,
+                        snippet=str(call_text or "")[:200],
+                    )],
+                    location=Location(file=str(path), line=line,
+                                      function=function),
+                    operation_type=op_type,
+                    function=function,
+                    implementation=Implementation(
+                        library="custom", api=base),
+                    context=Context(exposure=Exposure.INTERNAL),
+                ))
+        if out:
+            self._last_stats["custom_invocations"] = len(out)
+        return out
+
+    def _remember_brace(self, cache_key: tuple, findings: list,
+                        suppressed: int, classification: str) -> None:
+        """Store brace-file results in the bounded Phase 13 cache."""
+        try:
+            if len(self._brace_cache) >= self._brace_cache_max:
+                # Evict oldest entry (dict insertion order).
+                oldest = next(iter(self._brace_cache))
+                del self._brace_cache[oldest]
+            self._brace_cache[cache_key] = (list(findings), suppressed,
+                                            classification)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _looks_like_declaration(line: str, name: str) -> bool:
+        """Filter C-style prototypes (``int EVP_x(...);``), not calls.
+
+        Multi-line prototypes are handled by the caller, which passes
+        the full statement text (see c_parser.statement_text).
+        """
+        stripped = line.strip()
+        if "(" not in stripped or name not in stripped:
+            return False
+        tail = stripped.split(name, 1)[1]
+        if not tail.startswith("("):
+            return False
+        if stripped.endswith(";") and "{" not in stripped and "=" not in stripped.split("(", 1)[0]:
+            # Only the return-type prefix (before the name itself) may
+            # carry a type keyword: the name may legitimately contain
+            # substrings like "int" (EVP_EncryptInit_ex) or "char".
+            prefix = stripped.split(name, 1)[0]
+            if re.search(r"\b(?:int|void|char|const|unsigned|long|short|size_t|"
+                         r"struct|enum|static|extern|BOOL|HRESULT)\b", prefix):
+                return True
+        return False
+
+    def _build_finding(self, *, file_path: Path, line: int,
+                       function: Optional[str], lang: str,
+                       classification: str, call_text: str, api_name: str,
+                       resolved: dict, row: dict, args: list,
+                       tool: str, detail_prefix: str,
+                       wrapper_from: Optional[str]) -> Optional[ScannerFinding]:
+        canonical_raw = resolved.get("canonical") or "OpenSSL"
+        canonical_norm, original = normalize_algorithm(canonical_raw)
+        op_type = self._op_type(resolved.get("op") or "ENCRYPT")
+        confidence = float(resolved.get("confidence", 0.85))
+        usage_state = UsageState.CONFIRMED
+        dependency_only = False
+        if classification == "implementation":
+            # Code that IMPLEMENTS algorithms (OpenSSL crypto/ tree):
+            # capability/provision evidence, never application use. The
+            # dependency_only marker is this codebase's provides-vs-uses
+            # flag: normalize_finding preserves ProvidedOnly for it.
+            usage_state = UsageState.PROVIDED_ONLY
+            confidence = min(confidence, 0.55)
+            dependency_only = True
+        elif classification == "test-vector":
+            # Test vectors prove test usage, not application use. Capped
+            # below normalize_finding's 0.4 indirect-evidence band so the
+            # terminal state stays Possible instead of Probable.
+            usage_state = UsageState.POSSIBLE
+            confidence = min(confidence, 0.39)
+        elif classification == "header-capability":
+            usage_state = UsageState.PROBABLE
+            confidence = min(confidence, 0.80)
+
+        extra = resolved.get("detail") or ""
+        detail = (f"{detail_prefix}: {api_name} at {file_path}:{line}"
+                  + (f" [{extra}]" if extra else ""))
+        snippet_bits = [call_text.strip()[:160]]
+        if args:
+            snippet_bits.append("args: " + ", ".join(a[:60] for a in args[:4]))
+        evidence = create_evidence_signal(
+            tool=tool, detail=detail, confidence=round(confidence, 3),
+            snippet=" | ".join(snippet_bits)[:500],
+        )
+        return ScannerFinding(
+            canonical=canonical_norm,
+            original=original,
+            key_size=resolved.get("key_size"),
+            mode=resolved.get("mode"),
+            curve=resolved.get("curve"),
+            protocol=resolved.get("protocol"),
+            library=row.get("library") or lang,
+            usage_state=usage_state,
+            confidence=round(confidence, 3),
+            evidence=[evidence],
+            location=Location(file=str(file_path), line=line, function=function),
+            operation_type=op_type,
+            function=function,
+            dependency_only=dependency_only,
+            implementation=Implementation(
+                library=row.get("library") or lang, api=api_name),
+            context=Context(exposure=Exposure.INTERNAL),
+        )
+
+    @staticmethod
+    def _op_type(name: str):
+        try:
+            return OperationType[str(name).strip().upper()]
+        except Exception:
+            return OperationType.ENCRYPT
+
+    def _merge_semgrep(self, target_path: Path,
+                       findings: list[ScannerFinding]) -> list[ScannerFinding]:
+        """Phase 4: run the existing Semgrep integration when available.
+
+        Opportunistic merge with (file, line, canonical) dedupe against
+        native findings; unavailable Semgrep only records status (graceful
+        degradation, never a failure).
+        """
+        try:
+            from ecdat.scanners.source.semgrep_scanner import SemgrepScanner
+            engine = SemgrepScanner()
+            if not engine.is_available():
+                self._last_stats["semgrep"] = "unavailable"
+                return findings
+            extra = engine.scan(target_path)
+            self._last_stats["semgrep"] = f"available:{len(extra)}"
+        except Exception as exc:
+            self._last_stats["semgrep"] = f"error: {exc}"
+            return findings
+        seen = set()
+        for item in findings:
+            loc = item.location
+            seen.add((loc.file if loc else "", loc.line if loc else 0,
+                      item.canonical))
+        merged = list(findings)
+        for item in extra:
+            loc = item.location
+            key = (loc.file if loc else "", loc.line if loc else 0,
+                   item.canonical)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(self._retag_semgrep(item))
+        return merged
+
+    @staticmethod
+    def _retag_semgrep(item: ScannerFinding) -> ScannerFinding:
+        """Normalise Semgrep evidence into the source signal taxonomy."""
+        try:
+            import dataclasses as _dc
+            item.evidence = [
+                _dc.replace(ev, tool="source:semgrep") for ev in item.evidence]
+        except Exception:
+            try:
+                for ev in item.evidence:
+                    ev.tool = "source:semgrep"
+            except Exception:
+                pass
+        return item
 
     def _filter_false_positives(self, findings: list[ScannerFinding]) -> list[ScannerFinding]:
         """Filter out false positives from padding/hash algorithm arguments."""
@@ -660,9 +1333,13 @@ class CryptoASTVisitor(ast.NodeVisitor):
             lib = "hashlib"
         elif pattern.startswith("hmac."):
             lib = "hmac"
+        elif pattern.startswith("argon2."):
+            lib = "argon2-cffi"
+        elif pattern.startswith("passlib."):
+            lib = "passlib"
         else:
             lib = "stdlib"
-        
+
         finding = ScannerFinding(
             canonical=canonical_norm,
             original=original,

@@ -228,7 +228,10 @@ class LIEFScanner(Scanner[ScannerFinding]):
         return None
 
     def _match_crypto_string(self, string: str) -> str | None:
+        from ecdat.scanners.binary.crypto_signatures import (
+            is_plausible_crypto_string)
         for pattern, canonical in CRYPTO_STRINGS.items():
-            if pattern.lower() in string.lower():
+            if pattern.lower() in string.lower() and \
+                    is_plausible_crypto_string(string, pattern):
                 return canonical
         return None

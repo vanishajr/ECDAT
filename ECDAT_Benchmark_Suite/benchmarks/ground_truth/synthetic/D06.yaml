@@ -1,0 +1,13 @@
+id: D06
+name: cross_file_wrapper
+fixture: synthetic/D06_cross_file_wrapper
+expected:
+  operations:
+  - algorithm: AES
+    mode: GCM
+    key_size: 256
+    operation: encrypt
+    usage: Confirmed
+  forbidden_operations: []
+  recommendation:
+    required: false

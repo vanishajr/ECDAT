@@ -67,6 +67,15 @@ class JWKScanner(Scanner[ScannerFinding]):
         canonical, original, key_size, curve = self._identify_jwk(key)
 
         if canonical:
+            # Secret-safe: the snippet carries the PUBLIC view only (kty,
+            # crv, x/y, n/e, alg, use, kid). Private members (d, k, p, q,
+            # dp, dq, qi, oth) are never stored; the fingerprint covers
+            # the public view so the same key links across surfaces.
+            from ecdat.scanners.certificate.cert_metadata import (
+                jwk_fingerprint, public_jwk_view)
+            view = public_jwk_view(key)
+            fingerprint = jwk_fingerprint(key)
+            notes = f"fingerprint={fingerprint}" if fingerprint else ""
             findings.append(ScannerFinding(
                 canonical=canonical,
                 original=original,
@@ -78,11 +87,12 @@ class JWKScanner(Scanner[ScannerFinding]):
                     tool="certificate-jwk",
                     detail=f"JWK: kty={kty}, use={use}, alg={alg}, kid={kid}",
                     confidence=0.7,
-                    snippet=f"JWK kid={kid}: {json.dumps(key)[:200]}",
+                    snippet=f"JWK kid={kid}: {json.dumps(view)[:200]}",
                 )],
                 location=Location(file=str(file_path), uri=f"jwk:{kid}"),
                 implementation=Implementation(library="JWK", provider="jwk"),
-                context=Context(exposure=Exposure.INTERNAL),
+                context=Context(exposure=Exposure.INTERNAL,
+                                notes=notes or None),
             ))
 
         return findings
