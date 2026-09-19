@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from ecdat.scanners.base import Scanner, ScannerFinding, create_evidence_signal, normalize_finding
-from ecdat.core.cir_models import UsageState, Location, Implementation, Context, Exposure
+from ecdat.core.cir_models import UsageState, OperationType, Location, Implementation, Context, Exposure
 from ecdat.core.signature_registry import normalize_algorithm, get_category, is_library_only
 
 
@@ -90,6 +90,23 @@ class TerraformScanner(Scanner[ScannerFinding]):
             kms_match = self._kms_pattern.search(line_stripped)
             if kms_match:
                 findings.append(self._create_finding("KMS", kms_match.group(1).strip().strip('"'), file_path, i + 1, 0.7))
+
+            # Phase 12: managed key resources are CONFIGURED crypto assets
+            # even without an inline key-id assignment (e.g.
+            # `resource "aws_kms_key" "payments"`). Dependency presence
+            # alone is a provided capability, but a declared managed key
+            # with rotation/config is configuration evidence, not use.
+            res_match = self._resource_pattern.search(line_stripped)
+            if res_match:
+                rtype = res_match.group(1).lower()
+                if "kms_key" in rtype or "kmskey" in rtype:
+                    findings.append(self._create_configured_finding(
+                        "KMS", "KMS",
+                        file_path, i + 1, "aws_kms_key"))
+                elif "key_vault_key" in rtype or "kms_crypto_key" in rtype:
+                    findings.append(self._create_configured_finding(
+                        "KMS", "KMS",
+                        file_path, i + 1, rtype))
 
         return findings
 
@@ -292,6 +309,26 @@ class TerraformScanner(Scanner[ScannerFinding]):
         insecure = ["DES", "3DES", "RC4", "RC2", "MD5", "SHA1", "NULL", "EXPORT", "ANON", "AECDH", "ADH"]
         cipher_upper = cipher.upper()
         return any(insec in cipher_upper for insec in insecure)
+
+    def _create_configured_finding(self, canonical: str, original: str,
+                                     file_path: Path, line: int,
+                                     api: str) -> ScannerFinding:
+        """A declared managed-key resource: CONFIGURED asset evidence."""
+        return ScannerFinding(
+            canonical=canonical,
+            original=original,
+            usage_state=UsageState.CONFIRMED,
+            confidence=0.85,
+            operation_type=OperationType.KEY_MANAGEMENT,
+            evidence=[create_evidence_signal(
+                tool="config-terraform",
+                detail=f"Terraform managed key configured ({api}): {original}",
+                confidence=0.85,
+            )],
+            location=Location(file=str(file_path), line=line),
+            implementation=Implementation(library="terraform", provider="aws", api=api),
+            context=Context(exposure=Exposure.CLOUD),
+        )
 
     def _create_finding(self, canonical: str, original: str, file_path: Path, line: int, confidence: float) -> ScannerFinding:
         category = get_category(canonical)

@@ -83,9 +83,17 @@ def run(args: argparse.Namespace) -> int:
         _limitations = dict(_lim(_diagnostics))
     except Exception:
         _coverage, _limitations = {}, {}
+    _label = ""
+    try:
+        _label = str(((_plan or {}).get("display_target")
+                       or (_diagnostics or {}).get("display_target", "")) or "")
+    except Exception:
+        _label = ""
     report = aggregate.build_report(
-        doc, real_risk=real_risk, recommendations=build_real_items(cir),
-        cir=cir, limitations=_limitations, coverage=_coverage)
+        doc, real_risk=real_risk,
+        recommendations=build_real_items(cir, str(doc.get("target", ""))),
+        cir=cir, limitations=_limitations, coverage=_coverage,
+        display_label=_label)
     try:
         content = render(report, args.format)
     except ValueError as exc:
@@ -98,7 +106,7 @@ def run(args: argparse.Namespace) -> int:
         if isinstance(content, bytes):
             out.write_bytes(content)
         else:
-            out.write_text(content + "\n")
+            out.write_text(content + "\n", encoding="utf-8")
     else:
         print(content)  # text formats only; pdf always has --output here
     return 0

@@ -30,10 +30,13 @@ from __future__ import annotations
 __all__ = [
     "RECOMMENDATIONS",
     "PRIORITY_ORDER",
+    "RECOMMENDATION_CLASSES",
     "replacement_score",
     "recommend_for_operation",
     "recommend_cir",
     "to_cir_recommendation",
+    "recommend_for_operation_v2",
+    "pqc_target_for_operation",
 ]
 
 PRIORITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3,
@@ -502,4 +505,291 @@ def to_cir_recommendation(rec: dict, asset_ids: list[str] | None = None,
         "priority": priority,
         "asset_ids": aids,
         "pqc_target": _pqc_target_for(rec, canonical),
+    }
+
+
+# -- Phase 11: structured-semantics recommendations (additive; v1 kept) ----
+
+RECOMMENDATION_CLASSES = (
+    "fix-misuse",
+    "replace-primitive",
+    "protocol-upgrade",
+    "pqc-transition",
+    "monitor",
+    "no-action",
+)
+
+_NON_DEPLOYMENT_SCOPES_V2 = frozenset({
+    "TEST", "FIXTURE", "BENCHMARK", "DEMO", "EXAMPLE",
+    "DOCUMENTATION", "GENERATED",
+})
+
+_SIG_OP_TOKENS = ("SIGN", "VERIFY", "CERT", "CERTIFICATE", "X.509")
+_KEM_OP_TOKENS = ("ENCAPSULAT", "DECAPSULAT", "KEY-EXCHANGE", "KEYEXCHANGE",
+                  "KEY-AGREEMENT", "KEYAGREEMENT", "KEM", "DIFFIE", "ECDH")
+
+
+def _sem(op: dict, *keys, default=None):
+    for container in (op, _as_dict(op.get("parameters"))):
+        value = _first(container, *keys, default=None) if isinstance(
+            container, dict) else None
+        if value not in (None, ""):
+            return value
+    return default
+
+
+def _op_text_v2(op: dict) -> str:
+    bits = [
+        str(_sem(op, "primitive", "canonical_name", "canonical", "algorithm",
+                 default="") or ""),
+        str(_sem(op, "variant", "hash", "digest", default="") or ""),
+        str(_sem(op, "operation", "operation_type", default="") or ""),
+        str(_sem(op, "mode", default="") or ""),
+        str(_sem(op, "protocol", "protocol_version", default="") or ""),
+        str(_sem(op, "curve", "named_curve", default="") or ""),
+    ]
+    return _norm(" ".join(bits))
+
+
+def _misuse_of(op: dict) -> list[dict]:
+    direct = op.get("misuse")
+    if isinstance(direct, list) and direct:
+        return [m for m in direct if isinstance(m, dict)]
+    try:
+        from ecdat.core.misuse import check_operation as _check
+        return _check(op)
+    except Exception:
+        return []
+
+
+def _scope_of(op: dict) -> str:
+    scope = _sem(op, "scope", default=None)
+    if scope:
+        return str(scope).strip().upper()
+    ctx_scope = _as_dict(op.get("context")).get("scope")
+    if ctx_scope:
+        return str(ctx_scope).strip().upper()
+    try:
+        from ecdat.core.scope import classify_scope as _scope
+        loc = _as_dict(op.get("location"))
+        return _scope(loc.get("file", loc.get("path")),
+                      _as_dict(op.get("implementation")).get("language"))
+    except Exception:
+        return "UNKNOWN"
+
+
+def pqc_target_for_operation(operation: dict, canonical: str = "") -> list[str]:
+    """Operation-correct PQC target. Pure.
+
+    Key-establishment operations (encrypt/KEM/key-agreement/DH/ECDH) map
+    to ML-KEM; signature operations (sign/verify/certificate) map to
+    ML-DSA (alt SLH-DSA). Never crosses families.
+    """
+    if not isinstance(operation, dict):
+        raise TypeError("pqc_target_for_operation expects an operation dict")
+    text = _op_text_v2(operation) + "|" + _norm(canonical)
+    is_sig = any(t in text for t in _SIG_OP_TOKENS)
+    is_kem = any(t in text for t in _KEM_OP_TOKENS)
+    if "RSA" in text and is_sig:
+        return ["ML-DSA-65 (alt: SLH-DSA-128s conservative profile)"]
+    if "RSA" in text:
+        return ["ML-KEM-768 (hybrid X25519+ML-KEM during transition)"]
+    if is_sig and not is_kem:
+        return ["ML-DSA-65 (alt: SLH-DSA-128s conservative profile)"]
+    if is_kem and not is_sig:
+        return ["ML-KEM-768 (hybrid X25519+ML-KEM during transition)"]
+    upper = _norm(canonical or _sem(operation, "canonical_name", "canonical",
+                                    "algorithm", "primitive", default=""))
+    if any(k in upper for k in ("ML-DSA", "MLDSA", "DILITHIUM", "SLH-DSA",
+                                "SLHDSA", "SPHINCS", "ECDSA", "ED25519",
+                                "ED448", "DSA")):
+        return ["ML-DSA-65 (alt: SLH-DSA-128s conservative profile)"]
+    if any(k in upper for k in ("ML-KEM", "MLKEM", "KYBER", "ECDH", "X25519",
+                                "X448", "DH", "ELGAMAL")):
+        return ["ML-KEM-768 (hybrid X25519+ML-KEM during transition)"]
+    # Default by operation when family is ambiguous: signatures first
+    # (forgery is the sharper risk), else KEM.
+    if is_sig:
+        return ["ML-DSA-65 (alt: SLH-DSA-128s conservative profile)"]
+    return ["ML-KEM-768 (hybrid X25519+ML-KEM during transition)"]
+
+
+def recommend_for_operation_v2(op: dict, risk: dict | None = None) -> dict:
+    """Structured-semantics recommendation for one operation. Pure.
+
+    Input uses ``primitive/variant/operation/mode/key_size/protocol/
+    misuse/scope`` (plus legacy ``canonical_name`` aliases) instead of
+    title substring matching. Classes: ``fix-misuse`` (misuse present,
+    primitive kept when strong), ``replace-primitive`` (deprecated /
+    inadequate primitive), ``protocol-upgrade`` (protocol rule fires),
+    ``pqc-transition`` (operation-correct ML-KEM / ML-DSA mapping),
+    ``monitor`` (healthy or non-deployment scope), ``no-action``
+    (PQC-correct or evidence too thin to justify work).
+
+    ``risk`` may be a v1 RiskRecord or a v2 record; it only sets priority.
+    """
+    if not isinstance(op, dict):
+        raise TypeError("recommend_for_operation_v2 expects an operation dict")
+    if risk is not None and not isinstance(risk, dict):
+        raise TypeError("risk must be a RiskRecord dict or None")
+    op_id = str(_sem(op, "operation_id", "id", "op_id", default="op-unknown"))
+    canonical = str(_sem(op, "primitive", "canonical_name", "canonical",
+                           "algorithm", "name", default="UNKNOWN") or "UNKNOWN")
+    text = _op_text_v2(op)
+    misuse = _misuse_of(op)
+    scope = _scope_of(op)
+    key_size = _sem(op, "key_size", "keySize", "bits", default=None)
+    asset_ids = _asset_ids_of(op)
+
+    rule_key = _rule_key(op)
+    priority = _priority_for(rule_key, risk)
+    refs: list[str] = []
+    preconditions: list[str] = []
+    targets: list[str] = []
+    klass = "monitor"
+    action = ""
+    reason = ""
+    migration_pattern = "verify-only"
+
+    is_protocol_issue = (
+        any(k in text for k in ("SSLV2", "SSLV3", "TLS1.0", "TLS1.1",
+                                "TLSV1", "TLSV1.0", "TLSV1.1"))
+        and "TLS1.2" not in text and "TLS1.3" not in text)
+    is_deprecated_primitive = (
+        any(k in text for k in ("MD5", "SHA1", "SHA-1", "DES", "RC4",
+                                "ARC4", "BLOWFISH", "RIPEMD", "ECB"))
+        or rule_key in ("DES-3DES-RC4", "MD5-SHA1", "AES-ECB",
+                        "PBKDF2-WEAK", "CBC-NO-AUTH", "AES128-LONG"))
+    # Parameter-only misuse (fixable without replacing the primitive).
+    param_misuse = [m for m in misuse if isinstance(m, dict) and str(
+        m.get("rule_id")) not in ("DEPRECATED_ALGO", "INSECURE_PROTOCOL")]
+    if is_protocol_issue:
+        klass = "protocol-upgrade"
+        migration_pattern = "protocol-upgrade"
+        targets = ["TLS 1.3 (AEAD ciphers, modern groups, PQ-hybrid-ready stack)"]
+        action = "Upgrade protocol to TLS 1.3; disable legacy versions"
+        refs = list(RECOMMENDATIONS.get("TLS-OLD", {}).get("refs", [_NCCOE]))
+        preconditions = ["legacy client compatibility window agreed"]
+        reason = (f"{canonical} [{op_id}] negotiates an insecure protocol; "
+                  f"{action}. Scope {scope}.")
+        if param_misuse:
+            ids = sorted(str(m.get("rule_id", "?")) for m in param_misuse)
+            reason += f" Accompanying misuse to fix in place: {', '.join(ids)}."
+    elif is_deprecated_primitive:
+        # PBKDF2-weak / unauthenticated-CBC are primitive-policy fixes,
+        # not PQC transitions.
+        klass = "replace-primitive"
+        migration_pattern = RECOMMENDATIONS.get(rule_key, {}).get(
+            "migration_pattern", "primitive-replace")
+        targets = list(RECOMMENDATIONS.get(rule_key, {}).get(
+            "target_algorithms", ["modern primitive"]))
+        action = f"Replace {canonical} with {targets[0]}"
+        refs = list(RECOMMENDATIONS.get(rule_key, {}).get("refs", [_NCCOE]))
+        preconditions = ["data re-encryption / migration window agreed"]
+        reason = (f"{canonical} [{op_id}] is deprecated or inadequate "
+                  f"({rule_key}); {action}. Scope {scope}.")
+        if param_misuse:
+            ids = sorted(str(m.get("rule_id", "?")) for m in param_misuse)
+            reason += f" Accompanying misuse to fix: {', '.join(ids)}."
+    elif param_misuse:
+        ids = sorted(str(m.get("rule_id", "?")) for m in param_misuse)
+        klass = "fix-misuse"
+        migration_pattern = "misuse-fix"
+        strong_kept = any(k in text for k in (
+            "AES-256", "AES256", "AES-192", "CHACHA", "GCM", "POLY1305",
+            "SHA256", "SHA384", "SHA512", "SHA-2", "SHA-3", "RSA-2048",
+            "RSA-3072", "RSA-4096", "ECDSA", "ECDH", "X25519", "ED25519"))
+        if "ECB" in text or "DES" in text or "RC4" in text or "MD5" in text \
+                or "SHA1" in text or "SHA-1" in text:
+            strong_kept = False
+        if strong_kept:
+            targets = [canonical + " (corrected use; primitive retained)"]
+            action = (f"Fix {', '.join(ids)} in place; keep {canonical} "
+                      "with corrected parameters")
+        else:
+            legacy = RECOMMENDATIONS.get(rule_key, {}).get(
+                "target_algorithms", [canonical])
+            targets = list(legacy)
+            action = (f"Fix {', '.join(ids)} and migrate {canonical} "
+                      f"to {targets[0]}")
+        refs = list(RECOMMENDATIONS.get(rule_key, {}).get("refs", [_NCCOE]))
+        preconditions = ["reproduce misuse at the cited operation",
+                         "regression test with corrected parameters"]
+        reason = (f"{canonical} [{op_id}] shows {', '.join(ids)}; "
+                  f"{action}. Scope {scope}.")
+    elif any(k in text for k in ("RSA", "ECDH", "X25519", "X448", "FFDHE",
+                                 "DIFFIE", "ELGAMAL", "ECDSA", "ED25519",
+                                 "ED448", "DSA", "CERT", "X.509")):
+        klass = "pqc-transition"
+        targets = pqc_target_for_operation(op, canonical)
+        action = f"Migrate {canonical} [{op_id}] to {targets[0]}"
+        migration_pattern = ("hybrid-kem" if "ML-KEM" in targets[0]
+                             else "sig-replace")
+        refs = list(RECOMMENDATIONS.get(rule_key, {}).get("refs", [_NCCOE]))
+        preconditions = ["peer/library PQC support verified",
+                         "certificate chain migration planned"
+                         if "ML-DSA" in targets[0] else
+                         "hybrid negotiation tested"]
+        reason = (f"{canonical} [{op_id}] is quantum-vulnerable; {action}. "
+                  f"Scope {scope}.")
+    else:
+        if rule_key in ("PQC-OK", "HYBRID-OK"):
+            klass = "no-action"
+            targets = list(RECOMMENDATIONS.get(rule_key, {}).get(
+                "target_algorithms", ["keep current"]))
+            action = f"No migration needed; keep {targets[0]}"
+            refs = list(RECOMMENDATIONS.get(rule_key, {}).get("refs", [_NCCOE]))
+            reason = (f"{canonical} [{op_id}] already post-quantum; "
+                      "verify parameters only.")
+        elif scope in _NON_DEPLOYMENT_SCOPES_V2 or rule_key == "REVIEW":
+            klass = "monitor"
+            targets = ["monitor (no migration until use is confirmed)"]
+            action = "Monitor; confirm real use before migrating"
+            refs = list(RECOMMENDATIONS.get("REVIEW", {}).get("refs", [_NCCOE]))
+            preconditions = ["usage confirmation"]
+            reason = (f"{canonical} [{op_id}] in scope {scope}: monitor, "
+                      "no migration justified on current evidence.")
+        else:
+            klass = "monitor"
+            targets = ["keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"]
+            action = "Monitor inventory; no migration required"
+            refs = list(RECOMMENDATIONS.get("CLASSICAL-OK", {}).get(
+                "refs", [_NCCOE]))
+            reason = (f"{canonical} [{op_id}] is a strong classical primitive "
+                      "with correct parameters; monitor.")
+        migration_pattern = "verify-only"
+
+    if scope in _NON_DEPLOYMENT_SCOPES_V2 and klass in (
+            "replace-primitive", "pqc-transition", "protocol-upgrade"):
+        # Non-deployment evidence is retained but never pages production.
+        if isinstance(priority, str) and priority in ("Critical", "High"):
+            priority = "Medium"
+        reason += f" Non-deployment scope {scope}: schedule with test hygiene."
+        preconditions.append("confirm finding is not test/fixture-only")
+
+    try:
+        key_note = ""
+        if key_size is not None:
+            key_note = f" key_size={key_size}"
+    except Exception:
+        key_note = ""
+    full_reason = (f"{action}.{key_note} {reason} Priority {priority}. "
+                   f"Class {klass}; pattern {migration_pattern}.")
+    return {
+        "finding_id": op_id,
+        "operation_id": op_id,
+        "class": klass,
+        "rule_key": rule_key,
+        "asset_ids": asset_ids,
+        "target_algorithms": list(targets),
+        "migration_pattern": migration_pattern,
+        "priority": priority,
+        "action": action,
+        "reason": full_reason,
+        "refs": list(refs),
+        "preconditions": list(preconditions),
+        "alternatives": [],
+        "scope": scope,
+        "misuse": [str(m.get("rule_id")) for m in misuse
+                   if isinstance(m, dict) and m.get("rule_id")],
     }

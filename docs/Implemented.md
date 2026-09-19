@@ -75,7 +75,7 @@ pipeline.run_real_scan() ──→ ScanOrchestrator (compat wrapper)
 - `py_compile` on all touched files — PASS. Ruff unavailable in venv (not installed) — skipped.
 - Stale `tests/test_real_integration.py + test_scan_specialized.py` — 36 failed / 30 passed,
   **identical to pre-change baseline** (they expect removed mock mode/`--real` flag/
-  `ecdat.gui.server`; untouched per rule 11.1/§12, not deleted).
+  legacy GUI modules; the active GUI is served through `ecdat.web.server`).
 
 ## Newly working capability
 

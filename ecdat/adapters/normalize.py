@@ -135,6 +135,7 @@ def synthesize_asset_only_findings(cir: dict) -> list[dict]:
     """
     # P3-owned reuse of P1's pure mapping (vendored module is read-only
     # reference; importing the function avoids a second rule vocabulary).
+    from ecdat.core.api import _human_title  # noqa: PLC2701
     from ecdat.core.api import _rule_id_for  # noqa: PLC2701
     from ecdat.core.api import _severity_for  # noqa: PLC2701
 
@@ -163,7 +164,9 @@ def synthesize_asset_only_findings(cir: dict) -> list[dict]:
             "rule_id": _rule_id_for(
                 canonical, asset.get("key_size"),
                 asset.get("mode", ""), asset.get("protocol", "")),
-            "title": f"{canonical} [{asset_id}]",
+            "title": _human_title(canonical, "",
+                                  asset.get("key_size"),
+                                  asset.get("mode", "")),
             "severity": _severity_for(usage_state, None),
             "file": str(location.get("file") or first.get("file")
                         or "unknown") or "unknown",

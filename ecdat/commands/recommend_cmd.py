@@ -28,7 +28,7 @@ def run(args: argparse.Namespace) -> int:
 
     from ecdat.adapters.migration_adapter import build_real_items
 
-    recommendations = build_real_items(cir)
+    recommendations = build_real_items(cir, str(scan["target"]))
     if args.severity is not None:
         recommendations = [item for item in recommendations if item["severity"] == args.severity]
     if args.json:
@@ -37,6 +37,8 @@ def run(args: argparse.Namespace) -> int:
         print(f"scan_id: {args.scan_id}")
         if not recommendations:
             print("no recommendations")
-        for item in recommendations:
+        for item in recommendations[:20]:
             print(f"  {item['rule_id']} [{item['severity']}] {item['title']}: {item['action']}")
+        if len(recommendations) > 20:
+            print(f"  ... and {len(recommendations) - 20} more (see report/exports)")
     return 0

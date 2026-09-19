@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from ecdat.scanners.base import Scanner, ScannerFinding, create_evidence_signal, normalize_finding
-from ecdat.core.cir_models import UsageState, Location, Implementation, Context, Exposure
+from ecdat.core.cir_models import UsageState, OperationType, Location, Implementation, Context, Exposure
 from ecdat.core.signature_registry import normalize_algorithm, get_category, is_library_only
 
 
@@ -209,12 +209,19 @@ class NginxScanner(Scanner[ScannerFinding]):
 
         for proto in protocols:
             proto_lower = proto.lower()
-            if proto_lower in ("sslv2", "sslv3", "tlsv1", "tlsv1.1"):
+            # Protocol-specific canonicals (RFC 9325 policy needs the
+            # exact version, not a generic label).
+            insecure_map = {
+                "sslv2": "SSLv2", "sslv3": "SSLv3",
+                "tlsv1": "TLS1.0", "tlsv1.1": "TLS1.1",
+            }
+            if proto_lower in insecure_map:
                 findings.append(ScannerFinding(
-                    canonical="SSL",
-                    original=proto,
+                    canonical=insecure_map[proto_lower],
+                    original=insecure_map[proto_lower],
                     usage_state=UsageState.CONFIRMED,
                     confidence=0.9,
+                    operation_type=OperationType.TLS,
                     evidence=[create_evidence_signal(
                         tool="config-nginx",
                         detail=f"Insecure protocol enabled: {proto}",
@@ -232,6 +239,7 @@ class NginxScanner(Scanner[ScannerFinding]):
                     original=proto,
                     usage_state=UsageState.CONFIRMED,
                     confidence=0.8,
+                    operation_type=OperationType.TLS,
                     evidence=[create_evidence_signal(
                         tool="config-nginx",
                         detail=f"Secure protocol enabled: {proto}",

@@ -18,8 +18,8 @@ import re
 
 from ecdat.core.fusion import decide_usage, redact_snippet, weighted_fusion
 
-__all__ = ["build_operations", "group_key_for", "dedup_key_for",
-           "reconstruct_cir"]
+__all__ = ["build_operations", "build_semantic_operations",
+           "group_key_for", "dedup_key_for", "reconstruct_cir"]
 
 _TEST_DIR_NAMES = frozenset({"test", "tests", "testing", "testsuite",
                              "demos", "examples", "doc"})
@@ -32,6 +32,8 @@ _TOOL_SIGNALS: tuple[tuple[str, str, str], ...] = (
     ("source:ast", "source", "call"),
     ("source:semgrep", "semgrep", "call"),
     ("source:wrapper-call", "source", "call"),
+    ("source:custom-invocation", "source", "call"),
+    ("source:fingerprint", "source", "definition"),
     ("binary-lief", "lief", "binary-import"),
     ("binary-capa", "capa", "behavior"),
     ("binary-floss", "strings", "decoded-match"),
@@ -204,7 +206,39 @@ def dedup_key_for(group_key: tuple[str, ...], dependency_only: bool = False) -> 
     return base
 
 
-def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None) -> list[dict]:
+def _evidence_classes_for(detectors: list) -> list[str]:
+    """Classify fusion detector names via the Phase 4 evidence taxonomy.
+
+    Additive annotation only: never raises, unknown detectors map to
+    ``reference`` (see :mod:`ecdat.core.evidence`). Import is local so
+    this module keeps its stdlib-only import surface at load time.
+    """
+    try:
+        from ecdat.core.evidence import classify_evidence as _classify
+    except Exception:
+        return []
+    classes: list[str] = []
+    for detector in (detectors or []):
+        try:
+            name = _classify(detector).value
+        except Exception:
+            name = "reference"
+        if name not in classes:
+            classes.append(name)
+    return sorted(classes)
+
+
+def _semantic_state_for(usage_state: str, classes: list[str]) -> str:
+    """Derive the Phase 4 semantic state string (additive annotation)."""
+    try:
+        from ecdat.core.evidence import semantic_state_for as _state_for
+        return _state_for(usage_state, classes).value
+    except Exception:
+        return "referenced"
+
+
+def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None,
+                     use_semantic: bool = False) -> list[dict]:
     """Collapse raw hits into sorted CryptoOperation dicts.
 
     Args:
@@ -214,6 +248,11 @@ def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None) -> list[dic
             ``evidence`` (list of detector/signal_type/confidence), and
             context (dependency_only/is_test_fixture/is_checksum_only/
             snippet/asset_id). Missing keys default sensibly.
+        use_semantic: when True, fused groups sharing one Phase 7
+            semantic identity (primitive/variant/mode/key/curve/
+            protocol/op-type/scope/provider) are additionally correlated
+            into a single operation with merged provenance. Defaults to
+            False so the legacy 9-tuple grouping is unchanged.
 
     Returns:
         List of plain ``CryptoOperation`` dicts with fused
@@ -302,6 +341,7 @@ def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None) -> list[dic
         asset_ids = sorted(g["asset_ids"])
         first_snippet = g["snippets"][0] if g["snippets"] else ""
         detectors = breakdown.get("detectors", [])
+        evidence_classes = _evidence_classes_for(detectors)
         op = {
             "id": op_id,
             "operation_type": base[0],
@@ -323,11 +363,153 @@ def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None) -> list[dic
             "detectors": detectors,
             "breakdown": breakdown,
             "redacted_snippet": redact_snippet(first_snippet),
+            # Phase 4 additive annotations (taxonomy-derived, never fused).
+            "evidence_classes": evidence_classes,
+            "semantic_state": _semantic_state_for(
+                usage_state, evidence_classes),
         }
         ops.append(op)
 
     ops.sort(key=lambda o: (-float(o.get("confidence", 0.0)), str(o.get("id", ""))))
+    if use_semantic:
+        ops = _correlate_semantic(ops)
     return ops
+
+
+def _correlate_semantic(ops: list[dict]) -> list[dict]:
+    """Merge fused ops sharing one Phase 7 semantic identity (opt-in).
+
+    Identity ignores the syntactic ``function``/``id`` split so a direct
+    API call and its wrapper collapse to one logical operation; all
+    provenance (asset_ids/detectors/evidence & hit counts) is preserved
+    via union/sum and confidence is the member max.
+    """
+    try:
+        from ecdat.core.semantic_ops import semantic_identity_key as _sem_key
+    except Exception:
+        return ops
+    groups: dict[tuple, list[dict]] = {}
+    order: list[tuple] = []
+    for op in ops:
+        key_size = op.get("key_size")
+        pseudo = {
+            "primitive": None,
+            "variant": op.get("canonical_name"),
+            "algorithm": op.get("canonical_name"),
+            "mode": op.get("mode"),
+            "key": {"size": key_size, "curve": op.get("curve")},
+            "protocol": None,
+            "operation": op.get("operation_type"),
+            "scope": {"file": op.get("file"), "service": op.get("service"),
+                      "endpoint": op.get("endpoint")},
+            "build_state": ("provided-only"
+                            if str(op.get("dedup_key", "")).endswith(
+                                "provided-only") else ""),
+            "call_sequence": [],
+            "provider": None,
+        }
+        try:
+            key = _sem_key(pseudo)
+        except Exception:
+            key = (str(op.get("dedup_key", "")),)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(op)
+    merged: list[dict] = []
+    for key in order:
+        members = groups[key]
+        if len(members) == 1:
+            merged.append(members[0])
+            continue
+        first = dict(members[0])
+        asset_ids: list = []
+        detectors: list = []
+        evidence_count = 0
+        hit_count = 0
+        confidence = 0.0
+        for member in members:
+            for aid in (member.get("asset_ids") or []):
+                if aid not in asset_ids:
+                    asset_ids.append(aid)
+            for detector in (member.get("detectors") or []):
+                if detector not in detectors:
+                    detectors.append(detector)
+            try:
+                evidence_count += int(member.get("evidence_count", 0) or 0)
+                hit_count += int(member.get("hit_count", 0) or 0)
+            except (TypeError, ValueError):
+                pass
+            try:
+                confidence = max(
+                    confidence, float(member.get("confidence", 0.0) or 0.0))
+            except (TypeError, ValueError):
+                pass
+        first["asset_ids"] = sorted(asset_ids)
+        first["detectors"] = sorted(detectors)
+        first["evidence_count"] = evidence_count
+        first["hit_count"] = hit_count
+        first["confidence"] = confidence
+        first["evidence_classes"] = _evidence_classes_for(sorted(detectors))
+        first["semantic_state"] = _semantic_state_for(
+            str(first.get("usage_state", "")), first["evidence_classes"])
+        try:
+            breakdown = dict(first.get("breakdown", {}) or {})
+            breakdown["detectors"] = sorted(detectors)
+            first["breakdown"] = breakdown
+        except Exception:
+            pass
+        merged.append(first)
+    merged.sort(key=lambda o: (-float(o.get("confidence", 0.0)),
+                               str(o.get("id", ""))))
+    return merged
+
+
+def build_semantic_operations(
+        raw_hits: list[dict] | tuple[dict, ...] | None) -> list[dict]:
+    """Reconstruct Phase 4 semantic operations for raw hits (additive).
+
+    Groups hits with :func:`group_key_for`, rebuilds one semantic
+    operation per group via
+    :func:`ecdat.core.semantic_ops.build_semantic_operation`, then
+    correlates by semantic identity. Returns semantic-op dicts
+    (primitive/algorithm/variant/mode/... shape), *not* the fused
+    :func:`build_operations` shape.
+    """
+    from ecdat.core.semantic_ops import (
+        build_semantic_operation, correlate_operations)
+    hits = [h for h in (raw_hits or []) if isinstance(h, dict)]
+    if not hits:
+        return []
+    groups: dict[tuple, list[dict]] = {}
+    order: list[tuple] = []
+    for hit in hits:
+        try:
+            base = group_key_for(hit)
+        except Exception:
+            continue
+        if base not in groups:
+            groups[base] = []
+            order.append(base)
+        groups[base].append(hit)
+    semantic = [build_semantic_operation(groups[base]) for base in order]
+    return correlate_operations(semantic)
+
+
+def _usage_is_provided_only(state: object) -> bool:
+    """True for ProvidedOnly in Enum, value, or string form.
+
+    In-memory CIR carries ``UsageState`` enum members whose ``str()``
+    is ``"UsageState.PROVIDED_ONLY"`` (never endswith ``"ProvidedOnly"``);
+    serialized CIR carries the plain value. Both must count, otherwise
+    re-fusion silently upgrades ProvidedOnly assets to Possible/Probable.
+    """
+    try:
+        value = getattr(state, "value", state)
+        text = str(value if value is not None else "")
+    except Exception:
+        return False
+    return text == "ProvidedOnly" or text.endswith("ProvidedOnly")
 
 
 def _dethash(value: str, prefix: str, length: int = 16) -> str:
@@ -337,8 +519,21 @@ def _dethash(value: str, prefix: str, length: int = 16) -> str:
 
 
 def _tool_signal(tool: str, detail: str = "") -> tuple[str, str]:
-    """Map an evidence tool string to (fusion detector, signal type)."""
+    """Map an evidence tool string to (fusion detector, signal type).
+
+    Phase 6 refinement: an explicitly *enabled* protocol version in
+    deployment configuration (``ssl_protocols TLSv1;``,
+    ``min_tls_version = "1.0"``) is a directly observed configured
+    fact — invocation-equivalent for protocol posture — not a mere
+    keyword mention. Only exact-directive details qualify; generic
+    config keyword hits stay ``config-match``.
+    """
     text = str(tool or "")
+    lowered = str(detail or "").lower()
+    if text.startswith("config-") and (
+        "protocol enabled" in lowered or "tls version:" in lowered
+    ):
+        return "config", "call"
     for prefix, detector, signal in _TOOL_SIGNALS:
         if text.startswith(prefix):
             return detector, signal
@@ -370,7 +565,8 @@ def _direct_best(evidence: list) -> float:
     try:
         for item in evidence or []:
             tool = str(getattr(item, "tool", "") or "")
-            _, signal = _tool_signal(tool)
+            detail = str(getattr(item, "detail", "") or "")
+            _, signal = _tool_signal(tool, detail)
             if signal == "call":
                 try:
                     best = max(best, float(
@@ -496,7 +692,7 @@ def _hit_for_operation(op, asset) -> dict:
                  for e in (getattr(op, "evidence", None) or [])]
     except Exception:
         tools = []
-    dependency_only = usage_state.endswith("ProvidedOnly") or (
+    dependency_only = _usage_is_provided_only(usage_state) or (
         bool(tools) and all(_is_dependency_tool(t) for t in tools))
     try:
         raw_evidence = list(getattr(op, "evidence", None) or [])
@@ -655,6 +851,18 @@ def reconstruct_cir(cir):
                        f"detectors:{detectors}/"
                        f"evidence:{len(merged_evidence)}/"
                        f"hits:{group.get('hit_count', len(ops))}")
+        # Phase 4 additive provenance: evidence taxonomy classes for the
+        # merged detectors (classify_evidence never guesses; unknown ->
+        # reference). Keeps the stable "fusion=" prefix intact.
+        try:
+            from ecdat.core.evidence import classify_evidence as _classify
+            _classes = sorted({
+                _classify(getattr(e, "tool", "")).value
+                for e in (merged_evidence or [])})
+            if _classes:
+                fusion_note += f"/classes:{','.join(_classes)}"
+        except Exception:
+            pass
         try:
             notes = _notes_append(
                 str(getattr(getattr(survivor, "context", None),
@@ -726,12 +934,13 @@ def reconstruct_cir(cir):
         merged_evidence = _merge_evidence(
             [list(getattr(a, "evidence", None) or []) for a in members_])
         probe = [{"detector": _tool_signal(
-            str(getattr(e, "tool", "")))[0],
-            "signal_type": _tool_signal(str(getattr(e, "tool", "")))[1],
+            str(getattr(e, "tool", "")), str(getattr(e, "detail", "") or ""))[0],
+            "signal_type": _tool_signal(
+                str(getattr(e, "tool", "")), str(getattr(e, "detail", "") or ""))[1],
             "confidence": getattr(e, "confidence", 0.0)}
             for e in merged_evidence]
         dep_only = all(
-            str(getattr(a, "usage_state", "") or "").endswith("ProvidedOnly")
+            _usage_is_provided_only(getattr(a, "usage_state", ""))
             or (bool(getattr(a, "evidence", None)) and all(
                 _is_dependency_tool(str(getattr(e, "tool", "")))
                 for e in (getattr(a, "evidence", None) or [])))
@@ -746,6 +955,22 @@ def reconstruct_cir(cir):
                 confidence = max(confidence, max(
                     float(getattr(e, "confidence", 0.0) or 0.0)
                     for e in merged_evidence))
+            except Exception:
+                pass
+        if dep_only and not breakdown.get("has_direct_usage"):
+            # Implementation identification (structural fingerprint,
+            # container/docker definition) is high-confidence knowledge
+            # about what is PROVIDED. The dependency penalty targets weak
+            # capability hints; it must not crush a 0.95 identification
+            # into noise. Floor at the strongest definition evidence.
+            try:
+                impl_best = max(
+                    float(getattr(e, "confidence", 0.0) or 0.0)
+                    for e, p in zip(merged_evidence, probe)
+                    if p.get("signal_type") == "definition")
+                confidence = max(confidence, impl_best)
+            except (TypeError, ValueError):
+                pass
             except Exception:
                 pass
         confidence = min(1.0, max(0.0, round(confidence, 3)))

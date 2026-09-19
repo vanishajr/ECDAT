@@ -1,4 +1,4 @@
-# ECDAT benchmark — 2026-09-18T08:19:54Z
+# ECDAT benchmark — 2026-09-19T15:28:12Z
 
 - Mode: `fast`
 - Profiles: standard

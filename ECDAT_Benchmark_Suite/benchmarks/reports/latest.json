@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-09-18T08:19:54Z",
+  "created_at": "2026-09-19T15:28:12Z",
   "mode": "fast",
   "profiles": [
     "standard"
@@ -1163,8 +1163,8 @@
         "purpose": "mostly-negative Node control"
       },
       "profile": "standard",
-      "wall_seconds": 0.18333669999265112,
-      "peak_rss_mb": 47.58984375,
+      "wall_seconds": 1.1425711000047158,
+      "peak_rss_mb": 49.90625,
       "result": {
         "scan_id": "scan:4ce876218567c357",
         "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
@@ -1172,8 +1172,8 @@
           "cir_version": "0.1",
           "scan_id": "scan:4ce876218567c357",
           "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
-          "started_at": "2026-09-18T08:20:03Z",
-          "finished_at": "2026-09-18T08:20:03Z",
+          "started_at": "2026-09-19T15:28:17Z",
+          "finished_at": "2026-09-19T15:28:17Z",
           "tool_versions": {
             "source": "0.2.0",
             "dependency": "0.2.0",
@@ -1182,17 +1182,130 @@
             "certificate": "certificate-v0.1.0"
           },
           "registry_version": "2026.09.11",
-          "assets": [],
+          "assets": [
+            {
+              "asset_id": "ast:729a8ac9f7efcc77",
+              "canonical": "dependencies.escape-html",
+              "original": "dependencies.escape-html",
+              "usage_state": "Possible",
+              "confidence": 0.35,
+              "evidence": [
+                {
+                  "tool": "config-generic",
+                  "detail": "dependencies.escape-html = ^1.0.3",
+                  "confidence": 0.35,
+                  "snippet": "dependencies.escape-html = ^1.0.3"
+                }
+              ],
+              "location": {
+                "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
+                "uri": "json:dependencies.escape-html"
+              },
+              "implementation": {
+                "library": "generic",
+                "provider": "json"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "service=package; endpoint=https://expressjs.com/; endpoint=https://opencollective.com/express"
+              },
+              "risk_inputs": {
+                "usage_state": "Possible",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": false
+              }
+            },
+            {
+              "asset_id": "ast:ee0b1c69a2265d46",
+              "canonical": "keywords",
+              "original": "keywords",
+              "usage_state": "Possible",
+              "confidence": 0.35,
+              "evidence": [
+                {
+                  "tool": "config-generic",
+                  "detail": "keywords = express",
+                  "confidence": 0.35,
+                  "snippet": "keywords = express"
+                }
+              ],
+              "location": {
+                "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
+                "uri": "json:keywords"
+              },
+              "implementation": {
+                "library": "generic",
+                "provider": "json"
+              },
+              "context": {
+                "exposure": "internal",
+                "notes": "service=package; endpoint=https://expressjs.com/; endpoint=https://opencollective.com/express"
+              },
+              "risk_inputs": {
+                "usage_state": "Possible",
+                "exposure": "internal",
+                "sensitive_data": false,
+                "external_dependency": false
+              }
+            }
+          ],
           "operations": [],
           "graph": {
-            "nodes": [],
-            "edges": []
+            "nodes": [
+              {
+                "id": "ast:729a8ac9f7efcc77",
+                "kind": "asset",
+                "label": "dependencies.escape-html",
+                "ref": "ast:729a8ac9f7efcc77"
+              },
+              {
+                "id": "file:3cd8bb9066af43b2",
+                "kind": "file",
+                "label": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
+                "ref": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json"
+              },
+              {
+                "id": "library:3a2e8954befdbd6e",
+                "kind": "library",
+                "label": "generic",
+                "ref": "generic"
+              },
+              {
+                "id": "ast:ee0b1c69a2265d46",
+                "kind": "asset",
+                "label": "keywords",
+                "ref": "ast:ee0b1c69a2265d46"
+              }
+            ],
+            "edges": [
+              {
+                "from": "file:3cd8bb9066af43b2",
+                "to": "ast:729a8ac9f7efcc77",
+                "relationship": "contains"
+              },
+              {
+                "from": "ast:729a8ac9f7efcc77",
+                "to": "library:3a2e8954befdbd6e",
+                "relationship": "uses"
+              },
+              {
+                "from": "file:3cd8bb9066af43b2",
+                "to": "ast:ee0b1c69a2265d46",
+                "relationship": "contains"
+              },
+              {
+                "from": "ast:ee0b1c69a2265d46",
+                "to": "library:3a2e8954befdbd6e",
+                "relationship": "uses"
+              }
+            ]
           },
           "stats": {
-            "asset_count": 0,
+            "asset_count": 2,
             "operation_count": 0,
-            "node_count": 0,
-            "edge_count": 0,
+            "node_count": 4,
+            "edge_count": 4,
             "risk_count": 0,
             "recommendation_count": 0
           },
@@ -1203,8 +1316,8 @@
           "schema_version": "1.0",
           "scan_id": "scan:4ce876218567c357",
           "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
-          "started_at": "2026-09-18T08:20:03Z",
-          "finished_at": "2026-09-18T08:20:03Z",
+          "started_at": "2026-09-19T15:28:17Z",
+          "finished_at": "2026-09-19T15:28:17Z",
           "tool_versions": {
             "source": "0.2.0",
             "dependency": "0.2.0",
@@ -1212,10 +1325,41 @@
             "config": "config-v0.1.0",
             "certificate": "certificate-v0.1.0"
           },
-          "findings": [],
+          "findings": [
+            {
+              "rule_id": "DEPENDENCIES-ESCAPE-HTML",
+              "title": "dependencies.escape-html usage detected",
+              "severity": "low",
+              "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
+              "line": 0,
+              "snippet": "dependencies.escape-html = ^1.0.3",
+              "confidence": 0.35,
+              "metadata": {
+                "cir_asset_id": "ast:729a8ac9f7efcc77",
+                "canonical_name": "dependencies.escape-html",
+                "usage_state": "Possible",
+                "asset_only": true
+              }
+            },
+            {
+              "rule_id": "KEYWORDS",
+              "title": "keywords usage detected",
+              "severity": "low",
+              "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
+              "line": 0,
+              "snippet": "keywords = express",
+              "confidence": 0.35,
+              "metadata": {
+                "cir_asset_id": "ast:ee0b1c69a2265d46",
+                "canonical_name": "keywords",
+                "usage_state": "Possible",
+                "asset_only": true
+              }
+            }
+          ],
           "stats": {
-            "files_scanned": 0,
-            "findings_count": 0
+            "files_scanned": 1,
+            "findings_count": 2
           }
         },
         "plan": {
@@ -1248,10 +1392,48 @@
           "unavailable": [],
           "caller": "benchmark",
           "display_target": "express",
-          "artifacts_total": 0,
-          "artifact_counts": {},
-          "surfaces": [],
-          "skipped": [],
+          "artifacts_total": 207,
+          "artifact_counts": {
+            "unknown": 58,
+            "config": 7,
+            "source": 141,
+            "dependency": 1
+          },
+          "surfaces": [
+            "config",
+            "dependency",
+            "source"
+          ],
+          "skipped": [
+            {
+              "path": "examples\\error-pages\\views\\footer.ejs",
+              "reason": "duplicate-content"
+            },
+            {
+              "path": "examples\\route-separation\\views\\footer.ejs",
+              "reason": "duplicate-content"
+            },
+            {
+              "path": "test\\fixtures\\empty.txt",
+              "reason": "duplicate-content"
+            },
+            {
+              "path": "test\\fixtures\\name.tmpl",
+              "reason": "duplicate-content"
+            },
+            {
+              "path": "test\\fixtures\\name.txt",
+              "reason": "duplicate-content"
+            },
+            {
+              "path": "test\\fixtures\\snow \u2603\\.gitkeep",
+              "reason": "duplicate-content"
+            },
+            {
+              "path": "test\\fixtures\\user.tmpl",
+              "reason": "duplicate-content"
+            }
+          ],
           "warnings": [],
           "effort": {
             "escalation_allowed": true,
@@ -1303,11 +1485,11 @@
           },
           "unavailable": [],
           "scanner_status": {
-            "binary": "success",
             "source": "success",
-            "certificate": "success",
+            "binary": "success",
+            "dependency": "success",
             "config": "success",
-            "dependency": "success"
+            "certificate": "success"
           },
           "binary_stages": {
             "binaries": 0,
@@ -1325,9 +1507,18 @@
             "binary-strings": "available"
           },
           "permissions_required": [],
-          "artifacts_total": 0,
-          "artifact_counts": {},
-          "surfaces": [],
+          "artifacts_total": 207,
+          "artifact_counts": {
+            "unknown": 58,
+            "config": 7,
+            "source": 141,
+            "dependency": 1
+          },
+          "surfaces": [
+            "config",
+            "dependency",
+            "source"
+          ],
           "cache_hit": false,
           "cache_key": "scan:75592c44635e7d0bd2453d5b7a0b4cee",
           "registry_version": "2026.09.11",
@@ -1338,7 +1529,7 @@
             "config": "config-v0.1.0",
             "certificate": "certificate-v0.1.0"
           },
-          "elapsed_sec": 0.112
+          "elapsed_sec": 1.116
         }
       }
     }

@@ -1064,8 +1064,21 @@ class ScanOrchestrator:
             "started_at", canonical.get("started_at"))
         canonical["finished_at"] = enriched.get(
             "finished_at", canonical.get("finished_at"))
-        canonical.setdefault("stats", {})["files_scanned"] = len(
-            _norm.files_from_cir(enriched))
+        # files_scanned = inventoried file artifacts actually opened by
+        # scanners — NOT files-with-findings (which reports "0 files"
+        # for clean scans and hides the real coverage). Scannable =
+        # inventory categories routed to a scanner surface (unknown /
+        # archives skipped by CATEGORY_TO_SURFACE).
+        try:
+            from ecdat.core.inventory import CATEGORY_TO_SURFACE as _C2S
+            inventoried_files = sum(
+                1 for r in (records or [])
+                if str(_C2S.get(str(getattr(r, "category", "") or ""), "skip")) != "skip")
+        except Exception:
+            inventoried_files = 0
+        cir_files = len(_norm.files_from_cir(enriched))
+        canonical.setdefault("stats", {})["files_scanned"] = max(
+            inventoried_files, cir_files)
         extra = _norm.synthesize_asset_only_findings(enriched)
         if extra:
             canonical.setdefault("findings", []).extend(extra)

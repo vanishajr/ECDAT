@@ -28,11 +28,27 @@ Entry fields:
 
 from __future__ import annotations
 
+import re
+
 __all__ = [
     "EVP_CIPHER_TABLE",
     "API_PATTERNS",
     "patterns_for",
+    "REGISTRY_VERSION",
+    "EXACT_API_INDEX",
+    "build_exact_index",
+    "lookup_exact",
+    "compile_matchers",
+    "lex_prefilter",
+    "get_matcher_stats",
+    "match_type_for",
+    "invalidate_matcher_caches",
 ]
+
+#: Knowledge-registry version for Phase 1/13 matcher caching.
+#: Matcher and prefilter caches are keyed by this version so stale
+#: analysis is never returned after rules change.
+REGISTRY_VERSION = "2026.09.19"
 
 #: OpenSSL EVP cipher constructors -> (canonical, key_size, mode).
 EVP_CIPHER_TABLE = {
@@ -61,6 +77,16 @@ EVP_CIPHER_TABLE = {
     "EVP_sha3_512": ("SHA-3-512", None, None),
     "EVP_md5": ("MD5", None, None),
     "EVP_sha1": ("SHA-1", None, None),
+    "EVP_rc4": ("RC4", None, None),
+    "EVP_rc4_40": ("RC4", 40, None),
+    "EVP_rc2_cbc": ("RC2", None, "CBC"),
+    "EVP_des_ecb": ("DES", 56, "ECB"),
+    "EVP_des_ede_ecb": ("3DES", 112, "ECB"),
+    "EVP_des_ede3_ecb": ("3DES", 168, "ECB"),
+    "EVP_des_ede_cbc": ("3DES", 112, "CBC"),
+    "EVP_bf_ecb": ("Blowfish", 128, "ECB"),
+    "EVP_camellia_128_cbc": ("Camellia", 128, "CBC"),
+    "EVP_camellia_256_cbc": ("Camellia", 256, "CBC"),
 }
 
 #: Curve-name normalisation across ecosystems.
@@ -183,6 +209,14 @@ API_PATTERNS: list[dict] = [
      "canonical": "MD5", "cipher_arg": None, "op": "HASH",
      "library": "openssl", "confidence": 0.88},
     # -- OpenSSL TLS (C/C++) ------------------------------------------------
+    {"id": "ossl-cipher-fetch", "langs": ("c", "cpp"),
+     "re": r"\bEVP_CIPHER_fetch\b", "call": "EVP_CIPHER_fetch",
+     "canonical": None, "cipher_arg": None, "op": "ENCRYPT",
+     "library": "openssl", "confidence": 0.90, "parser": "ossl-fetch-name"},
+    {"id": "ossl-digest-fetch", "langs": ("c", "cpp"),
+     "re": r"\bEVP_MD_fetch\b", "call": "EVP_MD_fetch",
+     "canonical": None, "cipher_arg": None, "op": "HASH",
+     "library": "openssl", "confidence": 0.90, "parser": "ossl-fetch-name"},
     {"id": "ossl-ssl-ctx-new", "langs": ("c", "cpp"),
      "re": r"\bSSL_CTX_new\b", "call": "SSL_CTX_new",
      "canonical": "TLS", "cipher_arg": None, "op": "TLS",
@@ -357,7 +391,7 @@ API_PATTERNS: list[dict] = [
      "canonical": "ECDSA", "cipher_arg": None, "op": "KEY_MANAGEMENT",
      "library": "go-crypto", "confidence": 0.90, "parser": "go-curve"},
     {"id": "go-ecdh", "langs": ("go",),
-     "re": r"\becdh\s*\.\s*(?:P256|P384|P521|X25519)\s*\(\s*\)",
+     "re": r"\becdh\s*\.\s*(?:P256|P384|P521|X25519)\b",
      "call": "ecdh.P256", "canonical": "ECDH", "cipher_arg": None,
      "op": "KEY_EXCHANGE", "library": "go-crypto", "confidence": 0.90,
      "parser": "go-ecdh-curve"},
@@ -495,3 +529,385 @@ def _evp_ctor_rows() -> list[dict]:
 
 
 API_PATTERNS.extend(_evp_ctor_rows())
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 — cheaper candidate detection (additive, backward compatible).
+#
+# Exact symbol lookup first, regex only when actually required, one
+# combined lexical prefilter, matchers compiled once per
+# (language, REGISTRY_VERSION). Exact lookup is verified against the
+# same compiled regexes so it produces the same semantic result as the
+# regex fallback (first-row-wins order of patterns_for()).
+# ---------------------------------------------------------------------------
+
+#: Parsers whose semantics depend on a string literal argument.
+_STRING_PARAM_PARSERS = frozenset({
+    "jca-transformation", "jca-name", "jca-signature",
+    "node-cipher", "node-name", "node-curve", "node-keytype",
+    "webcrypto-op", "webcrypto-name",
+})
+
+#: Per-language exact token -> rows (built lazily, in patterns_for order).
+EXACT_API_INDEX: dict[str, dict[str, list[dict]]] = {}
+
+_MATCHER_CACHE: dict[tuple[str, str, int], list[tuple[dict, "re.Pattern[str]"]]] = {}
+_PREFILTER_CACHE: dict[tuple[str, str, int], "re.Pattern[str]"] = {}
+_COMPILE_COUNT = 0
+_PREFILTER_COMPILE_COUNT = 0
+
+
+def _strip_call_suffix(pattern: str) -> str:
+    """Remove trailing call anchor (``\\b`` or ``\\s*(``...) from a pattern."""
+    p = pattern.strip()
+    idx = p.rfind("\\s*\\(")
+    if idx != -1:
+        suffix = p[idx:]
+        # Only a call suffix: backslashes, s/*, parens, whitespace, \b.
+        if re.fullmatch(r"(?:\\s\*|\\b|\\\(|\\\)|\(|\)|\s)*", suffix):
+            p = p[:idx]
+    if p.endswith(r"\b"):
+        p = p[: -len(r"\b")]
+    return p
+
+
+def _expand_alternations(expr: str, limit: int = 64) -> list[str] | None:
+    """Expand ``(a|b)`` groups and trailing ``X?`` optionals.
+
+    Returns None when the expression still holds regex constructs that
+    cannot be enumerated as concrete symbol names.
+    """
+    results = [expr]
+    # Expand parenthesised groups (innermost first via loop).
+    while True:
+        progressed = False
+        next_results: list[str] = []
+        for item in results:
+            open_idx = item.find("(")
+            if open_idx == -1:
+                next_results.append(item)
+                continue
+            # Find matching close paren (no nesting left unhandled:
+            # process innermost by taking the LAST open paren).
+            open_idx = item.rfind("(")
+            close_idx = item.find(")", open_idx)
+            if close_idx == -1:
+                return None
+            inner = item[open_idx + 1: close_idx]
+            after = item[close_idx + 1:]
+            optional = after.startswith("?")
+            rest = after[1:] if optional else after
+            # Named-group prefix like ?P<bits> lives inside inner.
+            if inner.startswith("?P<"):
+                gt = inner.find(">")
+                if gt == -1:
+                    return None
+                inner = inner[gt + 1:]
+            if "|" in inner:
+                alts = inner.split("|")
+            else:
+                alts = [inner]
+            for alt in alts:
+                next_results.append(item[:open_idx] + alt + rest)
+            if optional:
+                # The empty alternative (group absent).
+                next_results.append(item[:open_idx] + rest)
+            progressed = True
+            if len(next_results) > limit:
+                return None
+        results = next_results
+        if not progressed:
+            break
+        if len(results) > limit:
+            return None
+    # Expand single-character optionals such as ``ex2?``.
+    final: list[str] = []
+    for item in results:
+        m = re.search(r"([A-Za-z0-9_])\?", item)
+        if m:
+            ch = m.group(1)
+            start = m.start(0)
+            final.append(item[:start] + rest_of(item, start))
+            final.append(item[:start] + ch + rest_of(item, start))
+        else:
+            final.append(item)
+        if len(final) > limit:
+            return None
+    # Validate: only concrete symbol characters remain.
+    cleaned: list[str] = []
+    for item in final:
+        if re.search(r"[\[\]{}*+?^$|()\\]", item):
+            return None
+        if not re.fullmatch(r"[A-Za-z_][\w\.:]*", item):
+            return None
+        cleaned.append(item)
+    # Deduplicate, deterministic order.
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for name in cleaned:
+        if name not in seen:
+            seen.add(name)
+            ordered.append(name)
+    return sorted(ordered)
+
+
+def rest_of(item: str, start: int) -> str:
+    """Remainder of ``item`` after a two-char ``X?`` at ``start``."""
+    return item[start + 2:]
+
+
+def _extract_exact_names(pattern: str) -> list[str] | None:
+    """Enumerate concrete symbol names for a row regex, or None.
+
+    Normalises ``\\b``, ``\\.``/``\\s*`` dotted and ``::`` separators
+    and trailing call parens, then expands finite alternations and
+    optionals. Returns None for genuinely dynamic patterns.
+    """
+    try:
+        p = str(pattern or "")
+    except Exception:
+        return None
+    if not p:
+        return None
+    if p.startswith(r"\b"):
+        p = p[len(r"\b"):]
+    p = _strip_call_suffix(p)
+    # Normalise separators to their literal form.
+    p = p.replace(r"\s*\.\s*", ".")
+    p = p.replace(r"\s*::\s*", "::")
+    p = p.replace(r"\.", ".")
+    p = p.replace("(?:", "(")
+    p = re.sub(r"\(\?P<\w+>", "(", p)
+    p = p.replace(" ", "")
+    if not p:
+        return None
+    return _expand_alternations(p)
+
+
+def match_type_for(row: dict) -> str:
+    """Derive a Phase 1 match type for one knowledge row.
+
+    One of ``constructor`` (EVP ctor evidence), ``string-parameter``
+    (algorithm comes from a string literal), ``exact`` (single
+    concrete symbol), ``prefix`` (finite optional-variant family) or
+    ``regex`` (dynamic pattern, regex fallback required).
+    """
+    try:
+        rid = str(row.get("id", "") or "")
+    except Exception:
+        rid = ""
+    if rid.startswith("ossl-evp-ctor-"):
+        return "constructor"
+    try:
+        parser = str(row.get("parser", "") or "")
+    except Exception:
+        parser = ""
+    if parser in _STRING_PARAM_PARSERS:
+        return "string-parameter"
+    names = _extract_exact_names(str(row.get("re", "") or ""))
+    if names is None:
+        return "regex"
+    if len(names) == 1:
+        return "exact"
+    return "prefix"
+
+
+def _assign_match_types() -> None:
+    for row in API_PATTERNS:
+        try:
+            row["match_type"] = match_type_for(row)
+        except Exception:
+            row["match_type"] = "regex"
+
+
+def build_exact_index() -> dict[str, dict[str, list[dict]]]:
+    """Build (and install) the per-language exact-token index.
+
+    Each token maps to rows in :func:`patterns_for` order so exact
+    lookup reproduces the regex fallback's first-row-wins semantics.
+    """
+    global EXACT_API_INDEX
+    index: dict[str, dict[str, list[dict]]] = {}
+    order = {str(r.get("id", "")): i for i, r in enumerate(API_PATTERNS)}
+    for row in API_PATTERNS:
+        names = _extract_exact_names(str(row.get("re", "") or ""))
+        if not names:
+            continue
+        try:
+            langs = tuple(row.get("langs", ()) or ())
+        except Exception:
+            continue
+        for lang in langs:
+            lang_key = str(lang or "").strip().lower()
+            if not lang_key:
+                continue
+            bucket = index.setdefault(lang_key, {})
+            for token in names:
+                bucket.setdefault(token, [])
+                if all(existing.get("id") != row.get("id")
+                       for existing in bucket[token]):
+                    bucket[token].append(row)
+    for bucket in index.values():
+        for token, rows in bucket.items():
+            rows.sort(key=lambda r: order.get(str(r.get("id", "")), 1 << 30))
+    EXACT_API_INDEX = index
+    return index
+
+
+def _rows_for(lang: str) -> list[dict]:
+    lang_key = str(lang or "").strip().lower()
+    return [row for row in API_PATTERNS if lang_key in row.get("langs", ())]
+
+
+def compile_matchers(lang: str) -> list[tuple[dict, "re.Pattern[str]"]]:
+    """Return cached ``(row, compiled_regex)`` pairs for one language.
+
+    Compiled once per ``(language, REGISTRY_VERSION, row count)``;
+    repeated calls return the same list object (single compilation).
+    """
+    global _COMPILE_COUNT
+    lang_key = str(lang or "").strip().lower()
+    rows = _rows_for(lang_key)
+    key = (lang_key, REGISTRY_VERSION, len(rows))
+    hit = _MATCHER_CACHE.get(key)
+    if hit is not None:
+        return hit
+    compiled: list[tuple[dict, "re.Pattern[str]"]] = []
+    for row in rows:
+        try:
+            rx = re.compile(str(row.get("re", "")))
+        except re.error:
+            continue
+        compiled.append((row, rx))
+    _MATCHER_CACHE[key] = compiled
+    _COMPILE_COUNT += 1
+    return compiled
+
+
+def lookup_exact(name: str, lang: str) -> list[dict]:
+    """Exact token lookup for a call-site name (verified, ordered).
+
+    Tries the full name plus dotted/``::`` suffixes (``crypto.subtle.
+    encrypt`` also finds ``subtle.encrypt``), keeps
+    :func:`patterns_for` order, and verifies every candidate with its
+    cached compiled regex against ``name + "("`` — the same probe the
+    scanner's regex fallback uses. Returns ``[]`` when nothing matches
+    (caller falls back to the regex rows).
+    """
+    if not name or not lang:
+        return []
+    lang_key = str(lang or "").strip().lower()
+    probe_name = str(name)
+    index = EXACT_API_INDEX or build_exact_index()
+    bucket = index.get(lang_key, {})
+    if not bucket:
+        return []
+    variants: list[str] = [probe_name]
+    # Suffix variants preserving original separators: "foo.A::new"
+    # yields "A::new" and "new" so both "." and "::" tokens match.
+    for match in re.finditer(r"(?:\.|::)", probe_name):
+        suffix = probe_name[match.end():]
+        if suffix and suffix not in variants:
+            variants.append(suffix)
+    # Bare base segment (after the last separator run).
+    base = re.split(r"(?:\.|::)", probe_name)[-1]
+    if base and base not in variants:
+        variants.append(base)
+    candidates: list[dict] = []
+    seen: set[str] = set()
+    for variant in variants:
+        for row in bucket.get(variant, []):
+            rid = str(row.get("id", ""))
+            if rid and rid not in seen:
+                seen.add(rid)
+                candidates.append(row)
+    if not candidates:
+        return []
+    order = {str(r.get("id", "")): i for i, r in enumerate(_rows_for(lang_key))}
+    candidates.sort(key=lambda r: order.get(str(r.get("id", "")), 1 << 30))
+    compiled_map = {str(r.get("id", "")): rx for r, rx in compile_matchers(lang_key)}
+    probe = probe_name + "("
+    verified: list[dict] = []
+    for row in candidates:
+        rx = compiled_map.get(str(row.get("id", "")))
+        if rx is None:
+            continue
+        try:
+            if rx.search(probe):
+                verified.append(row)
+        except re.error:
+            continue
+    return verified
+
+
+def lex_prefilter(text: str, lang: str) -> bool:
+    """Cheap single-regex triage: True when crypto APIs may be present.
+
+    One combined regex per ``(language, REGISTRY_VERSION)`` over all
+    row patterns. Blank/masked regions never match by construction
+    (callers pass masked source); False simply skips call extraction.
+    """
+    lang_key = str(lang or "").strip().lower()
+    if not text:
+        return False
+    rows = _rows_for(lang_key)
+    if not rows:
+        return False
+    global _PREFILTER_COMPILE_COUNT
+    key = (lang_key, REGISTRY_VERSION, len(rows))
+    rx = _PREFILTER_CACHE.get(key)
+    if rx is None:
+        combo = "|".join(f"(?:{row.get('re', '')})" for row in rows)
+        try:
+            rx = re.compile(combo)
+        except re.error:
+            # Fall back to alternation of exact tokens.
+            tokens: list[str] = []
+            for row in rows:
+                for token in (_extract_exact_names(str(row.get("re", ""))) or []):
+                    tokens.append(re.escape(token))
+            rx = re.compile("|".join(sorted(set(tokens))) or "(?!)")
+        _PREFILTER_CACHE[key] = rx
+        _PREFILTER_COMPILE_COUNT += 1
+    try:
+        return rx.search(text) is not None
+    except re.error:
+        return True
+
+
+def get_matcher_stats() -> dict:
+    """Matcher/prefilter telemetry (compile-once verification)."""
+    lang_set = sorted({str(l).lower() for r in API_PATTERNS
+                       for l in (r.get("langs", ()) or ())})
+    type_counts: dict[str, int] = {}
+    for row in API_PATTERNS:
+        mt = str(row.get("match_type", "") or "unknown")
+        type_counts[mt] = type_counts.get(mt, 0) + 1
+    exact_tokens = sum(len(bucket) for bucket in EXACT_API_INDEX.values())
+    return {
+        "registry_version": REGISTRY_VERSION,
+        "compile_calls": _COMPILE_COUNT,
+        "prefilter_compiles": _PREFILTER_COMPILE_COUNT,
+        "cached_matchers": sorted(f"{lang}@{ver}:{n}" for (lang, ver, n)
+                                  in _MATCHER_CACHE),
+        "cached_prefilters": sorted(f"{lang}@{ver}:{n}" for (lang, ver, n)
+                                    in _PREFILTER_CACHE),
+        "languages": lang_set,
+        "rows": len(API_PATTERNS),
+        "exact_tokens": exact_tokens,
+        "exact_langs": sorted(EXACT_API_INDEX),
+        "match_types": type_counts,
+    }
+
+
+def invalidate_matcher_caches() -> None:
+    """Drop compiled matcher/prefilter caches (tests, registry edits)."""
+    global _COMPILE_COUNT, _PREFILTER_COMPILE_COUNT
+    _MATCHER_CACHE.clear()
+    _PREFILTER_CACHE.clear()
+    _COMPILE_COUNT = 0
+    _PREFILTER_COMPILE_COUNT = 0
+
+
+_assign_match_types()
+build_exact_index()

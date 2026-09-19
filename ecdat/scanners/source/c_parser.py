@@ -149,7 +149,67 @@ def mask_source(text: str) -> tuple[str, int]:
                 i += 1
     blob = "".join(removed)
     suppressed = sum(blob.count(k) for k in _NOISE_KEYWORDS)
-    return "".join(out), suppressed
+    masked = "".join(out)
+    masked, disabled_hits = _blank_disabled_preprocessor_blocks(masked)
+    return masked, suppressed + disabled_hits
+
+
+def _blank_disabled_preprocessor_blocks(masked: str) -> tuple[str, int]:
+    """Blank `#if 0 ... #endif` regions (Phase 6 build-state semantics).
+
+    Disabled preprocessor blocks are not compiled; crypto-like symbols
+    inside them are build-state DISABLED evidence, never application
+    invocations. Offsets/newlines preserved so line numbers hold.
+    Returns (masked, crypto_keyword_hits_in_disabled_regions).
+    """
+    lines = masked.split("\n")
+    out: list[str] = []
+    depth = 0  # nesting depth inside disabled regions
+    cond_stack: list[bool] = []  # per-#if whether that level disabled
+    hits = 0
+    for line in lines:
+        s = line.strip()
+        m = re.match(r"#\s*if\s+(.*)", s)
+        m_elif = re.match(r"#\s*elif\s+(.*)", s)
+        m_else = re.match(r"#\s*else\b", s)
+        m_endif = re.match(r"#\s*endif\b", s)
+        m_ifdef = re.match(r"#\s*(ifdef|ifndef)\b", s)
+        if m:
+            disabled = s == "#if 0" or re.match(r"#\s*if\s+0\s*(//.*)?$", s) is not None
+            cond_stack.append(bool(disabled))
+            depth = sum(1 for c in cond_stack if c)
+            out.append(" " * len(line))
+            continue
+        if m_ifdef:
+            cond_stack.append(False)
+            out.append(line)
+            continue
+        if m_elif is not None:
+            if cond_stack:
+                cond_stack[-1] = False  # conservative: elif re-enables
+                depth = sum(1 for c in cond_stack if c)
+            out.append(" " * len(line) if depth else line)
+            continue
+        if m_else is not None:
+            if cond_stack:
+                # #else of `#if 0` re-enables; #else of active stays active.
+                was = cond_stack[-1]
+                cond_stack[-1] = False if was else ("__else__" in cond_stack)
+                depth = sum(1 for c in cond_stack if c)
+            out.append(line if not depth else " " * len(line))
+            continue
+        if m_endif is not None:
+            if cond_stack:
+                cond_stack.pop()
+                depth = sum(1 for c in cond_stack if c)
+            out.append(" " * len(line))
+            continue
+        if depth:
+            hits += sum(line.count(k) for k in _NOISE_KEYWORDS)
+            out.append(" " * len(line))
+        else:
+            out.append(line)
+    return "\n".join(out), hits
 
 
 def _likely_char_start(text: str, i: int) -> bool:
@@ -564,6 +624,18 @@ def resolve_entry(entry: dict, args: str, consts: dict[str, str],
         detail = f"method {token}" if token else ""
     elif parser == "tls-version-const":
         protocol = TLS_VERSION_CONSTS.get(_arg(1), TLS_VERSION_CONSTS.get(_arg(0)))
+    elif parser == "ossl-fetch-name":
+        # Provider fetch (EVP_CIPHER_fetch / EVP_MD_fetch): resolve the
+        # requested algorithm name when statically visible; otherwise
+        # leave canonical unresolved (caller falls back to OpenSSL
+        # library capability). Per plan §1.3 unknown stays unknown.
+        literal = _first_string(args, consts, literals)
+        mapped = _name_to_canonical(literal) if literal else None
+        if mapped:
+            canonical = mapped
+            detail = f"fetch {literal}"
+        else:
+            detail = "provider fetch; algorithm unresolved" if not _arg(1) else f"fetch {_arg(1)}; algorithm unresolved"
     elif parser in ("go-curve", "go-ecdh-curve", "dotnet-curve"):
         token = _arg(0) if parser != "go-ecdh-curve" else call_name
         curve = CURVE_ALIASES.get(token)
@@ -571,6 +643,13 @@ def resolve_entry(entry: dict, args: str, consts: dict[str, str],
             inner = re.search(r"P(256|384|521)", token)
             if inner:
                 curve = f"P-{inner.group(1)}"
+        if parser == "go-ecdh-curve":
+            # Operation-correct primitive: X25519 is its own canonical
+            # family (not generic ECDH); P-curves stay ECDH + curve.
+            if "X25519" in token:
+                canonical = "X25519"
+            elif "X448" in token:
+                canonical = "X448"
     elif parser in ("rust-aesgcm", "rust-bits", "rust-curve-hint"):
         if parser == "rust-aesgcm":
             if "128" in call_name:

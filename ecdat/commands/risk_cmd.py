@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -11,6 +12,11 @@ from ecdat.commands import ERROR
 from ecdat.store import db
 from ecdat.store import findings as fstore
 from ecdat.store import scans as sstore
+
+
+def _display_title(title: str) -> str:
+    """Human-readable risk title (internal op ids stay in JSON/CIR)."""
+    return re.sub(r"\s*\[[^\]]*\]\s*$", "", str(title or "")) or str(title or "")
 
 
 def run(args: argparse.Namespace) -> int:
@@ -35,7 +41,11 @@ def run(args: argparse.Namespace) -> int:
         print(json.dumps({"scan_id": args.scan_id, "risk": posture}, indent=2, sort_keys=True))
     else:
         print(f"scan_id: {args.scan_id}")
-        print(f"risk:    {posture['level']} ({posture['score']})")
+        print(f"risk:    {posture['level']} ({posture['score']}/10, P1 engine)")
         print(f"findings: {posture['finding_count']}")
         print(f"risk records: {posture['risk_count']}")
+        for record in (cir.get("risks", []) or [])[:5]:
+            if isinstance(record, dict):
+                print(f"  [{record.get('class', '')}] {record.get('score', '')} "
+                      f"{_display_title(str(record.get('title', '')))}")
     return 0

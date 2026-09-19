@@ -602,6 +602,38 @@ def _severity_for(usage_state: str, risk_class: str | None) -> str:
     return "high"
 
 
+def _human_title(canonical: str, operation_type: str = "",
+                 key_size=None, mode: str = "") -> str:
+    """Human-readable finding title from data ECDAT already produces.
+
+    Never invents new facts: the canonical name (plus key size / mode
+    when the asset records them) and the operation type are the only
+    inputs. Internal op/asset IDs stay in finding metadata, never in
+    the title.
+    """
+    name = str(canonical or "UNKNOWN").strip() or "UNKNOWN"
+    upper = name.upper()
+    if upper == "RSA" and isinstance(key_size, int):
+        return f"{key_size}-bit RSA usage detected"
+    nouns = {
+        "ENCRYPT": "encryption", "DECRYPT": "decryption",
+        "SIGN": "signing", "VERIFY": "verification",
+        "KEYEXCHANGE": "key exchange", "HASH": "hashing",
+        "KDF": "key derivation", "TLS": "TLS configuration",
+        "STORAGE": "key/certificate storage",
+        "KEYMANAGEMENT": "key management",
+    }
+    noun = nouns.get(re.sub(r"[^A-Za-z]", "", str(operation_type or "")).upper(), "")
+    if noun and noun not in ("encryption", "signing") and upper not in (
+            "TLS1.0", "TLS-1.0", "TLS1.3", "TLS-1.3"):
+        return f"{name} {noun} detected"
+    if upper in ("TLS1.0", "TLS-1.0"):
+        return "Legacy TLS 1.0/1.1 usage detected"
+    if upper in ("TLS1.3", "TLS-1.3"):
+        return "TLS 1.3 usage detected"
+    return f"{name} usage detected"
+
+
 def _rule_id_for(canonical: str, key_size=None, mode: str = "",
                  protocol: str = "") -> str:
     slug = re.sub(r"[^A-Za-z0-9]+", "-", str(canonical or "UNKNOWN")).strip("-").upper()
@@ -664,7 +696,8 @@ def to_canonical(cir: dict) -> dict:
         finding = {
             "rule_id": _rule_id_for(canonical, asset.get("key_size"),
                                     asset.get("mode", ""), asset.get("protocol", "")),
-            "title": f"{canonical} [{op_id}]",
+            "title": _human_title(canonical, op.get("operation_type", ""),
+                                  asset.get("key_size"), asset.get("mode", "")),
             "severity": _severity_for(usage_state,
                                       risks.get(op_id, {}).get("class")),
             "file": str(location.get("file", first.get("file", "unknown")) or "unknown"),

@@ -271,9 +271,16 @@ def _result_payload(cir: dict, canonical: dict,
     from ecdat.adapters.migration_adapter import build_real_items
     coverage = _coverage_payload(plan, diagnostics)
     limitations = _limitations_payload(diagnostics)
+    try:
+        _label = str(((plan or {}).get("display_target")
+                       or (diagnostics or {}).get("display_target", "")) or "")
+    except Exception:
+        _label = ""
     report = aggregate.build_report(
-        canonical, real_risk=risk, recommendations=build_real_items(cir),
-        cir=cir, limitations=limitations, coverage=coverage)
+        canonical, real_risk=risk,
+        recommendations=build_real_items(cir, str(canonical.get("target", ""))),
+        cir=cir, limitations=limitations, coverage=coverage,
+        display_label=_label)
     return {
         "scan_id": canonical["scan_id"],
         "canonical": canonical,
@@ -435,6 +442,13 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/scanner-capabilities":
             self._json(200, {"default": list(DEFAULT_SCANNERS), "optional": dict(OPT_IN_SCANNERS), "github_oauth": bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))})
             return
+        if path == "/api/demos":
+            try:
+                from ecdat.web.demos import list_demos as _demos
+                self._json(200, {"demos": _demos()})
+            except Exception as exc:
+                self._json(500, {"error": f"demos unavailable: {exc}"})
+            return
         if path.startswith("/api/jobs/"):
             job_id = path.rsplit("/", 1)[-1]
             with STATE.lock:
@@ -532,6 +546,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._upload()
             elif path == "/api/inputs/inspect":
                 self._inspect_input()
+            elif path == "/api/demos/select":
+                self._demo_select()
             elif path == "/api/scan-plan":
                 self._scan_plan()
             elif path == "/api/scan-jobs":
@@ -594,6 +610,24 @@ class Handler(BaseHTTPRequestHandler):
             root = extracted
         data["target"] = root
         self._json(200, {"input_id": data["input_id"], **_inspect(root, data["label"])})
+
+    def _demo_select(self) -> None:
+        """Load a bundled demo directory as the scan input (judges)."""
+        from ecdat.web.demos import get_demo as _get_demo
+
+        body = self._read_json()
+        directory, meta = _get_demo(str(body.get("demo_id", "")))
+        data = STATE.new_input()
+        root = Path(data["directory"]) / "demo"
+        root.mkdir(parents=True, exist_ok=True)
+        for path in sorted(directory.iterdir()):
+            if not path.is_file() or path.name == "meta.json":
+                continue
+            shutil.copy2(path, root / _safe_name(path.name))
+        data["target"] = root
+        data["label"] = str(meta.get("name") or directory.name)
+        self._json(200, {"input_id": data["input_id"],
+                         **_inspect(root, data["label"])})
 
     def _scan_plan(self) -> None:
         """Phase 3: scan-plan preview for GUI use (no scanning)."""

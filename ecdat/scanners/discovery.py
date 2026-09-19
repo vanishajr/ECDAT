@@ -251,8 +251,17 @@ class DiscoveryEngine:
                     abs(current_line - finding_line) <= 5
                 )
                 
-                # Merge if: different scanners nearby, OR same scanner in same function nearby
-                if (different_scanner and nearby) or (not different_scanner and same_function and nearby):
+                # Merge if: different scanners nearby, OR same scanner in same function nearby.
+                # Never merge distinct operation types: an adjacent init call
+                # (KEY_MANAGEMENT) and encrypt call (ENCRYPT) are two
+                # operations, not one (custom-API invocations often sit on
+                # adjacent lines; merging would silently drop an operation).
+                same_operation = (
+                    current.operation_type is None
+                    or finding.operation_type is None
+                    or current.operation_type == finding.operation_type
+                )
+                if ((different_scanner and nearby) or (not different_scanner and same_function and nearby)) and same_operation:
                     # Merge findings
                     current = self._merge_findings(current, finding)
                 else:
