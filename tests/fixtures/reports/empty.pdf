@@ -3,39 +3,71 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>
 endobj
 4 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
-endobj
-5 0 obj
-<< /Length 617 >>
+<< /Length 1335 >>
 stream
-BT /F1 18 Tf 72 800 Td (ECDAT Executive Summary \(minimal PDF\)) Tj ET
-BT /F1 11 Tf 72 780 Td (Scan: scan-empty-001) Tj ET
-BT /F1 11 Tf 72 765 Td (Target: samples/clean.py) Tj ET
-BT /F1 11 Tf 72 750 Td (Findings: 0 \(files scanned: 1\)) Tj ET
-BT /F1 11 Tf 72 735 Td (Risk: none \(0\) [mock scoring]) Tj ET
-BT /F1 11 Tf 72 720 Td (Severity: none) Tj ET
-BT /F1 11 Tf 72 705 Td (Top rules:) Tj ET
-BT /F1 11 Tf 72 690 Td (Top files/services:) Tj ET
-BT /F1 11 Tf 72 675 Td (Migration: see recommend command \(mock placeholder\).) Tj ET
-BT /F1 11 Tf 72 660 Td (Risk/migration are mock output pending Person 1 engine.) Tj ET
+BT /F1 18 Tf 56 800 Td (ECDAT Cryptographic Risk Report) Tj ET
+BT /F1 10 Tf 56 778 Td (Project: clean.py | Status: COMPLETE) Tj ET
+BT /F1 10 Tf 56 765 Td (Risk NONE \(0.0/10\) | Findings 0 | Operations 0 | Assets 0 | Files 1 / 1) Tj ET
+BT /F1 10 Tf 56 752 Td (ECDAT analyzed 1 files in clean.py and detected no cryptographic observations.) Tj ET
+BT /F1 10 Tf 56 739 Td (Confirmed findings: 0 | Declared capabilities \(unconfirmed\): 0) Tj ET
+BT /F1 16 Tf 56 726 Td () Tj ET
+BT /F1 16 Tf 56 704 Td (2. Priority findings) Tj ET
+BT /F1 10 Tf 56 682 Td (No confirmed findings.) Tj ET
+BT /F1 16 Tf 56 669 Td () Tj ET
+BT /F1 16 Tf 56 647 Td (3. Cryptographic inventory \(confirmed use\)) Tj ET
+BT /F1 10 Tf 56 625 Td (No confirmed cryptographic use.) Tj ET
+BT /F1 16 Tf 56 612 Td () Tj ET
+BT /F1 16 Tf 56 590 Td (4. Affected locations) Tj ET
+BT /F1 10 Tf 56 568 Td (No affected components.) Tj ET
+BT /F1 16 Tf 56 555 Td () Tj ET
+BT /F1 16 Tf 56 533 Td (5. Migration priorities) Tj ET
+BT /F1 10 Tf 56 511 Td (No migration actions.) Tj ET
+BT /F1 16 Tf 56 498 Td () Tj ET
+BT /F1 16 Tf 56 476 Td (6. Scan coverage) Tj ET
+BT /F1 10 Tf 56 454 Td (Coverage: 1 / 1 files with cryptographic evidence \(profile: standard\).) Tj ET
+BT /F1 10 Tf 56 441 Td (0 file\(s\) skipped before analysis; 0 file\(s\) analyzed with no cryptographic evidence.) Tj ET
 endstream
 endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 1121 >>
+stream
+BT /F1 16 Tf 56 800 Td () Tj ET
+BT /F1 16 Tf 56 778 Td (7. Methodology and technical details) Tj ET
+BT /F1 10 Tf 56 756 Td (P1 quantum/classical risk engine: Mosca-style score per operation \(0.35*Q + 0.20*E + 0.15*B + 0.15*) Tj ET
+BT /F1 10 Tf 56 743 Td (+ 0.15*mosca_boost, clamped 0..1, wire scale 0..10\); classes Critical >= 8, High >= 6, Medium >= 4,) Tj ET
+BT /F1 10 Tf 56 730 Td (Low >= 2, else Informational. ProvidedOnly caps at Low; suppressed states score 0.0 Informational.) Tj ET
+BT /F1 10 Tf 56 717 Td (Risk source: no-risk-record; registry: ; profile: standard; elapsed: Nones; cache: miss.) Tj ET
+BT /F1 10 Tf 56 704 Td (Scan: scan-empty-001 | Target: clean.py | 2026-09-10T12:00:00Z .. 2026-09-10T12:00:01Z) Tj ET
+BT /F1 10 Tf 56 691 Td (Detectors: ecdat 0.1.0.) Tj ET
+BT /F1 10 Tf 56 678 Td (Unknown risk inputs stay unknown: the engine records explicit mid-range assumptions per operation) Tj ET
+BT /F1 10 Tf 56 665 Td (instead of exaggerating risk. Per-operation assumptions, full evidence, and machine-readable detail) Tj ET
+BT /F1 10 Tf 56 652 Td (are in the JSON/CIR/CSV/SARIF/CBOM exports.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
 xref
-0 6
+0 8
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
-0000000115 00000 n 
-0000000241 00000 n 
-0000000311 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001634 00000 n 
+0000001760 00000 n 
+0000002933 00000 n 
 trailer
-<< /Size 6 /Root 1 0 R /Producer (ECDAT minimal executive PDF (mock)) >>
+<< /Size 8 /Root 1 0 R /Producer (ECDAT report) >>
 startxref
-979
+3003
 %%EOF

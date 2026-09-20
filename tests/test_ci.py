@@ -1,14 +1,10 @@
-"""Tests for the Task 15 CI gate (mock-first orchestration).
+"""Tests for the CI gate (unified backend).
 
-All tests drive ecdat.cli.main() directly (plus pure-helper unit
-tests) and use tmp_path databases — never the ~/.ecdat default.
-The CI command reuses the existing pipeline (MockCoreClient scan,
-validate, store, Task 6 risk, Task 7 SARIF); these tests pin the
-policy behavior, output contracts, and exit codes.
-
-Mock routing reminder: a target whose name contains "empty"/"clean"
-scans clean (0 findings); an existing directory scans multi
-(critical+high+medium+low); any other file scans minimal (1x high).
+All tests drive ecdat.cli.main() directly (plus pure-helper unit tests)
+and use tmp_path databases — never the ~/.ecdat default. CI always runs
+the shared ScanOrchestrator pipeline (no mock); --fail-on gates on stored
+finding severities only. Exit codes: 0 pass, 1 policy failure / scan or
+store error, 2 target not found / argparse rejection.
 """
 
 import json
@@ -23,6 +19,8 @@ from ecdat.exports import sarif as sarif_mod
 from ecdat.store import db
 from ecdat.store import scans as sstore
 
+CRYPTO_PY = "import hashlib\nh = hashlib.md5(b'ecdat-ci-test').hexdigest()\n"
+
 
 def _db(tmp_path: Path) -> str:
     return str(tmp_path / "t.db")
@@ -34,15 +32,10 @@ def _file(tmp_path: Path, name: str = "a.py") -> Path:
     return p
 
 
-def _app_dir(tmp_path: Path) -> Path:
-    app = tmp_path / "app"
-    app.mkdir(exist_ok=True)
-    (app / "m.py").write_text("x = 1\n")
-    return app
-
-
-def _clean(tmp_path: Path) -> Path:
-    return _file(tmp_path, "clean.py")
+def _crypto(tmp_path: Path, name: str = "c.py") -> Path:
+    p = tmp_path / name
+    p.write_text(CRYPTO_PY)
+    return p
 
 
 # --- command exists ----------------------------------------------------
@@ -55,90 +48,60 @@ def test_ci_subcommand_registered():
     assert args.fail_on is None
     assert args.json is False
     assert args.sarif is None
+    assert args.profile == "standard"
 
 
 # --- basic execution / persistence --------------------------------------
 
 
-def test_ci_basic_execution_minimal(tmp_path, capsys):
+def test_ci_basic_execution_clean(tmp_path, capsys):
     rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path)])
     assert rc == 0
     out, err = capsys.readouterr()
-    assert "scan-minimal-001" in out
+    assert "scan:" in out
     assert "PASS" in out
+    assert "Traceback" not in out + err
 
 
 def test_ci_stores_scan(tmp_path, capsys):
-    target = _file(tmp_path)
+    target = _crypto(tmp_path)
     assert main(["ci", str(target), "--db", _db(tmp_path)]) == 0
-    capsys.readouterr()
+    out, _ = capsys.readouterr()
+    scan_id = [line for line in out.splitlines() if line.startswith("scan_id:")][0].split(": ", 1)[1]
     conn = db.open_db(_db(tmp_path))
     try:
-        row = sstore.get_scan(conn, "scan-minimal-001")
+        row = sstore.get_scan(conn, scan_id)
         assert row is not None
-        assert row["target"] == str(target)
+        assert sstore.get_scan_cir(conn, scan_id) is not None
     finally:
         conn.close()
 
 
-def test_ci_empty_scan_passes(tmp_path, capsys):
-    rc = main(["ci", str(_clean(tmp_path)), "--db", _db(tmp_path)])
+def test_ci_clean_scan_passes(tmp_path, capsys):
+    rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path)])
     assert rc == 0
     out, _ = capsys.readouterr()
-    assert "scan-empty-001" in out
     assert "findings: 0" in out
-    assert "PASS" in out
-
-
-def test_ci_multi_reports_critical(tmp_path, capsys):
-    rc = main(["ci", str(_app_dir(tmp_path)), "--db", _db(tmp_path)])
-    assert rc == 0  # no --fail-on: report only, always pass
-    out, _ = capsys.readouterr()
-    assert "scan-multi-001" in out
-    assert "critical=1" in out
     assert "PASS" in out
 
 
 # --- --fail-on thresholds -------------------------------------------------
 
 
-@pytest.mark.parametrize("level", ["critical", "high", "medium", "low", "info"])
-def test_ci_fail_on_multi_trips_every_level(tmp_path, capsys, level):
-    rc = main(["ci", str(_app_dir(tmp_path)), "--db", _db(tmp_path),
-               "--fail-on", level])
+def test_ci_fail_on_info_trips_on_any_finding(tmp_path, capsys):
+    rc = main(["ci", str(_crypto(tmp_path)), "--db", _db(tmp_path),
+               "--fail-on", "info"])
     assert rc == 1
     out, _ = capsys.readouterr()
     assert "FAIL" in out
 
 
-def test_ci_fail_on_critical_passes_for_high_only(tmp_path, capsys):
+def test_ci_fail_on_critical_passes_for_clean(tmp_path, capsys):
     rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path),
                "--fail-on", "critical"])
     assert rc == 0
     out, _ = capsys.readouterr()
     assert "PASS" in out
-
-
-def test_ci_fail_on_high_trips_for_high_only(tmp_path, capsys):
-    rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path),
-               "--fail-on", "high"])
-    assert rc == 1
-    out, _ = capsys.readouterr()
-    assert "FAIL" in out
-
-
-def test_ci_fail_on_info_passes_on_empty(tmp_path, capsys):
-    rc = main(["ci", str(_clean(tmp_path)), "--db", _db(tmp_path),
-               "--fail-on", "info"])
-    assert rc == 0
-    out, _ = capsys.readouterr()
-    assert "PASS" in out
-
-
-def test_ci_fail_on_info_trips_on_any_finding(tmp_path, capsys):
-    rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path),
-               "--fail-on", "info"])
-    assert rc == 1
 
 
 def test_ci_invalid_fail_on_rejected():
@@ -174,12 +137,11 @@ def test_evaluate_counts_all_levels_deterministically():
 
 
 def test_ci_summary_fields(tmp_path, capsys):
-    target = _app_dir(tmp_path)
+    target = _crypto(tmp_path)
     rc = main(["ci", str(target), "--db", _db(tmp_path), "--summary"])
     assert rc == 0
     out, _ = capsys.readouterr()
-    for needle in (str(target), "scan-multi-001", "findings: 4",
-                   "risk:", "fail-on:", "verdict:"):
+    for needle in (str(target), "findings:", "risk:", "fail-on:", "verdict:"):
         assert needle in out
 
 
@@ -187,27 +149,23 @@ def test_ci_summary_fields(tmp_path, capsys):
 
 
 def test_ci_json_valid_and_shaped(tmp_path, capsys):
-    rc = main(["ci", str(_app_dir(tmp_path)), "--db", _db(tmp_path),
-               "--json", "--fail-on", "high"])
+    rc = main(["ci", str(_crypto(tmp_path)), "--db", _db(tmp_path),
+               "--json", "--fail-on", "info"])
     assert rc == 1
     out, err = capsys.readouterr()
     assert err == ""  # no stdout contamination, no stderr noise
     doc = json.loads(out)  # must be pure valid JSON
     assert doc["tool"] == "ecdat-ci"
-    assert doc["mock"] is True
-    assert doc["scan_id"] == "scan-multi-001"
-    assert doc["finding_count"] == 4
-    assert doc["by_severity"] == {"info": 0, "low": 1, "medium": 1,
-                                  "high": 1, "critical": 1}
-    assert doc["risk"] == {"score": 19, "level": "high"}
-    assert doc["fail_on"] == "high"
+    assert doc["finding_count"] >= 1
+    assert doc["fail_on"] == "info"
     assert doc["verdict"] == "fail"
-    assert doc["triggered"] == ["high", "critical"]
-    assert doc["max_severity"] == "critical"
+    assert set(doc["risk"]) >= {"score", "level"}
+    assert doc["max_severity"] is not None
+    assert "limitations" in doc
 
 
 def test_ci_json_pass_verdict(tmp_path, capsys):
-    rc = main(["ci", str(_clean(tmp_path)), "--db", _db(tmp_path), "--json"])
+    rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path), "--json"])
     assert rc == 0
     out, _ = capsys.readouterr()
     doc = json.loads(out)
@@ -220,7 +178,7 @@ def test_ci_json_pass_verdict(tmp_path, capsys):
 
 
 def test_ci_sarif_file_and_reuse(tmp_path, capsys):
-    target = _app_dir(tmp_path)
+    target = _crypto(tmp_path)
     sarif_path = tmp_path / "ci.sarif"
     rc = main(["ci", str(target), "--db", _db(tmp_path),
                "--sarif", str(sarif_path)])
@@ -228,21 +186,25 @@ def test_ci_sarif_file_and_reuse(tmp_path, capsys):
     capsys.readouterr()
     sarif_doc = json.loads(sarif_path.read_text())
     assert sarif_doc["version"] == "2.1.0"
+    out_id = main(["ci", str(target), "--db", str(tmp_path / "other.db"),
+                   "--json"])
+    assert out_id == 0
+    scan_id = json.loads(capsys.readouterr()[0])["scan_id"]
     conn = db.open_db(_db(tmp_path))
     try:
-        stored = sstore.get_scan_doc(conn, "scan-multi-001")
+        stored = sstore.get_scan_doc(conn, scan_id)
     finally:
         conn.close()
     assert stored is not None
-    # Byte-identical reuse of the existing Task 7 exporter path.
+    # Byte-identical reuse of the existing exporter path.
     assert sarif_path.read_text() == export_cmd.render(stored, "sarif") + "\n"
     assert sarif_mod.to_sarif(stored) == export_cmd.render(stored, "sarif")
 
 
 def test_ci_sarif_still_written_on_policy_failure(tmp_path, capsys):
     sarif_path = tmp_path / "fail.sarif"
-    rc = main(["ci", str(_app_dir(tmp_path)), "--db", _db(tmp_path),
-               "--fail-on", "low", "--sarif", str(sarif_path),
+    rc = main(["ci", str(_crypto(tmp_path)), "--db", _db(tmp_path),
+               "--fail-on", "info", "--sarif", str(sarif_path),
                "--json"])
     assert rc == 1
     out, _ = capsys.readouterr()
@@ -260,40 +222,25 @@ def test_ci_target_not_found(tmp_path, capsys):
     assert "not found" in err
 
 
-def test_ci_real_placeholder_is_clean_error(tmp_path, capsys):
-    # Integrated real mode: --real gates the P2/P1 pipeline (rc 0 on a
-    # clean target) and stays loud without tracebacks on bad input.
-    rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path), "--real"])
-    assert rc == 0
+def test_ci_invalid_scanners_fail_clean(tmp_path, capsys):
+    rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path),
+               "--scanners", "bogus-scanner"])
+    assert rc == 1
     out, err = capsys.readouterr()
     assert "Traceback" not in out + err
-    assert "real pipeline" in out
-
-
-def test_ci_validation_failure(tmp_path, capsys, monkeypatch):
-    import ecdat.commands.ci_cmd as ci_mod
-
-    class BadClient:
-        def scan(self, target):
-            return {"not": "canonical"}
-
-    monkeypatch.setattr(ci_mod, "get_client", lambda mode: BadClient())
-    rc = main(["ci", str(_file(tmp_path)), "--db", _db(tmp_path)])
-    assert rc == 3
-    _, err = capsys.readouterr()
-    assert "validation failed" in err
+    assert err.strip() != ""
 
 
 # --- determinism ----------------------------------------------------------------------
 
 
-def test_ci_deterministic_across_repeat_runs(tmp_path, capsys):
-    target = _file(tmp_path)
-    argv = ["ci", str(target), "--db", _db(tmp_path), "--json",
-            "--fail-on", "medium"]
-    assert main(argv) == 1
-    first, first_err = capsys.readouterr()
-    assert main(argv) == 1  # second run reuses the stored scan
-    second, second_err = capsys.readouterr()
-    assert json.loads(first) == json.loads(second)
-    assert first_err == second_err == ""
+def test_ci_deterministic_scan_id_across_databases(tmp_path, capsys):
+    target = _crypto(tmp_path)
+    assert main(["ci", str(target), "--db", str(tmp_path / "one.db"),
+                 "--json"]) == 0
+    first = json.loads(capsys.readouterr()[0])["scan_id"]
+    assert main(["ci", str(target), "--db", str(tmp_path / "two.db"),
+                 "--json"]) == 0
+    second = json.loads(capsys.readouterr()[0])["scan_id"]
+    assert first == second
+    assert first.startswith("scan:")

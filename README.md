@@ -1,15 +1,17 @@
 # ECDAT — Enterprise Cryptographic Discovery & Analysis Tool (SIH26164)
 
-Integrated product: Person 2 discovery + Person 1 intelligence + Person 3
-platform. Two modes share one store/GUI/reports surface:
+Integrated product: discovery + intelligence + platform. One production
+pipeline serves both interfaces:
 
-- **Mock mode (default)**: deterministic fixtures, labeled `mock` in code,
-  CLI output, GUI badges, and tests. Offline demos and regression tests.
-- **Real mode (`--real`)**: single-pass pipeline — P2 `DiscoveryEngine`
-  scans once → CIR v0.1 validation → P1 fusion/operations/graph/risk/
-  recommendations → canonical v1 + CIR sidecar → SQLite → CLI/GUI/reports/
-  exports/CI. Never silently falls back to mock; failures raise
-  `RealScanError`.
+GUI → `ecdat/web/server.py` → `ScanRequest` → `ScanOrchestrator.scan()`
+CLI → `ecdat/commands/_real_scan.py` → `RealCoreClient` → `ScanRequest` →
+`ScanOrchestrator.scan()`
+
+There is no mock mode: every scan runs single-pass real analysis —
+`DiscoveryEngine` scans once → CIR v0.1 validation → fusion/operations/
+graph/risk/recommendations → canonical v1 + CIR sidecar → SQLite
+(`scans` + `scan_meta` plan/diagnostics) → CLI/GUI/reports/exports/CI.
+Failures are loud errors, never silent mock fallbacks.
 
 Data contracts: CIR v0.1 is the internal intelligence model
 (`ecdat/core/cir.schema.json`); canonical v1 is the stable
@@ -19,13 +21,12 @@ platform-facing model (`ecdat/core/canonical_v1.json`). Adapters in
 ## Prerequisites
 
 - Python 3.10+
-- Mock/demo path: `pip install -e .` (runtime dep: `jsonschema`;
-  tests need `pytest`). No network, credentials, or services required.
-- Real-scan path: `pip install -e ".[test]"` plus real deps
-  (`pydantic>=2.7`, `pyyaml>=6`, `cryptography>=42`,
-  `tomli` on Python 3.10). Optional capabilities are probed, never
-  required: Semgrep, LIEF, YARA, Docker/Syft, cloud SDKs, runtime sockets.
-  Unavailable scanners are reported explicitly, never scored as zero.
+- `pip install -e .` (runtime deps: `pydantic>=2.7`, `pyyaml>=6`,
+  `cryptography>=42`, `jsonschema`, `tomli` on Python 3.10; tests need
+  `pytest`). No network, credentials, or services required for local scans.
+- Optional capabilities are probed, never required: Semgrep, LIEF, YARA,
+  Docker/Syft, cloud SDKs, runtime sockets. Unavailable scanners are
+  reported explicitly, never scored as zero.
 - Container/cloud/runtime scanning is opt-in (Docker, credentials, sockets).
 
 ## Validate
@@ -37,20 +38,16 @@ python -m pytest -q
 Must report all tests passing (platform regression + P2 scanner suite +
 P1/core tests + contract tests + real integration tests).
 
-## One-command local demo (mock)
+## One-command local dashboard (React API + UI)
 
 ```bash
-python -m ecdat.cli demo
+python -m ecdat.cli gui --port 8734
 ```
 
-Seeds a fresh temp workspace (two mock targets) and serves the dashboard
-at `http://127.0.0.1:8734` (loopback only; `--port 0` for an ephemeral
-port, `--db PATH` to reuse a database). Press Ctrl-C to stop.
-
-```bash
-python -m ecdat.cli demo --port 0   # avoid port clashes
-python -m ecdat.cli gui             # dashboard on your own DB (no seeding)
-```
+Serves the local API at `http://127.0.0.1:8734` (loopback only;
+`--port 0` for an ephemeral port, `--db PATH` to share a database with
+the CLI). Start the React interface with `cd frontend && npm run dev`.
+Press Ctrl-C to stop.
 
 ## Real scans (integrated pipeline)
 
@@ -60,24 +57,27 @@ Default real selection is network-free:
 (TLS/SSH sockets).
 
 ```bash
-# Source tree (real)
-python -m ecdat.cli scan ./repo --real --db .ecdat.db
-python -m ecdat.cli scan ./repo --real --cir-out cir.json --output canonical.json --db .ecdat.db
+# Source tree (production pipeline)
+python -m ecdat.cli scan ./repo --db .ecdat.db
+python -m ecdat.cli scan ./repo --cir-out cir.json --output canonical.json --db .ecdat.db
+
+# GitHub repository (same downloader + pipeline as the dashboard)
+python -m ecdat.cli scan --repo https://github.com/openssl/openssl --db .ecdat.db
 
 # Binary / container tar / rootfs / image ref
-python -m ecdat.cli scan-binary ./bin/app --real --db .ecdat.db
-python -m ecdat.cli scan-container ./image.tar --real --db .ecdat.db
-python -m ecdat.cli scan-container nginx:1.25 --real --allow-container --db .ecdat.db
+python -m ecdat.cli scan-binary ./bin/app --db .ecdat.db
+python -m ecdat.cli scan-container ./image.tar --db .ecdat.db
+python -m ecdat.cli scan-container nginx:1.25 --allow-container --db .ecdat.db
 
 # Cloud (label target, no local path required)
-python -m ecdat.cli scan-cloud aws --profile readonly --services kms,acm,elb --real --db .ecdat.db
+python -m ecdat.cli scan-cloud aws --profile readonly --services kms,acm,elb --db .ecdat.db
 
 # Explicit scanner subset + opt-ins
-python -m ecdat.cli scan ./repo --real --scanners source,config,certificate --db .ecdat.db
-python -m ecdat.cli scan ./repo --real --allow-container --allow-cloud --allow-runtime --db .ecdat.db
+python -m ecdat.cli scan ./repo --scanners source,config,certificate --db .ecdat.db
+python -m ecdat.cli scan ./repo --allow-container --allow-cloud --allow-runtime --db .ecdat.db
 
 # CI gate on real findings (P1 risk posture, severity policy)
-python -m ecdat.cli ci ./repo --real --fail-on high --summary --db .ecdat.db
+python -m ecdat.cli ci ./repo --fail-on high --summary --db .ecdat.db
 
 # GUI over a real database
 python -m ecdat.cli gui --db .ecdat.db --port 0
@@ -88,54 +88,51 @@ confidence, locations, redacted snippets), risk dashboard (P1 Mosca
 posture), graph view (CIR projection), migration planner (P1
 recommendations), reports/exports (canonical v1), and CI gates.
 
-## Demo workflow (dashboard cards)
+## Dashboard workflow
 
-1. **Target** — pick a seeded demo target (or type any path).
-2. **Scan-plan preview + monitor** — read-only plan; real scans run
-   synchronously, progress is staged/estimated.
-3. **Inventory/findings** — click rows for finding detail (Card 6).
-4. **Risk dashboard** — mock severity-weight scoring in mock mode
-   (labeled); P1 risk posture for real scans.
-5. **Asset inventory + groupings** — flat CBOM-derived assets (Card 7).
-6. **Knowledge graph** — `MOCK DATASET` badge in mock mode; real CIR
-   projection for real scans (Card 8).
-7. **Migration planner** — severity triage, `MOCK / PLACEHOLDER` in mock
-   mode; P1 recommendations for real scans, still no persistent
-   migration state (Card 9).
-8. **Reports** — view/download HTML, PDF, CSV, JSON, SARIF (Card 10).
+1. **Repository input** — paste a public GitHub URL, upload a file/archive,
+   or pick a demo input.
+2. **Scan plan + monitor** — read-only plan; scans run through the shared
+   orchestrator with staged progress.
+3. **Inventory/findings** — click rows for finding detail (usage state,
+   evidence, confidence, redacted snippets).
+4. **Risk dashboard** — P1 Mosca risk posture over stored wire risks.
+5. **Asset inventory** — flat CBOM-derived assets.
+6. **Knowledge graph** — real CIR projection.
+7. **Migration planner** — P1 recommendations; no persistent migration
+   state.
+8. **Reports** — view/download HTML, PDF, CSV, JSON, SARIF, CBOM, CIR.
 
 ## CLI commands
 
-`scan`, `scan-binary`, `scan-container`, `scan-cloud` (each with
-`--mock`/`--real`, `--scanners`, `--allow-container/--allow-cloud/--allow-runtime`,
-`--cir-out` on real paths), `list`, `show`, `risk`, `recommend`,
+All scan commands run the shared production backend
+(`ScanOrchestrator`); there is no mock mode. `scan [path] [--repo URL]`,
+`scan-binary`, `scan-container`, `scan-cloud` (with `--scanners`,
+`--allow-container/--allow-cloud/--allow-runtime/--allow-pull/--allow-build`,
+`--profile` (scan depth, except `scan-cloud` where `--profile` is the AWS
+profile), `--region`, `--cir-out`, context/Mosca options; `scan-cloud`
+additionally accepts `--aws-access-key-id/--aws-secret-access-key/
+--aws-session-token/--aws-profile`), `list`, `show`, `risk`, `recommend`,
 `export` (json/csv/cbom-json/cbom-xml/sarif),
 `report` (markdown/console/html/pdf),
-`ci` (`--fail-on`/`--json`/`--summary`/`--sarif`, plus real flags),
-`gui`, `demo`.
-`python -m ecdat.benchmark run|cases|suite-run|baselines` runs the benchmark harness
-(`suite-run --baseline NAME` evaluates one registered baseline).
+`ci` (`--fail-on`/`--json`/`--summary`/`--sarif`, plus scan options),
+`gui` (local React API).
 
 ## Generated artifacts
 
-Reports: Markdown, console, HTML, PDF (stdlib-only). Exports: JSON, CSV,
-CBOM JSON/XML, SARIF 2.1.0. Benchmark: JSON results, HTML/CSV/SVG/PDF
-artifacts. GUI Card 10 serves HTML/PDF/CSV/JSON/SARIF downloads.
-Real scans also persist the enriched CIR sidecar (`scans.cir_json`,
-schema v2) alongside canonical v1; mock/legacy rows store NULL.
+Reports: Markdown, console, HTML, PDF. Exports: JSON, CSV,
+CBOM JSON/XML, SARIF 2.1.0, CIR JSON. Dashboard serves HTML/PDF/CSV/JSON/
+SARIF/CBOM/CIR downloads. Scans persist the enriched CIR sidecar
+(`scans.cir_json`, schema v3) alongside canonical v1 plus plan/diagnostics
+(`scan_meta`).
 
-## Mock vs real (honest boundaries)
+## Production boundaries (honest limits)
 
-- Mock: deterministic fixtures; severity-weight risk; static-map
-  recommendations; hand-authored graph; triage-only migration; synthetic
-  benchmark labels. Labeled `mock` everywhere.
-- Real: P2 discovery (parallel scanner families, persistent container
-  layer cache, content-aware correlation); P1 Mosca risk + 17-rule
-  recommendation map; deterministic `scan:<16hex>` IDs; RFC3339
-  timestamps; asset-only findings preserved; unavailable tools reported,
-  never zero-filled. Measured P2 quality on committed fixtures is
-  ~25% recall / ~14% precision — do not claim 95%/90% targets until
-  independently reproduced on corrected ground truth.
+- P1 Mosca risk + recommendation engine; deterministic `scan:<32hex>` IDs
+  for identical inputs; RFC3339 timestamps; asset-only findings preserved;
+  unavailable tools reported, never zero-filled. Measured detector quality
+  on committed fixtures is modest — do not claim fixed precision/recall
+  targets until independently reproduced on corrected ground truth.
 - Product is intentionally incomplete: persistent migration state,
   owners/effort/timelines/sequencing, full Azure/GCP, guaranteed Docker
   environments, external baseline comparisons, full runtime probing,
@@ -146,9 +143,10 @@ Contracts are pinned in `tests/contract/` and `docs/P1_P2_INTEGRATION_CONTRACT.m
 
 ## Troubleshooting
 
-- Port busy: `demo --port 0` or `gui --port 0`. Non-loopback `--host`:
+- Port busy: `gui --port 0`. Non-loopback `--host`:
   refused by design.
-- Stale DB confusion: `demo` uses a fresh temp dir each run (path printed).
+- Stale DB confusion: point CLI and GUI at the same `--db` file to share
+  scan history (both default to `~/.ecdat/ecdat.db`).
 - `pytest` failures: run `python -m pytest -q`; GUI tests bind 127.0.0.1
   ephemeral ports only.
 - Real scan missing deps: install real-scan group above; the error names

@@ -1,11 +1,9 @@
 """Consumer-contract tests: CoreClient output accepted by P3.
 
-Defines WHAT P3 ACCEPTS from any CoreClient (mock today, real P1
-later) — never how P1 implements it. A fake P1-style client feeds
-the real consumer chain (validate -> store -> report -> renderers);
-malformed output is rejected with existing errors and never stored
-or silently repaired. Complements test_core_client.py (which pins
-the mock); this file pins the consumer side.
+Defines WHAT P3 ACCEPTS from the integrated client — never how analysis
+implements it. A hand-built canonical doc feeds the real consumer chain
+(validate -> store -> report -> renderers); malformed output is rejected
+with existing errors and never stored or silently repaired.
 """
 
 import copy
@@ -73,7 +71,10 @@ def test_valid_client_output_flows_to_reports(tmp_path):
     stored = _consume(str(tmp_path / "c.db"), _FakeClient(_valid_doc()).scan("x"))
     rep = build_report(stored)
     assert rep["finding_count"] == 2
-    assert rep["risk"]["level"] == "medium"  # 5 + 1
+    # Hand-built docs carry no CIR sidecar: risk stays unattributed
+    # (never invented) while inventory/renderers still work.
+    assert rep["risk"]["level"] == "none"
+    assert rep["risk"]["risk_count"] == 0
     md = report_cmd.render(rep, "markdown")
     assert isinstance(md, str) and md.startswith("#")
     html = report_cmd.render(rep, "html")

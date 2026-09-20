@@ -776,44 +776,25 @@ class Handler(BaseHTTPRequestHandler):
         self._json(202, {k: v for k, v in job.items() if k != "input_id"})
 
     def _github_public(self) -> None:
+        from ecdat.acquisition import acquire_github_repository
+        from ecdat.acquisition import is_github_url as _is_github_url
+
         body = self._read_json()
         url = str(body.get("url", "")).strip()
-        if not re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+(?:\.git)?/?", url):
+        if not _is_github_url(url):
             raise ValueError("enter a valid public GitHub repository URL")
         data = STATE.new_input()
-        match = re.fullmatch(r"https://github\.com/([\w.-]+)/([\w.-]+)(?:\.git)?/?", url)
-        assert match is not None
-        owner, repo = match.groups()
-        target = Path(data["directory"]) / "repository"
-        archive_path = Path(data["directory"]) / "repository.tar.gz"
         try:
-            request = Request(
-                f"https://codeload.github.com/{owner}/{repo}/tar.gz/HEAD",
-                headers={"User-Agent": "ECDAT-local"},
-            )
-            with urlopen(request, timeout=180) as response, archive_path.open("wb") as output:
-                total = 0
-                while chunk := response.read(1024 * 1024):
-                    total += len(chunk)
-                    if total > MAX_UPLOAD_BYTES:
-                        raise ValueError("repository archive exceeds the 250 MB limit")
-                    output.write(chunk)
-            target.mkdir(parents=True, exist_ok=True)
-            _safe_extract_tar(archive_path, target)
-            top_level = [child for child in target.iterdir() if child.is_dir()]
-            if len(top_level) == 1:
-                extracted_root = top_level[0]
-                for child in extracted_root.iterdir():
-                    child.replace(target / child.name)
-                extracted_root.rmdir()
+            acquired = acquire_github_repository(
+                url, parent=Path(data["directory"]))
         except Exception as exc:
             STATE.remove_input(data["input_id"])
             if isinstance(exc, ValueError):
                 raise
             raise ValueError("could not download the selected GitHub repository") from exc
-        data["target"] = target
-        data["label"] = url.rstrip("/").split("/")[-1].removesuffix(".git")
-        self._json(201, {"input_id": data["input_id"], **_inspect(target, data["label"])})
+        data["target"] = acquired["target"]
+        data["label"] = str(acquired["label"])
+        self._json(201, {"input_id": data["input_id"], **_inspect(acquired["target"], data["label"])})
 
     def _github_configured(self) -> bool:
         return bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))

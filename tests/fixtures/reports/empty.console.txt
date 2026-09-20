@@ -1,16 +1,30 @@
-ECDAT report: scan-empty-001
-target:   samples/clean.py
-findings: 0 (files scanned: 1)
-risk:     none (0) [mock scoring]
+ECDAT
+--------------------------------
 
-by severity:
-  none
+Target        clean.py
+Status        COMPLETE
+Duration      1.0s
+Files         1 / 1
 
-by rule:
-  none
+RISK
+Overall       NONE · 0.0/10
+High          0
+Medium        0
+Low           0
 
-top files/services:
-  none
+CRYPTOGRAPHY
+Assets        0
+Operations    0
+Algorithms    0
 
-migration (mock placeholder):
-  no recommendations
+TOP ISSUES
+No findings.
+
+MIGRATION
+Immediate       0
+High priority   0
+Planned         0
+Informational   0
+
+SUMMARY
+ECDAT analyzed 1 files in clean.py and detected no cryptographic observations.

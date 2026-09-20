@@ -1,16 +1,30 @@
-ECDAT report: scan-minimal-001
-target:   samples/rsa_small.py
-findings: 1 (files scanned: 1)
-risk:     medium (5) [mock scoring]
+ECDAT
+--------------------------------
 
-by severity:
-  high       1
+Target        rsa_small.py
+Status        COMPLETE
+Duration      2.0s
+Files         1 / 1
 
-by rule:
-  RSA-1024           [high] x1 Weak RSA key size (1024-bit)
+RISK
+Overall       NONE · 0.0/10
+High          1
+Medium        0
+Low           0
 
-top files/services:
-  samples/rsa_small.py x1
+CRYPTOGRAPHY
+Assets        0
+Operations    0
+Algorithms    0
 
-migration (mock placeholder):
-  RSA-1024 [high] x1: Replace 1024-bit RSA keys with 2048-bit+ RSA or PQC KEM (mock).
+TOP ISSUES
+HIGH     RSA-1024       1 occurrence
+
+MIGRATION
+Immediate       0
+High priority   0
+Planned         0
+Informational   0
+
+SUMMARY
+ECDAT analyzed 1 files in rsa_small.py and detected 1 finding. The main risks are RSA-1024. These issues are concentrated in (root) and should be prioritized for migration.

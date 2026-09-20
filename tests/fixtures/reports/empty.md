@@ -1,40 +1,54 @@
-# ECDAT Report: scan-empty-001
+# ECDAT Cryptographic Analysis Report
 
-## Executive Summary
+## 1. Executive Summary
 
-- Target: samples/clean.py
-- Findings: 0 (files scanned: 1)
-- Risk: none (0) [mock scoring]
-- Rules affected: 0
+- Project: clean.py
+- Status: COMPLETE
+- Overall risk: **NONE** (0.0/10, 0 risk records)
+- Findings: 0 (operations: 0, assets: 0)
+- Files: 1 / 1 with cryptographic evidence
 
-## Scan Information
+ECDAT analyzed 1 files in clean.py and detected no cryptographic observations.
 
+- Confirmed findings: 0
+- Declared capabilities (unconfirmed): 0
+
+## 2. Priority Findings
+
+No confirmed findings.
+
+## 3. Cryptographic Inventory (Confirmed Use)
+
+No confirmed cryptographic use.
+
+## 4. Affected Components
+
+No affected components.
+
+## 5. Migration Priorities
+
+No migration actions.
+
+## 6. Scan Coverage
+
+Coverage: 1 / 1 files with cryptographic evidence (profile: standard).
+
+- 0 file(s) skipped before analysis; 0 file(s) analyzed with no cryptographic evidence.
+
+## 7. Methodology & Technical Details
+
+P1 quantum/classical risk engine: Mosca-style score per operation (0.35*Q + 0.20*E + 0.15*B + 0.15*C + 0.15*mosca_boost, clamped 0..1, wire scale 0..10); classes Critical >= 8, High >= 6, Medium >= 4, Low >= 2, else Informational. ProvidedOnly caps at Low; suppressed states score 0.0 Informational.
+
+- Risk source: no-risk-record
+- Signature registry:
+- Profile: standard; elapsed: Nones
 - Scan ID: scan-empty-001
-- Target: samples/clean.py
+- Target: clean.py
 - Started: 2026-09-10T12:00:00Z
 - Finished: 2026-09-10T12:00:01Z
-- Tool ecdat: 0.1.0
+- Detector ecdat: 0.1.0
 
-## Findings by Severity
-
-No findings.
-
-## Findings by Rule
+## 8. Detailed Findings
 
 No findings.
 
-## Top Affected Files/Services
-
-No findings.
-
-## Risk Summary (mock)
-
-Score 0 / level none using the temporary mock scoring model.
-
-## Migration Summary (mock placeholder)
-
-No recommendations.
-
-## Disclaimer
-
-Risk and migration sections are mock/placeholder output pending Person 1's real risk and PQC recommendation engine.

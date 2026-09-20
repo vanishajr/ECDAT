@@ -38,8 +38,31 @@ def run_real_and_store(
     Returns a CLI exit code (0 + prints scan_id on success). Failures
     print an actionable stderr message and return ERROR.
     Honors ``--output`` (canonical JSON) and ``--cir-out`` (CIR JSON)
-    when the caller declares those arguments.
+    when the caller declares those arguments. When ``--repo URL`` is
+    given, the repository is acquired first with the shared
+    ``ecdat.acquisition`` implementation (same as the GUI) and the
+    extracted tree becomes the scan target.
     """
+    display_name: str | None = None
+    repo_url = str(getattr(args, "repo", "") or "").strip()
+    if repo_url:
+        from ecdat.acquisition import acquire_github_repository
+        from ecdat.acquisition import is_github_url as _is_github_url
+
+        if not _is_github_url(repo_url):
+            print(f"error: invalid GitHub repository URL: {repo_url}",
+                  file=sys.stderr)
+            return ERROR
+        try:
+            acquired = acquire_github_repository(repo_url)
+        except ValueError as exc:
+            print(f"error: repository acquisition failed: {exc}",
+                  file=sys.stderr)
+            return ERROR
+        target = str(acquired["target"])
+        display_name = str(acquired["label"])
+        print(f"repository: {repo_url} -> {target} (kept; delete when done)",
+              file=sys.stderr)
     allow_container = bool(getattr(args, "allow_container", False))
     allow_cloud = bool(getattr(args, "allow_cloud", False))
     allow_runtime = bool(getattr(args, "allow_runtime", False))
@@ -53,6 +76,24 @@ def run_real_and_store(
         scanners = [s.strip().lower() for s in str(arg_scanners).split(",")
                     if s.strip()]
     from ecdat.core.orchestrator import context_from_args, risk_z_from_args
+    import os as _os
+
+    # Explicit flags win; ambient env vars apply when flags are absent
+    # (shell-history hygiene). Values are never logged or persisted.
+    _ENV_FALLBACK = {
+        "aws_access_key_id": "AWS_ACCESS_KEY_ID",
+        "aws_secret_access_key": "AWS_SECRET_ACCESS_KEY",
+        "aws_session_token": "AWS_SESSION_TOKEN",
+        "aws_profile": "AWS_PROFILE",
+    }
+
+    def _opt_arg(name: str) -> str | None:
+        value = getattr(args, name, None)
+        text = str(value).strip() if value else ""
+        if not text:
+            text = str(_os.getenv(_ENV_FALLBACK[name], "") or "").strip()
+        return text or None
+
     client = RealCoreClient(
         scanners=scanners,
         allow_container=allow_container,
@@ -65,6 +106,11 @@ def run_real_and_store(
         risk_z=risk_z_from_args(args),
         context=context_from_args(args),
         caller=caller,
+        display_name=display_name,
+        cloud_aws_access_key_id=_opt_arg("aws_access_key_id"),
+        cloud_aws_secret_access_key=_opt_arg("aws_secret_access_key"),
+        cloud_aws_session_token=_opt_arg("aws_session_token"),
+        cloud_aws_profile=_opt_arg("aws_profile"),
     )
     try:
         # Pass the raw label through: cloud labels (``aws:...``) and

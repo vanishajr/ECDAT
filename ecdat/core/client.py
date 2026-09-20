@@ -44,10 +44,24 @@ class RealCoreClient:
         profile: str = "standard",
         caller: str = "client",
         context=None,
+        cloud_aws_access_key_id: str | None = None,
+        cloud_aws_secret_access_key: str | None = None,
+        cloud_aws_session_token: str | None = None,
+        cloud_aws_profile: str | None = None,
+        display_name: str | None = None,
         **kwargs,
     ) -> None:
         if kwargs:
             raise ValueError(f"unknown RealCoreClient option(s): {sorted(kwargs)}")
+        def _opt(value: str | None) -> str | None:
+            text = str(value).strip() if value else ""
+            return text or None
+
+        self.cloud_aws_access_key_id = _opt(cloud_aws_access_key_id)
+        self.cloud_aws_secret_access_key = _opt(cloud_aws_secret_access_key)
+        self.cloud_aws_session_token = _opt(cloud_aws_session_token)
+        self.cloud_aws_profile = _opt(cloud_aws_profile)
+        self.display_name = str(display_name).strip() or None
         self.scanners = list(scanners) if scanners is not None else None
         self.allow_container = bool(allow_container)
         self.allow_cloud = bool(allow_cloud)
@@ -96,6 +110,11 @@ class RealCoreClient:
             risk_z=self.risk_z,
             context=context,
             caller=self.caller,
+            display_name=self.display_name,
+            cloud_aws_access_key_id=self.cloud_aws_access_key_id,
+            cloud_aws_secret_access_key=self.cloud_aws_secret_access_key,
+            cloud_aws_session_token=self.cloud_aws_session_token,
+            cloud_aws_profile=self.cloud_aws_profile,
         )
         return get_orchestrator().scan(request)
 
@@ -128,6 +147,11 @@ class RealCoreClient:
             risk_z=self.risk_z,
             context=context,
             caller=self.caller,
+            display_name=self.display_name,
+            cloud_aws_access_key_id=self.cloud_aws_access_key_id,
+            cloud_aws_secret_access_key=self.cloud_aws_secret_access_key,
+            cloud_aws_session_token=self.cloud_aws_session_token,
+            cloud_aws_profile=self.cloud_aws_profile,
         )
         return get_orchestrator().scan(request).as_tuple()
 
