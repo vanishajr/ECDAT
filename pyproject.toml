@@ -47,7 +47,7 @@ dev = [
 ]
 
 [project.entry-points]
-console_scripts = { "ecdat-discover" = "ecdat.cli:app" }
+console_scripts = { "ecdat-discover" = "ecdat.cli:main" }
 
 [tool.ruff]
 line-length = 100
