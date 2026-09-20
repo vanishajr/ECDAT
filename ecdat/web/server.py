@@ -330,8 +330,26 @@ def _run_job(job_id: str) -> None:
 
     try:
         input_data = STATE.input_for(job["input_id"])
-        target = Path(input_data["target"])
         scanners = list(job["scanners"])
+        cloud_config = job.get("cloud_config")
+        
+        # Determine target: for cloud scanning, use cloud label instead of local path
+        if cloud_config and cloud_config.get("provider") == "aws" and "cloud" in scanners:
+            profile = cloud_config.get("profile", "default")
+            services = cloud_config.get("services", "kms,acm,elb,alb")
+            target = f"aws:{profile}:services={services}"
+            # Extract credentials for ScanRequest
+            aws_access_key_id = cloud_config.get("aws_access_key_id")
+            aws_secret_access_key = cloud_config.get("aws_secret_access_key")
+            aws_session_token = cloud_config.get("aws_session_token")
+            aws_profile = cloud_config.get("profile_name") or (profile if not aws_access_key_id else None)
+        else:
+            target = str(Path(input_data["target"]))
+            aws_access_key_id = None
+            aws_secret_access_key = None
+            aws_session_token = None
+            aws_profile = None
+        
         try:
             from ecdat.core.orchestrator import ScanContext as _ScanContext
             stored = job.get("context") or {}
@@ -351,7 +369,7 @@ def _run_job(job_id: str) -> None:
         except (TypeError, ValueError):
             risk_z = 10.0
         request = ScanRequest(
-            target=str(target),
+            target=target,
             scanners=scanners,
             permissions=ScanPermissions(
                 allow_container="container" in scanners,
@@ -365,6 +383,10 @@ def _run_job(job_id: str) -> None:
             context=context,
             caller="gui",
             display_name=str(input_data.get("label") or "Selected input"),
+            cloud_aws_access_key_id=aws_access_key_id,
+            cloud_aws_secret_access_key=aws_secret_access_key,
+            cloud_aws_session_token=aws_session_token,
+            cloud_aws_profile=aws_profile,
         )
         with STATE.lock:
             job.update({"progress": 10, "stage": "Planning scan"})
@@ -638,8 +660,26 @@ class Handler(BaseHTTPRequestHandler):
         requested = body.get("scanners")
         scanners = _profile_scanners(
             profile, requested if isinstance(requested, list) else None)
+        cloud_config = body.get("cloudConfig")
+        
+        # Determine target for plan: for cloud scanning, use cloud label
+        if cloud_config and cloud_config.get("provider") == "aws" and "cloud" in scanners:
+            plan_profile = cloud_config.get("profile", "default")
+            services = cloud_config.get("services", "kms,acm,elb,alb")
+            plan_target = f"aws:{plan_profile}:services={services}"
+            aws_access_key_id = cloud_config.get("aws_access_key_id")
+            aws_secret_access_key = cloud_config.get("aws_secret_access_key")
+            aws_session_token = cloud_config.get("aws_session_token")
+            aws_profile = cloud_config.get("profile_name") or (plan_profile if not aws_access_key_id else None)
+        else:
+            plan_target = str(target)
+            aws_access_key_id = None
+            aws_secret_access_key = None
+            aws_session_token = None
+            aws_profile = None
+        
         request = ScanRequest(
-            target=str(target),
+            target=plan_target,
             scanners=scanners,
             permissions=ScanPermissions(
                 allow_container="container" in scanners,
@@ -651,6 +691,10 @@ class Handler(BaseHTTPRequestHandler):
             profile=profile,
             caller="gui-plan",
             display_name=str(data.get("label") or "Selected input"),
+            cloud_aws_access_key_id=aws_access_key_id,
+            cloud_aws_secret_access_key=aws_secret_access_key,
+            cloud_aws_session_token=aws_session_token,
+            cloud_aws_profile=aws_profile,
         )
         self._json(200, {"input_id": data["input_id"],
                          "plan": get_orchestrator().plan(request).as_dict()})
@@ -669,6 +713,8 @@ class Handler(BaseHTTPRequestHandler):
         # scanner selection, cloud APIs by scanner selection.
         allow_pull = bool(body.get("allowPull", False))
         allow_build = bool(body.get("allowBuild", False))
+        # Cloud configuration (for cloud scanning)
+        cloud_config = body.get("cloudConfig")
         # Phase 10 user-supplied risk context (all optional; visibly
         # tagged user-supplied in risk provenance, never defaulted up).
         try:
@@ -682,7 +728,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             risk_z = 10.0
         job_id = uuid.uuid4().hex
-        job = {"job_id": job_id, "input_id": input_id, "status": "queued", "progress": 5, "stage": "Preparing input", "scanners": scanners, "profile": profile, "allow_pull": allow_pull, "allow_build": allow_build, "context": context, "risk_z": risk_z, "created_at": _now()}
+        job = {"job_id": job_id, "input_id": input_id, "status": "queued", "progress": 5, "stage": "Preparing input", "scanners": scanners, "profile": profile, "allow_pull": allow_pull, "allow_build": allow_build, "context": context, "risk_z": risk_z, "created_at": _now(), "cloud_config": cloud_config}
         with STATE.lock:
             STATE.jobs[job_id] = job
         threading.Thread(target=_run_job, args=(job_id,), daemon=True).start()

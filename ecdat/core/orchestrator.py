@@ -354,6 +354,13 @@ class ScanRequest:
     display_name: str | None = None
     # Optional override for archive exploration depth (default per profile).
     max_archive_depth: int | None = None
+    # Cloud credentials (for cloud scanning). These are opt-in, read-only,
+    # and never logged/stored. Supported: AWS access key + secret, session
+    # token, and profile name.
+    cloud_aws_access_key_id: str | None = None
+    cloud_aws_secret_access_key: str | None = None
+    cloud_aws_session_token: str | None = None
+    cloud_aws_profile: str | None = None
 
     def normalized_profile(self) -> str:
         return normalize_profile(self.profile)
@@ -772,7 +779,19 @@ class ScanOrchestrator:
             from ecdat.scanners.discovery import DiscoveryEngine
 
             engine = DiscoveryEngine(enabled_scanners=list(selected))
-            availability = dict(engine.availability())
+            # Pass cloud credentials for availability check if provided
+            cloud_creds = None
+            if request.cloud_aws_access_key_id or request.cloud_aws_profile:
+                cloud_creds = {}
+                if request.cloud_aws_access_key_id:
+                    cloud_creds["aws_access_key_id"] = request.cloud_aws_access_key_id
+                if request.cloud_aws_secret_access_key:
+                    cloud_creds["aws_secret_access_key"] = request.cloud_aws_secret_access_key
+                if request.cloud_aws_session_token:
+                    cloud_creds["aws_session_token"] = request.cloud_aws_session_token
+                if request.cloud_aws_profile:
+                    cloud_creds["profile_name"] = request.cloud_aws_profile
+            availability = dict(engine.availability(cloud_creds))
             unavailable = tuple(sorted(n for n, ok in availability.items() if not ok))
         except Exception:
             unavailable = ()
@@ -940,7 +959,19 @@ class ScanOrchestrator:
         # empty scan would masquerade unavailable tools as zero findings.
         _emit(progress, "availability", 30, "Probing scanner availability")
         try:
-            availability = dict(engine.availability())
+            # Pass cloud credentials for availability check if provided
+            cloud_creds = None
+            if request.cloud_aws_access_key_id or request.cloud_aws_profile:
+                cloud_creds = {}
+                if request.cloud_aws_access_key_id:
+                    cloud_creds["aws_access_key_id"] = request.cloud_aws_access_key_id
+                if request.cloud_aws_secret_access_key:
+                    cloud_creds["aws_secret_access_key"] = request.cloud_aws_secret_access_key
+                if request.cloud_aws_session_token:
+                    cloud_creds["aws_session_token"] = request.cloud_aws_session_token
+                if request.cloud_aws_profile:
+                    cloud_creds["profile_name"] = request.cloud_aws_profile
+            availability = dict(engine.availability(cloud_creds))
         except Exception:
             availability = {}
         if availability:
@@ -1005,6 +1036,16 @@ class ScanOrchestrator:
             # Phase 7: pull/build permissions reach the container family.
             scan_kwargs["allow_pull"] = bool(permissions.allow_pull)
             scan_kwargs["allow_build"] = bool(permissions.allow_build)
+            # Cloud credentials (from ScanRequest, for GUI/cloud CLI).
+            # These are opt-in, read-only, and never logged/stored.
+            if request.cloud_aws_access_key_id:
+                scan_kwargs["aws_access_key_id"] = request.cloud_aws_access_key_id
+            if request.cloud_aws_secret_access_key:
+                scan_kwargs["aws_secret_access_key"] = request.cloud_aws_secret_access_key
+            if request.cloud_aws_session_token:
+                scan_kwargs["aws_session_token"] = request.cloud_aws_session_token
+            if request.cloud_aws_profile:
+                scan_kwargs["profile_name"] = request.cloud_aws_profile
             cir_doc = engine.scan_and_emit_cir(
                 cleaned, target_name=cleaned, **scan_kwargs)
         except RealScanError:

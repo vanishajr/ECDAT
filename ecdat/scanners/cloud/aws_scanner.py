@@ -15,6 +15,7 @@ class AWSScanner(Scanner[ScannerFinding]):
     def __init__(self) -> None:
         self._boto3_available = self._check_boto3()
         self._session = None
+        self._credentials: dict | None = None
 
     def _check_boto3(self) -> bool:
         try:
@@ -23,14 +24,29 @@ class AWSScanner(Scanner[ScannerFinding]):
         except ImportError:
             return False
 
-    def is_available(self) -> bool:
+    def _create_session(self, region: str, credentials: dict | None = None):
+        """Create a boto3 session with optional explicit credentials."""
+        import boto3
+        if credentials:
+            session_kwargs = {"region_name": region}
+            if credentials.get("aws_access_key_id"):
+                session_kwargs["aws_access_key_id"] = credentials["aws_access_key_id"]
+            if credentials.get("aws_secret_access_key"):
+                session_kwargs["aws_secret_access_key"] = credentials["aws_secret_access_key"]
+            if credentials.get("aws_session_token"):
+                session_kwargs["aws_session_token"] = credentials["aws_session_token"]
+            if credentials.get("profile_name"):
+                session_kwargs["profile_name"] = credentials["profile_name"]
+            return boto3.Session(**session_kwargs)
+        return boto3.Session(region_name=region)
+
+    def is_available(self, credentials: dict | None = None) -> bool:
         if not self._boto3_available:
             return False
 
         try:
-            import boto3
-            self._session = boto3.Session()
-            sts = self._session.client("sts")
+            session = self._create_session("us-east-1", credentials)
+            sts = session.client("sts")
             sts.get_caller_identity()
             return True
         except Exception:
@@ -44,17 +60,19 @@ class AWSScanner(Scanner[ScannerFinding]):
             return "aws-unknown"
 
     def scan(self, target: Path | str, **kwargs) -> list[ScannerFinding]:
-        if not self.is_available():
+        # Extract credentials from kwargs (passed from orchestrator)
+        credentials = None
+        cred_keys = ("aws_access_key_id", "aws_secret_access_key", "aws_session_token", "profile_name")
+        if any(k in kwargs for k in cred_keys):
+            credentials = {k: kwargs.get(k) for k in cred_keys if kwargs.get(k)}
+
+        # Check availability with credentials
+        if not self.is_available(credentials):
             return []
 
         findings: list[ScannerFinding] = []
 
         region = kwargs.get("region", "us-east-1")
-        # ``services`` comes from the CLI cloud label
-        # (``aws:<profile>:services=kms,acm,elb``) via the pipeline.
-        # Accepted tokens: kms, acm, elb, alb (elb covers classic ELB,
-        # alb covers ALB/TLS listeners). Unknown tokens are ignored so a
-        # typo cannot silently widen the scan.
         raw_services = kwargs.get("services", None)
         wanted: set[str] | None = None
         if raw_services is not None:
@@ -63,11 +81,8 @@ class AWSScanner(Scanner[ScannerFinding]):
             else:
                 items = [str(s).strip().lower() for s in list(raw_services)]
             wanted = {s for s in items if s} or set()
-        if self._session:
-            self._session = self._session._session_factory(region_name=region) if hasattr(self._session, '_session_factory') else self._session
-        else:
-            import boto3
-            self._session = boto3.Session(region_name=region)
+
+        self._session = self._create_session(region, credentials)
 
         if wanted is None or "kms" in wanted:
             findings.extend(self._scan_kms(region))

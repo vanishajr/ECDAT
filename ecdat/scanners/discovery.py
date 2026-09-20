@@ -95,7 +95,7 @@ class DiscoveryEngine:
     def get_enabled_scanners(self) -> list[str]:
         return list(self._scanners.keys())
 
-    def availability(self) -> dict[str, bool]:
+    def availability(self, cloud_credentials: dict | None = None) -> dict[str, bool]:
         """P3 integration addition: availability of ENABLED scanners.
 
         Public probe so orchestrators can warn loudly when an
@@ -106,7 +106,10 @@ class DiscoveryEngine:
         report: dict[str, bool] = {}
         for name, scanner in self._scanners.items():
             try:
-                report[name] = bool(scanner.is_available())
+                if name == "cloud" and cloud_credentials:
+                    report[name] = bool(scanner.is_available(cloud_credentials))
+                else:
+                    report[name] = bool(scanner.is_available())
             except Exception:
                 report[name] = False
         return report

@@ -245,6 +245,25 @@ export default function App() {
   const [allowBuild, setAllowBuild] = useState(false);
   const [probeRuntime, setProbeRuntime] = useState(false);
   const [connectCloud, setConnectCloud] = useState(false);
+  // Cloud configuration state
+  const [cloudConfig, setCloudConfig] = useState<{
+    provider: "aws" | "azure" | "gcp";
+    awsProfile: string;
+    awsAccessKey: string;
+    awsSecretKey: string;
+    awsSessionToken: string;
+    awsRegion: string;
+    services: string;
+  }>({
+    provider: "aws",
+    awsProfile: "default",
+    awsAccessKey: "",
+    awsSecretKey: "",
+    awsSessionToken: "",
+    awsRegion: "us-east-1",
+    services: "kms,acm,elb,alb",
+  });
+  const [showCloudConfig, setShowCloudConfig] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [tab, setTab] = useState("Overview");
@@ -492,6 +511,25 @@ export default function App() {
       allowPull,
       allowBuild,
     };
+    // Include cloud configuration when cloud scanning is enabled
+    if (connectCloud && cloudConfig.provider === "aws") {
+      body.cloudConfig = {
+        provider: "aws",
+        profile: cloudConfig.awsProfile || "default",
+        region: cloudConfig.awsRegion || "us-east-1",
+        services: cloudConfig.services || "kms,acm,elb,alb",
+        // Only include credentials if using access key auth
+        ...(cloudConfig.awsAccessKey && {
+          aws_access_key_id: cloudConfig.awsAccessKey,
+          aws_secret_access_key: cloudConfig.awsSecretKey,
+          ...(cloudConfig.awsSessionToken && { aws_session_token: cloudConfig.awsSessionToken }),
+        }),
+        // Profile name for profile-based auth
+        ...(!cloudConfig.awsAccessKey && cloudConfig.awsProfile && {
+          profile_name: cloudConfig.awsProfile,
+        }),
+      };
+    }
     return body;
   };
 
@@ -914,6 +952,15 @@ export default function App() {
                   onChange={() => setConnectCloud((v) => !v)}
                 />
                 Connect cloud infrastructure
+                {connectCloud && (
+                  <Button
+                    variant="ghost"
+                    className="ml-2 px-2 py-1 text-xs"
+                    onClick={() => setShowCloudConfig(true)}
+                  >
+                    Configure
+                  </Button>
+                )}
               </label>
               <label className="mt-1 flex items-center gap-2 text-xs text-[#8b867d]">
                 <input
@@ -1097,7 +1144,208 @@ export default function App() {
           </>
         )}
       </section>
+      <CloudConfigModal
+        isOpen={showCloudConfig}
+        onClose={() => setShowCloudConfig(false)}
+        config={cloudConfig}
+        onChange={setCloudConfig}
+      />
     </main>
+  );
+}
+
+function CloudConfigModal({
+  isOpen,
+  onClose,
+  config,
+  onChange,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  config: {
+    provider: "aws" | "azure" | "gcp";
+    awsProfile: string;
+    awsAccessKey: string;
+    awsSecretKey: string;
+    awsSessionToken: string;
+    awsRegion: string;
+    services: string;
+  };
+  onChange: (config: Partial<typeof config>) => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-[1.25rem] border border-[#d7d3ca] bg-[#f8f6f1] p-5 shadow-[0_24px_48px_rgba(79,74,65,.15)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium">Cloud Configuration</h3>
+          <button
+            className="rounded-full p-1 text-[#74716a] hover:bg-[#e8e4dc]"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <div>
+            <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+              Cloud Provider
+            </label>
+            <select
+              className="w-full rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+              value={config.provider}
+              onChange={(e) => onChange({ provider: e.target.value as "aws" | "azure" | "gcp" })}
+            >
+              <option value="aws">Amazon Web Services (AWS)</option>
+              <option value="azure">Microsoft Azure</option>
+              <option value="gcp">Google Cloud Platform (GCP)</option>
+            </select>
+          </div>
+
+          {config.provider === "aws" && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+                  Authentication Method
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="aws-auth"
+                      checked={!!config.awsAccessKey}
+                      onChange={() => onChange({ awsProfile: "", awsAccessKey: "temp" })}
+                    />
+                    <span className="text-sm">Access Key + Secret</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="aws-auth"
+                      checked={!config.awsAccessKey && !!config.awsProfile}
+                      onChange={() => onChange({ awsAccessKey: "", awsSecretKey: "", awsSessionToken: "", awsProfile: "default" })}
+                    />
+                    <span className="text-sm">AWS Profile</span>
+                  </label>
+                </div>
+              </div>
+
+              {config.awsAccessKey && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+                      AWS Access Key ID
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+                      value={config.awsAccessKey}
+                      onChange={(e) => onChange({ awsAccessKey: e.target.value })}
+                      placeholder="AKIA..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+                      AWS Secret Access Key
+                    </label>
+                    <input
+                      type="password"
+                      className="w-full rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+                      value={config.awsSecretKey}
+                      onChange={(e) => onChange({ awsSecretKey: e.target.value })}
+                      placeholder="Secret key"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+                      AWS Session Token (optional)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+                      value={config.awsSessionToken}
+                      onChange={(e) => onChange({ awsSessionToken: e.target.value })}
+                      placeholder="Session token (for temporary credentials)"
+                    />
+                  </div>
+                </>
+              )}
+
+              {!config.awsAccessKey && (
+                <div>
+                  <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+                    AWS Profile Name
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+                    value={config.awsProfile}
+                    onChange={(e) => onChange({ awsProfile: e.target.value })}
+                    placeholder="default"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+                  AWS Region
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+                  value={config.awsRegion}
+                  onChange={(e) => onChange({ awsRegion: e.target.value })}
+                  placeholder="us-east-1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#5e5d58] mb-1">
+                  Services to Scan (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-[#d4d0c8] bg-white/70 px-3 py-2.5 text-sm outline-none"
+                  value={config.services}
+                  onChange={(e) => onChange({ services: e.target.value })}
+                  placeholder="kms,acm,elb,alb"
+                />
+                <p className="mt-1 text-xs text-[#8b867d]">
+                  Supported: kms (Key Management), acm (Certificate Manager), elb (Classic Load Balancer), alb (Application Load Balancer)
+                </p>
+              </div>
+            </>
+          )}
+
+          {config.provider === "azure" && (
+            <div className="text-center py-8 text-[#74716a]">
+              <p>Azure support coming soon</p>
+            </div>
+          )}
+
+          {config.provider === "gcp" && (
+            <div className="text-center py-8 text-[#74716a]">
+              <p>GCP support coming soon</p>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-[#dedbd4] flex items-center justify-end gap-2">
+            <Button variant="light" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={onClose}>
+              Save
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

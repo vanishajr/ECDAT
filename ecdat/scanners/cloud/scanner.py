@@ -30,7 +30,20 @@ class CloudScanner(Scanner[ScannerFinding]):
         if gcp.is_available():
             self._scanners.append(gcp)
 
-    def is_available(self) -> bool:
+    def is_available(self, credentials: dict | None = None) -> bool:
+        if credentials:
+            # Check AWS scanner with credentials
+            for scanner in self._scanners:
+                if hasattr(scanner, 'is_available') and callable(getattr(scanner, 'is_available')):
+                    import inspect
+                    sig = inspect.signature(scanner.is_available)
+                    if 'credentials' in sig.parameters:
+                        if scanner.is_available(credentials):
+                            return True
+                    else:
+                        if scanner.is_available():
+                            return True
+            return False
         return len(self._scanners) > 0
 
     def get_tool_version(self) -> str:
