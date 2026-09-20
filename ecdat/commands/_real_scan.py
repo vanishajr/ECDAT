@@ -47,7 +47,7 @@ def run_real_and_store(
     allow_build = bool(getattr(args, "allow_build", False))
     region = getattr(args, "region", None)
     region = str(region).strip() if region else None
-    profile = str(getattr(args, "profile", "standard") or "standard")
+    profile = str(getattr(args, "scan_profile", getattr(args, "profile", "standard")) or "standard")
     arg_scanners = getattr(args, "scanners", None)
     if arg_scanners:
         scanners = [s.strip().lower() for s in str(arg_scanners).split(",")

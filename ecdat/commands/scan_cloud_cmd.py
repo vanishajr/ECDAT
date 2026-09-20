@@ -24,4 +24,5 @@ def run(args: argparse.Namespace) -> int:
     # Convenience hint for cloud labels; same orchestrator pipeline as
     # every other surface (Phase 1).  NOTE: args.profile is the AWS
     # profile here, not the scan-depth profile (which stays standard).
+    args.scan_profile = "standard"
     return run_real_and_store(args, target, scanners=["cloud"], caller="cli-scan-cloud")

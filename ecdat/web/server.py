@@ -343,6 +343,31 @@ def _run_job(job_id: str) -> None:
             aws_secret_access_key = cloud_config.get("aws_secret_access_key")
             aws_session_token = cloud_config.get("aws_session_token")
             aws_profile = cloud_config.get("profile_name") or (profile if not aws_access_key_id else None)
+        elif "runtime" in scanners:
+            # Runtime targets are host:port endpoints, not filesystem paths
+            # Check if input_data has a runtime_target field (set by inspect for runtime endpoints)
+            runtime_target = input_data.get("runtime_target")
+            if runtime_target:
+                target = str(runtime_target)
+            else:
+                # Fallback: read the uploaded file content if it looks like host:port
+                target_path = Path(input_data["target"])
+                if target_path.is_file():
+                    try:
+                        content = target_path.read_text(encoding="utf-8").strip()
+                        # Validate host:port format
+                        if ":" in content and content.rsplit(":", 1)[-1].isdigit():
+                            target = content
+                        else:
+                            target = str(target_path)
+                    except Exception:
+                        target = str(target_path)
+                else:
+                    target = str(target_path)
+            aws_access_key_id = None
+            aws_secret_access_key = None
+            aws_session_token = None
+            aws_profile = None
         else:
             target = str(Path(input_data["target"]))
             aws_access_key_id = None
@@ -630,6 +655,22 @@ class Handler(BaseHTTPRequestHandler):
             # safety); failures stay loud instead of half-extracting.
             safe_extract_archive(archives[0], extracted)
             root = extracted
+        
+        # Check for runtime endpoint (host:port in a single text file)
+        files = [p for p in root.rglob("*") if p.is_file()]
+        if len(files) == 1 and not archives:
+            try:
+                content = files[0].read_text(encoding="utf-8").strip()
+                if ":" in content and content.rsplit(":", 1)[-1].isdigit():
+                    # This looks like a runtime endpoint
+                    data["runtime_target"] = content
+                    # For runtime, target is the endpoint string, not the file
+                    data["target"] = content
+                    self._json(200, {"input_id": data["input_id"], **_inspect(root, data["label"]), "runtime_target": content})
+                    return
+            except Exception:
+                pass
+        
         data["target"] = root
         self._json(200, {"input_id": data["input_id"], **_inspect(root, data["label"])})
 

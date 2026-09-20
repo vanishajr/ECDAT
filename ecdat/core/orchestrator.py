@@ -94,6 +94,11 @@ def _is_image_reference(target: str) -> bool:
     if text.startswith(("docker://", "oci://")):
         return True
     # Bare refs: name:tag, registry/org/image, digest refs.
+    # But exclude host:port runtime endpoints (IPv4:port or [IPv6]:port or host:port with numeric port)
+    if ":" in text and "@" not in text and "/" not in text:
+        host, _, port = text.rpartition(":")
+        if host.strip() and port.strip().isdigit():
+            return False  # This is a runtime endpoint, not an image reference
     return (":" in text) or ("/" in text) or ("@" in text)
 
 
