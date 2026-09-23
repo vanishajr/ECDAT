@@ -182,7 +182,9 @@ def to_markdown(report: dict) -> str:
               str(method.get("risk_model", "") or ""),
               "",
               f"- Risk source: {method.get('risk_source', '')}",
-              f"- Signature registry: {method.get('registry_version', '')}",
+              "- Signature registry:" + (
+                  f" {method['registry_version']}".rstrip()
+                  if str(method.get("registry_version", "")).strip() else ""),
               f"- Profile: {method.get('profile', 'standard')}; "
               f"elapsed: {method.get('elapsed_sec', '?')}s",
               f"- Scan ID: {report.get('scan_id', '')}",

@@ -60,7 +60,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     scan = sub.add_parser("scan", help="scan a file or directory")
-    scan.add_argument("path")
+    scan.add_argument("path", nargs="?",
+                      help="file or directory to scan (or omit with --repo)")
+    scan.add_argument("--repo", default=None, metavar="URL",
+                      help="public GitHub repository URL "
+                           "(https://github.com/<owner>/<repo>); acquired with "
+                           "the same downloader as the GUI into a kept temp "
+                           "directory, then scanned with the same pipeline")
     _common_scan_options(scan)
     scan.set_defaults(func=scan_cmd.run)
 
@@ -85,6 +91,14 @@ def build_parser() -> argparse.ArgumentParser:
     cloud.add_argument("--profile", default="default")
     cloud.add_argument("--services", default="kms,acm,elb")
     cloud.add_argument("--region", default=None)
+    cloud.add_argument("--aws-access-key-id", default=None,
+                       help="explicit AWS access key (prefer env AWS_ACCESS_KEY_ID; never logged or stored)")
+    cloud.add_argument("--aws-secret-access-key", default=None,
+                       help="explicit AWS secret key (prefer env AWS_SECRET_ACCESS_KEY; never logged or stored)")
+    cloud.add_argument("--aws-session-token", default=None,
+                       help="optional AWS session token (prefer env AWS_SESSION_TOKEN)")
+    cloud.add_argument("--aws-profile", default=None,
+                       help="named AWS profile (alternative to explicit keys)")
     _common_scan_options(cloud, include_profile=False)
     cloud.set_defaults(func=scan_cloud_cmd.run)
 

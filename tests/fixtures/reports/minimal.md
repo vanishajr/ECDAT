@@ -1,46 +1,62 @@
-# ECDAT Report: scan-minimal-001
+# ECDAT Cryptographic Analysis Report
 
-## Executive Summary
+## 1. Executive Summary
 
-- Target: samples/rsa_small.py
-- Findings: 1 (files scanned: 1)
-- Risk: medium (5) [mock scoring]
-- Rules affected: 1
+- Project: rsa_small.py
+- Status: COMPLETE
+- Overall risk: **NONE** (0.0/10, 0 risk records)
+- Findings: 1 (operations: 0, assets: 0)
+- Files: 1 / 1 with cryptographic evidence
 
-## Scan Information
+ECDAT analyzed 1 files in rsa_small.py and detected 1 finding. The main risks are RSA-1024. These issues are concentrated in (root) and should be prioritized for migration.
 
+- Confirmed findings: 0
+- Declared capabilities (unconfirmed): 1
+
+## 2. Priority Findings
+
+No confirmed findings.
+
+Severity distribution (measured risk class per finding): high=1.
+
+## 3. Cryptographic Inventory (Confirmed Use)
+
+No confirmed cryptographic use.
+
+Unconfirmed finding groups: RSA-1024 x1
+
+## 4. Affected Components
+
+| Module | Findings | Files | Top severity | Algorithms |
+| --- | --- | --- | --- | --- |
+| (root) | 1 | 1 | [HIGH] high | RSA-1024 |
+
+## 5. Migration Priorities
+
+No migration actions.
+
+## 6. Scan Coverage
+
+Coverage: 1 / 1 files with cryptographic evidence (profile: standard).
+
+- 0 file(s) skipped before analysis; 0 file(s) analyzed with no cryptographic evidence.
+
+## 7. Methodology & Technical Details
+
+P1 quantum/classical risk engine: Mosca-style score per operation (0.35*Q + 0.20*E + 0.15*B + 0.15*C + 0.15*mosca_boost, clamped 0..1, wire scale 0..10); classes Critical >= 8, High >= 6, Medium >= 4, Low >= 2, else Informational. ProvidedOnly caps at Low; suppressed states score 0.0 Informational.
+
+- Risk source: no-risk-record
+- Signature registry:
+- Profile: standard; elapsed: Nones
 - Scan ID: scan-minimal-001
-- Target: samples/rsa_small.py
+- Target: rsa_small.py
 - Started: 2026-09-10T10:00:00Z
 - Finished: 2026-09-10T10:00:02Z
-- Tool ecdat: 0.1.0
+- Detector ecdat: 0.1.0
 
-## Findings by Severity
+## 8. Detailed Findings
 
-| Severity | Count |
-| --- | --- |
-| high | 1 |
+| Severity | Rule | Title | File | Line | Confidence |
+| --- | --- | --- | --- | --- | --- |
+| [HIGH] high | RSA-1024 | Weak RSA key size (1024-bit) | rsa_small.py | 12 | 0.95 |
 
-## Findings by Rule
-
-| Rule | Severity | Count | Title |
-| --- | --- | --- | --- |
-| RSA-1024 | high | 1 | Weak RSA key size (1024-bit) |
-
-## Top Affected Files/Services
-
-| File/Service | Count |
-| --- | --- |
-| samples/rsa_small.py | 1 |
-
-## Risk Summary (mock)
-
-Score 5 / level medium using the temporary mock scoring model.
-
-## Migration Summary (mock placeholder)
-
-- RSA-1024 [high] x1: Replace 1024-bit RSA keys with 2048-bit+ RSA or PQC KEM (mock).
-
-## Disclaimer
-
-Risk and migration sections are mock/placeholder output pending Person 1's real risk and PQC recommendation engine.

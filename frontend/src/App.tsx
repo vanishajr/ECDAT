@@ -1148,11 +1148,21 @@ export default function App() {
         isOpen={showCloudConfig}
         onClose={() => setShowCloudConfig(false)}
         config={cloudConfig}
-        onChange={setCloudConfig}
+        onChange={(patch) => setCloudConfig((prev) => ({ ...prev, ...patch }))}
       />
     </main>
   );
 }
+
+type CloudConfig = {
+  provider: "aws" | "azure" | "gcp";
+  awsProfile: string;
+  awsAccessKey: string;
+  awsSecretKey: string;
+  awsSessionToken: string;
+  awsRegion: string;
+  services: string;
+};
 
 function CloudConfigModal({
   isOpen,
@@ -1162,16 +1172,8 @@ function CloudConfigModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  config: {
-    provider: "aws" | "azure" | "gcp";
-    awsProfile: string;
-    awsAccessKey: string;
-    awsSecretKey: string;
-    awsSessionToken: string;
-    awsRegion: string;
-    services: string;
-  };
-  onChange: (config: Partial<typeof config>) => void;
+  config: CloudConfig;
+  onChange: (config: Partial<CloudConfig>) => void;
 }) {
   if (!isOpen) return null;
 

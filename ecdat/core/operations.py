@@ -14,6 +14,7 @@ are capped to confidence <= 0.35 per contract.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 
 from ecdat.core.fusion import decide_usage, redact_snippet, weighted_fusion
@@ -167,6 +168,81 @@ def _snippet_of(hit: dict) -> str:
     return ""
 
 
+def _stable_file(value: object, root: object) -> str:
+    """Repository-relative path when ``value`` sits under ``root``.
+
+    Identity inputs (group keys, ID seeds, tie-breaks) must not depend
+    on absolute temporary acquisition paths: ``/tmp/A/repo/crypto/x.py``
+    and ``/tmp/B/repo/crypto/x.py`` normalize to the same ``crypto/x.py``.
+    Anything outside ``root`` (cloud labels, image refs, empty values)
+    passes through unchanged, preserving prior behavior there.
+    """
+    text = str(value or "")
+    if not text or root is None:
+        return text
+    try:
+        relative = os.path.relpath(text, str(root))
+    except Exception:
+        return text
+    if not relative or relative == "." or relative.startswith(".."):
+        return text
+    return relative
+
+
+def _stable_base(base: tuple, root: object) -> tuple:
+    """Group-key tuple with the file slot (index 5) stabilized."""
+    if root is None or len(base) <= 5:
+        return base
+    items = list(base)
+    items[5] = _stable_file(items[5], root)
+    return tuple(items)
+
+
+def _stable_sort_key(location: object = None, function: object = None,
+                     canonical: object = "", root: object = None) -> tuple:
+    """Deterministic, path-independent representative ordering key.
+
+    Tie-break rule (documented): repository-relative file, then line,
+    then function, then canonical name. Uses only stable
+    repository/content information — never absolute paths, temp dirs,
+    PIDs, timestamps, scan IDs, or randomness.
+    """
+    try:
+        line = getattr(location, "line", None)
+        line_no = int(line) if isinstance(line, int) or (
+            isinstance(line, str) and line.lstrip("-").isdigit()) else -1
+    except Exception:
+        line_no = -1
+    try:
+        path = str(getattr(location, "file", "") or "") if location else ""
+    except Exception:
+        path = ""
+    return (_stable_file(path, root), line_no,
+            str(function or ""), str(canonical or ""))
+
+
+def _scan_root(target: object) -> object:
+    """Scan-root directory for stable identity, or None.
+
+    Directory targets relativize to themselves; file targets to their
+    parent. Anything else (cloud labels, image refs, missing paths)
+    yields None, preserving historical absolute-path behavior there.
+    """
+    text = str(target or "").strip()
+    if not text:
+        return None
+    try:
+        candidate = os.path.realpath(text)
+        if os.path.isdir(candidate):
+            return candidate
+        parent = os.path.dirname(candidate)
+        if parent and os.path.isdir(parent):
+            return parent
+    except Exception:
+        pass
+    return None
+
+
 def group_key_for(hit: dict) -> tuple[str, ...]:
     """Return the 9-part grouping key for one raw hit.
 
@@ -238,7 +314,8 @@ def _semantic_state_for(usage_state: str, classes: list[str]) -> str:
 
 
 def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None,
-                     use_semantic: bool = False) -> list[dict]:
+                     use_semantic: bool = False,
+                     root: object = None) -> list[dict]:
     """Collapse raw hits into sorted CryptoOperation dicts.
 
     Args:
@@ -253,6 +330,10 @@ def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None,
             protocol/op-type/scope/provider) are additionally correlated
             into a single operation with merged provenance. Defaults to
             False so the legacy 9-tuple grouping is unchanged.
+    root: optional scan-root directory. When given, the file slot of
+        group keys is repository-relative, so identical trees scanned
+        from different locations fuse identically. ``None`` preserves
+        the historical absolute-path behavior (unit-test default).
 
     Returns:
         List of plain ``CryptoOperation`` dicts with fused
@@ -268,7 +349,7 @@ def build_operations(raw_hits: list[dict] | tuple[dict, ...] | None,
     # never merge with direct-use groups on the same tuple.
     groups: dict[tuple[tuple[str, ...], bool], dict] = {}
     for hit in hits:
-        base = group_key_for(hit)
+        base = _stable_base(group_key_for(hit), root)
         dep = _as_bool(hit, "dependency_only", "dependencyOnly")
         gk = (base, dep)
         g = groups.get(gk)
@@ -760,6 +841,9 @@ def reconstruct_cir(cir):
     :func:`decide_usage`, but a direct API call is never fused below
     what the detector observed.
     """
+    # Path-independent identity: identical trees scanned from different
+    # locations must fuse, select, and identify identically.
+    root = _scan_root(getattr(cir, "target", ""))
     from ecdat.core.cir_models import (
         CIRDocument, CryptoAsset, CryptoOperation, Graph, GraphEdge,
         GraphNode, GraphNodeKind, GraphRelationship, RiskInputs,
@@ -801,14 +885,16 @@ def reconstruct_cir(cir):
                     str(hit.get("canonical_name", "")) in live_canonicals:
                 hit["config_runtime_agreement"] = True
 
-    fused = build_operations(hits)
+    fused = build_operations(hits, root=root)
 
     # Recover membership per fused group via the same deterministic
     # dedup_key contract (insertion order = CIR order = deterministic).
+    # Keys use the same stabilized file slot as build_operations above.
     groups: dict[str, list] = {}
     for hit in hits:
         key = dedup_key_for(
-            group_key_for(hit), bool(hit.get("dependency_only", False)))
+            _stable_base(group_key_for(hit), root),
+            bool(hit.get("dependency_only", False)))
         groups.setdefault(key, []).append(hit["_op"])
 
     new_operations: list = []
@@ -817,11 +903,17 @@ def reconstruct_cir(cir):
         ops = groups.get(key, [])
         if not ops:
             continue
-        # Survivor: richest provenance, then strongest signal (stable).
+        # Survivor: richest provenance, then strongest signal, then the
+        # documented stable tie-break (relative path, line, function,
+        # canonical) — never absolute temp paths or random order.
         ops = sorted(ops, key=lambda o: (
             -len(getattr(o, "evidence", None) or []),
             -(float(getattr(o, "confidence", 0.0) or 0.0)),
-            str(getattr(o, "operation_id", ""))))
+            _stable_sort_key(getattr(o, "location", None),
+                             getattr(o, "function", None),
+                             getattr(getattr(o, "operation_type", None),
+                                     "value", ""),
+                             root)))
         survivor = ops[0]
         merged_evidence = _merge_evidence(
             [list(getattr(o, "evidence", None) or []) for o in ops])
@@ -918,6 +1010,9 @@ def reconstruct_cir(cir):
         try:
             loc = getattr(asset, "location", None)
             file = str(getattr(loc, "file", "") or "") if loc else ""
+            # Identity-grade path: repository-relative so regrouping and
+            # regenerated IDs match across acquisition locations.
+            file = _stable_file(file, root)
         except Exception:
             file = ""
         key = (str(getattr(asset, "canonical", "")),
@@ -982,7 +1077,8 @@ def reconstruct_cir(cir):
             members_, key=lambda a: (
                 -len(getattr(a, "evidence", None) or []),
                 -(float(getattr(a, "confidence", 0.0) or 0.0)),
-                str(getattr(a, "asset_id", ""))))[0]
+                _stable_sort_key(getattr(a, "location", None), None,
+                                 getattr(a, "canonical", ""), root)))[0]
         try:
             from ecdat.core.cir_models import UsageState as _UsageState
             usage_state = _UsageState(usage)
@@ -1036,10 +1132,21 @@ def reconstruct_cir(cir):
             op_type = getattr(survivor, "operation_type", None)
             if not isinstance(op_type, _OpType):
                 continue
+            # ID seed uses the repository-relative location: identical
+            # content scanned elsewhere must yield identical IDs. The
+            # stored operation keeps its absolute location (evidence).
+            _loc = getattr(survivor, "location", None)
+            try:
+                _stable = _stable_file(
+                    getattr(_loc, "file", ""), root) if _loc else ""
+                _seed_loc = _loc.model_copy(update={"file": _stable}) \
+                    if _stable and hasattr(_loc, "model_copy") else _loc
+            except Exception:
+                _seed_loc = _loc
             op_id = new_operation_id(
                 op_type, new_asset,
                 getattr(survivor, "function", None),
-                getattr(survivor, "location", None))
+                _seed_loc)
             final_operations.append(CryptoOperation(
                 operation_id=op_id,
                 operation_type=op_type,
@@ -1066,7 +1173,10 @@ def reconstruct_cir(cir):
             loc = getattr(asset, "location", None)
             file = str(getattr(loc, "file", "") or "") if loc else ""
             if file:
-                file_id = _dethash(file, "file")
+                # Node identity uses the repository-relative path so the
+                # graph matches across acquisition locations; the label
+                # keeps the absolute path for traceability.
+                file_id = _dethash(_stable_file(file, root) or file, "file")
                 if file_id not in nodes:
                     nodes[file_id] = GraphNode(
                         id=file_id, kind=GraphNodeKind.FILE,
@@ -1099,7 +1209,10 @@ def reconstruct_cir(cir):
             loc = getattr(operation, "location", None)
             file = str(getattr(loc, "file", "") or "") if loc else ""
             if file:
-                file_id = _dethash(file, "file")
+                # Node identity uses the repository-relative path so the
+                # graph matches across acquisition locations; the label
+                # keeps the absolute path for traceability.
+                file_id = _dethash(_stable_file(file, root) or file, "file")
                 if file_id not in nodes:
                     nodes[file_id] = GraphNode(
                         id=file_id, kind=GraphNodeKind.FILE,

@@ -1,18 +1,13 @@
-"""Contract tests for CoreClient (Task 2).
+"""Contract tests for the integrated client (unified backend).
 
-Same assertions must pass against MockCoreClient now and RealCoreClient
-later. Real-client conformance = passes these tests. No CLI/DB/exports
-here — canonical conformance only.
+The single production client is RealCoreClient: thin facade over
+ScanOrchestrator. No mock client exists. No CLI/DB/exports here —
+canonical conformance + request forwarding only.
 """
 
 import pytest
 
-from ecdat.core.client import (
-    CoreClient,
-    MockCoreClient,
-    RealCoreClient,
-    get_client,
-)
+from ecdat.core.client import CoreClient, RealCoreClient, get_client
 from ecdat.core.validate import validate
 
 REQUIRED_TOP_KEYS = {
@@ -30,7 +25,7 @@ SEVERITIES = {"info", "low", "medium", "high", "critical"}
 
 
 def assert_canonical(doc: dict) -> None:
-    """Shared contract: valid canonical v1 shape. Reused for real client later."""
+    """Shared contract: valid canonical v1 shape."""
     assert REQUIRED_TOP_KEYS <= set(doc), f"missing keys: {REQUIRED_TOP_KEYS - set(doc)}"
     assert doc["schema_version"] == "1.0"
     assert isinstance(doc["findings"], list)
@@ -43,98 +38,85 @@ def assert_canonical(doc: dict) -> None:
     validate(doc)  # must pass jsonschema
 
 
-def test_mock_conforms_to_canonical(tmp_path):
-    client = MockCoreClient()
-    doc = client.scan(tmp_path / "rsa_small.py")
-    assert_canonical(doc)
-
-
-def test_mock_routing_empty(tmp_path):
-    client = MockCoreClient()
-    doc = client.scan(tmp_path / "clean.py")
-    assert_canonical(doc)
-    assert doc["findings"] == []
-    assert doc["stats"]["findings_count"] == 0
-
-
-def test_mock_routing_multi_for_directories(tmp_path):
-    client = MockCoreClient()
-    target = tmp_path / "app"
-    target.mkdir()
-    doc = client.scan(target)
-    assert_canonical(doc)
-    assert len(doc["findings"]) > 1
-
-
-def test_mock_default_is_minimal(tmp_path):
-    client = MockCoreClient()
-    doc = client.scan(tmp_path / "something.py")
-    assert_canonical(doc)
-    assert len(doc["findings"]) == 1  # mirrors minimal.json
-
-
-def test_mock_echoes_requested_target(tmp_path):
-    client = MockCoreClient()
-    target = tmp_path / "my_target.py"
-    doc = client.scan(target)
-    assert doc["target"] == str(target)
-
-
-def test_mock_is_deterministic(tmp_path):
-    client = MockCoreClient()
-    target = tmp_path / "rsa_small.py"
-    assert client.scan(target) == client.scan(target)
-
-
-def test_mock_results_are_isolated(tmp_path):
-    client = MockCoreClient()
-    target = tmp_path / "rsa_small.py"
-    first = client.scan(target)
-    first["findings"].append({"bogus": True})
-    second = client.scan(target)
-    assert_canonical(second)
-    assert len(second["findings"]) == 1
-
-
-def test_mock_implements_protocol():
-    assert isinstance(MockCoreClient(), CoreClient)
-    assert isinstance(RealCoreClient(), CoreClient)
-
-
-def test_factory_modes():
-    assert isinstance(get_client("mock"), MockCoreClient)
-    assert isinstance(get_client(), MockCoreClient)  # default is mock
-    assert isinstance(get_client("real"), RealCoreClient)
-    with pytest.raises(ValueError):
-        get_client("bogus")
-
-
-def test_real_conforms_to_canonical(tmp_path):
-    pytest.importorskip("pydantic")
-    from ecdat.core.client import RealCoreClient
-
-    target = tmp_path / "real_app.py"
+def _crypto(tmp_path, name="real_app.py"):
+    target = tmp_path / name
     target.write_text(
         "import hashlib\n"
         "from cryptography.hazmat.primitives.asymmetric import rsa\n"
         "key = rsa.generate_private_key(public_exponent=65537, key_size=1024)\n"
         "h = hashlib.md5(b'x').hexdigest()\n"
     )
-    doc = RealCoreClient().scan(target)
+    return target
+
+
+def test_real_conforms_to_canonical(tmp_path):
+    doc = RealCoreClient().scan(_crypto(tmp_path))
     assert_canonical(doc)
     # Deterministic rerun: same target -> same scan_id, no uuid4.
-    again = RealCoreClient().scan(target)
+    again = RealCoreClient().scan(_crypto(tmp_path))
     assert again["scan_id"] == doc["scan_id"]
     assert doc["scan_id"].startswith("scan:")
-    assert doc["target"] == str(target)
+    assert doc["target"].endswith("real_app.py")
+
+
+def test_real_scan_with_cir_returns_tuple(tmp_path):
+    cir, doc = RealCoreClient().scan_with_cir(_crypto(tmp_path))
+    assert_canonical(doc)
+    assert isinstance(cir, dict)
+    assert cir["scan_id"] == doc["scan_id"]
+    assert cir.get("risks") is not None
 
 
 def test_real_rejects_unknown_scanners(tmp_path):
     pytest.importorskip("pydantic")
     from ecdat.adapters.pipeline import RealScanError
-    from ecdat.core.client import RealCoreClient
 
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
     with pytest.raises(RealScanError):
         RealCoreClient(scanners=["bogus-scanner"]).scan(target)
+
+
+def test_real_rejects_unknown_options():
+    with pytest.raises(ValueError):
+        RealCoreClient(bogus_option=True)
+
+
+def test_real_implements_protocol():
+    assert isinstance(RealCoreClient(), CoreClient)
+
+
+def test_factory_returns_integrated_client():
+    assert isinstance(get_client(), RealCoreClient)
+
+
+def test_cloud_credentials_reach_request():
+    """Unification parity: GUI cloud-config fields exist on the CLI client."""
+    import ecdat.core.orchestrator as orch
+
+    seen = {}
+    original = orch.ScanOrchestrator.scan
+
+    def spy(self, request, progress=None):
+        seen.update(
+            access_key_id=request.cloud_aws_access_key_id,
+            secret=request.cloud_aws_secret_access_key,
+            token=request.cloud_aws_session_token,
+            profile=request.cloud_aws_profile,
+        )
+        raise RuntimeError("stop here")
+
+    orch.ScanOrchestrator.scan = spy
+    try:
+        with pytest.raises(RuntimeError, match="stop here"):
+            RealCoreClient(
+                scanners=["cloud"],
+                cloud_aws_access_key_id="AKID",
+                cloud_aws_secret_access_key="SECRET",
+                cloud_aws_session_token="TOK",
+                cloud_aws_profile="dev",
+            ).scan_result("aws:dev:services=kms")
+    finally:
+        orch.ScanOrchestrator.scan = original
+    assert seen == {"access_key_id": "AKID", "secret": "SECRET",
+                    "token": "TOK", "profile": "dev"}

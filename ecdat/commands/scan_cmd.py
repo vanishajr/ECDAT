@@ -11,6 +11,13 @@ from ecdat.commands._real_scan import run_real_and_store
 
 
 def run(args: argparse.Namespace) -> int:
+    if getattr(args, "repo", None):
+        # GitHub acquisition path (same ecdat.acquisition code as the GUI);
+        # the extracted tree becomes the target inside _real_scan.
+        return run_real_and_store(args, args.repo, caller="cli-scan")
+    if not getattr(args, "path", None):
+        print("error: provide a target path or --repo URL", file=sys.stderr)
+        return TARGET_NOT_FOUND
     target = Path(args.path)
     if not target.exists():
         print(f"error: target not found: {target}", file=sys.stderr)

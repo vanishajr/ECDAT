@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ecdat.adapters.pipeline import run_real_scan
-from ecdat.adapters.scanner_policy import PROJECT_SCANNERS
+from ecdat.adapters.scanner_policy import DEFAULT_SCANNERS, PROJECT_SCANNERS
 from ecdat.scanners.binary import BinaryScanner
 from ecdat.scanners.path_policy import iter_project_files
 from ecdat.web.server import _inspect, _profile_scanners
@@ -35,7 +35,11 @@ def test_project_file_policy_excludes_git_and_generated_assets(tmp_path):
 
 def test_standard_profile_is_source_first():
     assert "binary" not in PROJECT_SCANNERS
-    assert _profile_scanners("standard", None) == list(PROJECT_SCANNERS)
+    # GUI policy: local coverage (incl. binary) is automatic every profile;
+    # depth changes effort, never artifact kinds. Source stays first.
+    scanners = _profile_scanners("standard", None)
+    assert scanners[0] == "source"
+    assert scanners == list(DEFAULT_SCANNERS)
 
 
 def test_login_form_repository_has_no_crypto_findings(tmp_path):

@@ -8,7 +8,7 @@
       "type": "application",
       "version": "scan-empty-001"
     },
-    "description": "Minimal/mock CBOM representation derived from ECDAT canonical v1 findings; pending richer CIR from Person 1.",
+    "description": "Cryptographic asset inventory derived from ECDAT canonical findings.",
     "timestamp": "2026-09-10T12:00:01Z",
     "tools": [
       {
