@@ -1,4 +1,4 @@
-# ECDAT — Enterprise Cryptographic Discovery & Analysis Tool (SIH26164)
+# ECDAT
 
 Integrated product: discovery + intelligence + platform. One production
 pipeline serves both interfaces:
@@ -13,30 +13,42 @@ graph/risk/recommendations → canonical v1 + CIR sidecar → SQLite
 (`scans` + `scan_meta` plan/diagnostics) → CLI/GUI/reports/exports/CI.
 Failures are loud errors, never silent mock fallbacks.
 
-Data contracts: CIR v0.1 is the internal intelligence model
-(`ecdat/core/cir.schema.json`); canonical v1 is the stable
-platform-facing model (`ecdat/core/canonical_v1.json`). Adapters in
-`ecdat/adapters/` translate between them.
+ECDAT is a comprehensive cryptographic scanning and analysis platform that discovers, inventories, and analyzes cryptographic assets across source code, dependencies, binaries, containers, configurations, certificates, runtime endpoints, and cloud environments.
 
-## Prerequisites
+## Features
 
-- Python 3.10+
-- `pip install -e .` (runtime deps: `pydantic>=2.7`, `pyyaml>=6`,
-  `cryptography>=42`, `jsonschema`, `tomli` on Python 3.10; tests need
-  `pytest`). No network, credentials, or services required for local scans.
-- Optional capabilities are probed, never required: Semgrep, LIEF, YARA,
-  Docker/Syft, cloud SDKs, runtime sockets. Unavailable scanners are
-  reported explicitly, never scored as zero.
-- Container/cloud/runtime scanning is opt-in (Docker, credentials, sockets).
+- **Multi-surface scanning**: Source code, dependencies, binaries, containers, configurations, certificates, runtime endpoints, and cloud (AWS)
+- **CIR (Cryptographic Inventory Representation)**: Standardized JSON output format for cryptographic findings
+- **Risk assessment**: Mosca-style quantum/classical risk scoring with migration recommendations
+- **Report generation**: Markdown, HTML, PDF, JSON, CSV, SARIF, and CycloneDX CBOM formats
+- **CLI and Web API**: Command-line interface and local web API for integration
+- **Deterministic results**: Reproducible asset IDs and scan results
 
-## Validate
+## Installation
 
 ```bash
-python -m pytest -q
+pip install -e .
 ```
 
-Must report all tests passing (platform regression + P2 scanner suite +
-P1/core tests + contract tests + real integration tests).
+Or install with development dependencies:
+
+```bash
+pip install -e .[dev]
+```
+
+## Quick Start
+
+### Local Directory Scan
+
+```bash
+ecdat-discover scan /path/to/project
+```
+
+### Scan with Specific Scanners
+
+```bash
+ecdat-discover scan /path/to/project --scanners source,dependency,config
+```
 
 ## One-command local dashboard (React API + UI)
 
@@ -49,12 +61,13 @@ Serves the local API at `http://127.0.0.1:8734` (loopback only;
 the CLI). Start the React interface with `cd frontend && npm run dev`.
 Press Ctrl-C to stop.
 
-## Real scans (integrated pipeline)
+### Cloud Scanning (AWS)
 
-Default real selection is network-free:
-`source,dependency,binary,config,certificate`. Opt in explicitly for
-`container` (Docker/Syft), `cloud` (ambient credentials), `runtime`
-(TLS/SSH sockets).
+```bash
+ecdat-discover scan-cloud aws --allow-cloud --profile default --services kms,acm
+```
+
+### CI Integration
 
 ```bash
 # Source tree (production pipeline)
@@ -79,9 +92,36 @@ python -m ecdat.cli scan ./repo --allow-container --allow-cloud --allow-runtime 
 # CI gate on real findings (P1 risk posture, severity policy)
 python -m ecdat.cli ci ./repo --fail-on high --summary --db .ecdat.db
 
-# GUI over a real database
-python -m ecdat.cli gui --db .ecdat.db --port 0
 ```
+ecdat/
+├── cli.py              # Command-line interface
+├── core/               # Core models, orchestrator, CIR, validation
+├── scanners/           # Scanner implementations
+│   ├── source/         # Source code scanner (Python, C, Go, JS, Java, etc.)
+│   ├── dependency/     # Dependency scanner (requirements.txt, package.json, etc.)
+│   ├── binary/         # Binary scanner (ELF, PE, Mach-O)
+│   ├── container/      # Container scanner (Docker, OCI, rootfs)
+│   ├── config/         # Config scanner (nginx, Apache, Kubernetes, etc.)
+│   ├── certificate/    # Certificate/key scanner (PEM, DER, JKS, PKCS12)
+│   ├── runtime/        # Runtime scanner (TLS, SSH)
+│   └── cloud/          # Cloud scanner (AWS KMS, ACM, ELB/ALB)
+├── reports/            # Report generators (markdown, HTML, PDF, etc.)
+├── exports/            # Export formats (SARIF, CBOM, CSV)
+├── store/              # SQLite persistence layer
+├── web/                # Local web API server
+├── commands/           # CLI command implementations
+└── tests/              # Test suite
+```
+
+## Security
+
+- All secrets (AWS keys, GitHub tokens) are read from environment variables only
+- No credentials are logged, stored in reports, or exposed in API responses
+- Archive extraction is protected against path traversal (zip-slip/tar-slip)
+- Runtime probing is opt-in only
+- Cloud scanning is opt-in only
+
+## License
 
 Real findings reach inventory, finding detail (usage state, evidence,
 confidence, locations, redacted snippets), risk dashboard (P1 Mosca
