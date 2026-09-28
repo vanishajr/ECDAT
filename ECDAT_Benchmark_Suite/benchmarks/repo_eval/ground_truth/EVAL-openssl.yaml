@@ -1,0 +1,41 @@
+# EVAL-OPENSSL — ground truth v1 (annotator: repo scan + token hunt, 2026-09-23)
+# Slice: apps/enc.c, apps/dgst.c @ 15ed7c1e4e9c938cb2fa055de4fc59619311fe9f
+# Rules: op-level items (init/update/final of one computation = one item);
+# memory-mgmt (free), accessors (get0_name/flags/length), and plumbing
+# (read_pw_string, ENCODE_LENGTH) are NOT operations (excluded by rule).
+# tier: strict = canonical must match (size-insensitive); dyn = algorithm is
+# genuinely dynamic at the site (any canonical detects, attribution n/a).
+version: 1
+repo: openssl
+items:
+  - {id: O01, file: enc.c, line: 419, canonical: SHA-256, kind: hash, tier: strict}
+  - {id: O02, file: enc.c, line: 592, canonical: RANDOM, kind: keygen, tier: strict}
+  - {id: O03, file: enc.c, line: 645, canonical: PBKDF2, kind: kdf, tier: strict}
+  - {id: O04, file: enc.c, line: 658, canonical: PBKDF2, kind: kdf, tier: strict,
+     note: "EVP_BytesToKey KDF; may group with O03 (same function, 13 lines apart)"}
+  - {id: O05, file: enc.c, line: 728, canonical: DYN, kind: encrypt, tier: dyn,
+     note: "CipherInit group: raw-key _ex branch (728) vs opaque-key SKEY branch (758) are mutually exclusive inits of one ctx; one finding covers the group"}
+  - {id: O07, file: enc.c, line: 864, canonical: OPENSSL, kind: fetch, tier: strict,
+     note: "EVP_CIPHER_fetch is the operation ECDAT models here"}
+  - {id: O08, file: dgst.c, line: 137, canonical: OPENSSL, kind: fetch, tier: strict,
+     note: "md fetch+init group in dgst_main (137 fetch, 431-432 fallback provision+init are alternative branches of one md flow); one finding covers the group"}
+  - {id: O09, file: dgst.c, line: 373, canonical: SHA-256, kind: hash, tier: strict}
+  - {id: O10, file: dgst.c, line: 376, canonical: HMAC, kind: keygen, tier: strict,
+     note: "EVP_PKEY_new_raw_private_key(HMAC): HMAC key provisioning"}
+  - {id: O11, file: dgst.c, line: 395, canonical: DYN, kind: verify, tier: dyn,
+     note: "DigestVerifyInit with dynamic digestname"}
+  - {id: O12, file: dgst.c, line: 399, canonical: DYN, kind: sign, tier: dyn,
+     note: "DigestSignInit with dynamic digestname"}
+  - {id: O14, file: dgst.c, line: 554, canonical: OPENSSL, kind: fetch, tier: strict}
+  - {id: O15, file: dgst.c, line: 681, canonical: DYN, kind: verify, tier: dyn,
+     note: "DigestVerifyFinal"}
+  - {id: O16, file: dgst.c, line: 692, canonical: DYN, kind: sign, tier: dyn,
+     note: "DigestSignFinal two-step (692+701); one op group"}
+  - {id: O17, file: dgst.c, line: 716, canonical: DYN, kind: hash, tier: dyn,
+     note: "DigestFinalXOF (extendable-output hash)"}
+  - {id: O18, file: dgst.c, line: 748, canonical: DYN, kind: verify, tier: dyn,
+     note: "one-shot DigestVerify"}
+  - {id: O19, file: dgst.c, line: 753, canonical: DYN, kind: sign, tier: dyn,
+     note: "one-shot DigestSign two-step (753+758); one op group"}
+  - {id: O20, file: dgst.c, line: 795, canonical: DYN, kind: dispatch, tier: dyn,
+     note: "do_oneshot_verify_sign dispatch: genuine crypto dispatch (verify-or-sign by args); op label inherently ambiguous"}

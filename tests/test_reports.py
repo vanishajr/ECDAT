@@ -252,7 +252,9 @@ def test_golden_text(tmp_path, capsys, suffix, fixture):
     # Pure renderer path (no DB): goldens pin renderer byte-stability.
     fmt = {"md": "markdown", "console.txt": "console", "html": "html"}[suffix]
     out = report_cmd.render(aggregate.build_report(_doc(fixture)), fmt) + "\n"
-    assert out == (GOLDENS / f"{fixture}.{suffix}").read_text()
+    # Goldens are UTF-8 (contain U+00B7); the default locale encoding on
+    # Windows (cp1252) would mangle them into mojibake and fail spuriously.
+    assert out == (GOLDENS / f"{fixture}.{suffix}").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("fixture", ["minimal", "empty"])

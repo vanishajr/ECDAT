@@ -1,0 +1,1158 @@
+{
+ "assets": [
+  {
+   "asset_id": "ast:623c2ca952696418",
+   "canonical": "AES",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.45/usage:ProvidedOnly/evidence:3"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: AES at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py:36",
+     "snippet": "class AES(BlockCipherAlgorithm):",
+     "tool": "source:ast"
+    },
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: AES128 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py:50",
+     "snippet": "class AES128(BlockCipherAlgorithm):",
+     "tool": "source:ast"
+    },
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: AES256 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py:60",
+     "snippet": "class AES256(BlockCipherAlgorithm):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: AES",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+    "line": 36
+   },
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:ee57b9d841040bdd",
+   "canonical": "AES-256-GCM",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto binding alias: rust_openssl.aead.AESGCM at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py:18",
+     "snippet": "AESGCM = rust_openssl.aead.AESGCM",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto binding alias: rust_openssl.aead.AESGCM",
+    "library": "cryptography"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+    "line": 18
+   },
+   "original": "AES-256-GCM",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:ed852f6c33b4aa30",
+   "canonical": "CBC",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.45/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: CBC at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py:39",
+     "snippet": "class CBC(ModeWithInitializationVector):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: CBC",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+    "line": 39
+   },
+   "original": "CBC",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:ea31d0804a15493e",
+   "canonical": "CTR",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.45/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: CTR at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py:88",
+     "snippet": "class CTR(ModeWithNonce):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: CTR",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+    "line": 88
+   },
+   "original": "CTR",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:f1c6fa6b39aaebee",
+   "canonical": "ChaCha20",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: ChaCha20 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py:106",
+     "snippet": "class ChaCha20(CipherAlgorithm):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: ChaCha20",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+    "line": 106
+   },
+   "original": "ChaCha20",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:80b5855d567051d7",
+   "canonical": "ChaCha20-Poly1305",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto binding alias: rust_openssl.aead.ChaCha20Poly1305 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py:19",
+     "snippet": "ChaCha20Poly1305 = rust_openssl.aead.ChaCha20Poly1305",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto binding alias: rust_openssl.aead.ChaCha20Poly1305",
+    "library": "cryptography"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+    "line": 19
+   },
+   "original": "ChaCha20-Poly1305",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:6fcaaa853364b1d5",
+   "canonical": "ECB",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.45/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: ECB at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py:82",
+     "snippet": "class ECB(Mode):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: ECB",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+    "line": 82
+   },
+   "original": "ECB",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:c8b1d8c1ee4ca074",
+   "canonical": "GCM",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.45/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: GCM at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py:104",
+     "snippet": "class GCM(ModeWithInitializationVector, ModeWithAuthenticationTag):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: GCM",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+    "line": 104
+   },
+   "original": "GCM",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:52fb64cba26efc30",
+   "canonical": "SM4",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.45/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: SM4 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py:128",
+     "snippet": "class SM4(BlockCipherAlgorithm):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: SM4",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+    "line": 128
+   },
+   "original": "SM4",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:110fe673bd3a54a2",
+   "canonical": "XTS",
+   "confidence": 0.45,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.45/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: XTS at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py:53",
+     "snippet": "class XTS(ModeWithTweak):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: XTS",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+    "line": 53
+   },
+   "original": "XTS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:3e5dea44e9158c6b",
+   "canonical": "cryptography",
+   "confidence": 0.075,
+   "context": {
+    "exposure": "internal",
+    "notes": "Import-only; no confirmed crypto operation; provides=RSA,DSA,DH,ECDH,ECDSA,Ed25519,X25519,AES,ChaCha20-Poly1305,MD5,SHA-1,SHA-256,PBKDF2,HKDF,scrypt; fusion=conf:0.075/usage:ProvidedOnly/detectors:dependency/evidence:1/hits:1/classes:dependency"
+   },
+   "evidence": [
+    {
+     "confidence": 0.48,
+     "detail": "import cryptography.hazmat.bindings._rust.openssl found in D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+     "snippet": "import cryptography.hazmat.bindings._rust.openssl",
+     "tool": "dependency:import"
+    }
+   ],
+   "implementation": {
+    "library": "cryptography"
+   },
+   "library": "cryptography",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py"
+   },
+   "original": "cryptography",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:7334c9de0d98add4",
+   "canonical": "cryptography",
+   "confidence": 0.075,
+   "context": {
+    "exposure": "internal",
+    "notes": "Import-only; no confirmed crypto operation; provides=RSA,DSA,DH,ECDH,ECDSA,Ed25519,X25519,AES,ChaCha20-Poly1305,MD5,SHA-1,SHA-256,PBKDF2,HKDF,scrypt; fusion=conf:0.075/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.48,
+     "detail": "import cryptography.utils found in D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+     "snippet": "import cryptography.utils",
+     "tool": "dependency:import"
+    }
+   ],
+   "implementation": {
+    "library": "cryptography"
+   },
+   "library": "cryptography",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py"
+   },
+   "original": "cryptography",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:172bcff23f0773c7",
+   "canonical": "cryptography",
+   "confidence": 0.075,
+   "context": {
+    "exposure": "internal",
+    "notes": "Import-only; no confirmed crypto operation; provides=RSA,DSA,DH,ECDH,ECDSA,Ed25519,X25519,AES,ChaCha20-Poly1305,MD5,SHA-1,SHA-256,PBKDF2,HKDF,scrypt; fusion=conf:0.075/usage:ProvidedOnly/detectors:dependency/evidence:1/hits:1/classes:dependency"
+   },
+   "evidence": [
+    {
+     "confidence": 0.48,
+     "detail": "import cryptography.hazmat.bindings._rust.openssl found in D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py",
+     "snippet": "import cryptography.hazmat.bindings._rust.openssl",
+     "tool": "dependency:import"
+    }
+   ],
+   "implementation": {
+    "library": "cryptography"
+   },
+   "library": "cryptography",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py"
+   },
+   "original": "cryptography",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:dfdd4311af3f270a",
+   "canonical": "cryptography",
+   "confidence": 0.075,
+   "context": {
+    "exposure": "internal",
+    "notes": "Import-only; no confirmed crypto operation; provides=RSA,DSA,DH,ECDH,ECDSA,Ed25519,X25519,AES,ChaCha20-Poly1305,MD5,SHA-1,SHA-256,PBKDF2,HKDF,scrypt; fusion=conf:0.075/usage:ProvidedOnly/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.48,
+     "detail": "import cryptography.utils found in D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+     "snippet": "import cryptography.utils",
+     "tool": "dependency:import"
+    }
+   ],
+   "implementation": {
+    "library": "cryptography"
+   },
+   "library": "cryptography",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py"
+   },
+   "original": "cryptography",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  }
+ ],
+ "cir_version": "0.1",
+ "finished_at": "2026-09-24T16:22:56Z",
+ "graph": {
+  "edges": [
+   {
+    "from": "file:2210d470001ebeaf",
+    "relationship": "contains",
+    "to": "ast:623c2ca952696418"
+   },
+   {
+    "from": "ast:623c2ca952696418",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:d5f8039beb47e540",
+    "relationship": "contains",
+    "to": "ast:ee57b9d841040bdd"
+   },
+   {
+    "from": "ast:ee57b9d841040bdd",
+    "relationship": "uses",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "file:6d29d313728ea5ea",
+    "relationship": "contains",
+    "to": "ast:ed852f6c33b4aa30"
+   },
+   {
+    "from": "ast:ed852f6c33b4aa30",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:6d29d313728ea5ea",
+    "relationship": "contains",
+    "to": "ast:ea31d0804a15493e"
+   },
+   {
+    "from": "ast:ea31d0804a15493e",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:2210d470001ebeaf",
+    "relationship": "contains",
+    "to": "ast:f1c6fa6b39aaebee"
+   },
+   {
+    "from": "ast:f1c6fa6b39aaebee",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:d5f8039beb47e540",
+    "relationship": "contains",
+    "to": "ast:80b5855d567051d7"
+   },
+   {
+    "from": "ast:80b5855d567051d7",
+    "relationship": "uses",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "file:6d29d313728ea5ea",
+    "relationship": "contains",
+    "to": "ast:6fcaaa853364b1d5"
+   },
+   {
+    "from": "ast:6fcaaa853364b1d5",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:6d29d313728ea5ea",
+    "relationship": "contains",
+    "to": "ast:c8b1d8c1ee4ca074"
+   },
+   {
+    "from": "ast:c8b1d8c1ee4ca074",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:2210d470001ebeaf",
+    "relationship": "contains",
+    "to": "ast:52fb64cba26efc30"
+   },
+   {
+    "from": "ast:52fb64cba26efc30",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:6d29d313728ea5ea",
+    "relationship": "contains",
+    "to": "ast:110fe673bd3a54a2"
+   },
+   {
+    "from": "ast:110fe673bd3a54a2",
+    "relationship": "uses",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "file:d5f8039beb47e540",
+    "relationship": "contains",
+    "to": "ast:3e5dea44e9158c6b"
+   },
+   {
+    "from": "ast:3e5dea44e9158c6b",
+    "relationship": "uses",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "file:2210d470001ebeaf",
+    "relationship": "contains",
+    "to": "ast:7334c9de0d98add4"
+   },
+   {
+    "from": "ast:7334c9de0d98add4",
+    "relationship": "uses",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "file:8a3053a35fc794b2",
+    "relationship": "contains",
+    "to": "ast:172bcff23f0773c7"
+   },
+   {
+    "from": "ast:172bcff23f0773c7",
+    "relationship": "uses",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "file:6d29d313728ea5ea",
+    "relationship": "contains",
+    "to": "ast:dfdd4311af3f270a"
+   },
+   {
+    "from": "ast:dfdd4311af3f270a",
+    "relationship": "uses",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "op:e3ac79191a26dc17",
+    "relationship": "uses",
+    "to": "ast:ee57b9d841040bdd"
+   },
+   {
+    "from": "file:d5f8039beb47e540",
+    "relationship": "contains",
+    "to": "op:e3ac79191a26dc17"
+   },
+   {
+    "from": "op:b6285fadc1ce5264",
+    "relationship": "uses",
+    "to": "ast:80b5855d567051d7"
+   },
+   {
+    "from": "file:d5f8039beb47e540",
+    "relationship": "contains",
+    "to": "op:b6285fadc1ce5264"
+   },
+   {
+    "from": "op:c5f87d82727201c2",
+    "relationship": "uses",
+    "to": "ast:f1c6fa6b39aaebee"
+   },
+   {
+    "from": "file:2210d470001ebeaf",
+    "relationship": "contains",
+    "to": "op:c5f87d82727201c2"
+   },
+   {
+    "from": "op:8f2af9a4b4d284b1",
+    "relationship": "uses",
+    "to": "ast:3e5dea44e9158c6b"
+   },
+   {
+    "from": "file:d5f8039beb47e540",
+    "relationship": "contains",
+    "to": "op:8f2af9a4b4d284b1"
+   },
+   {
+    "from": "op:10c5a91b45839aca",
+    "relationship": "uses",
+    "to": "ast:172bcff23f0773c7"
+   },
+   {
+    "from": "file:8a3053a35fc794b2",
+    "relationship": "contains",
+    "to": "op:10c5a91b45839aca"
+   },
+   {
+    "from": "library:e06554818e902b4b",
+    "relationship": "derives",
+    "to": "ast:172bcff23f0773c7"
+   },
+   {
+    "from": "library:e06554818e902b4b",
+    "relationship": "derives",
+    "to": "ast:3e5dea44e9158c6b"
+   },
+   {
+    "from": "library:e06554818e902b4b",
+    "relationship": "derives",
+    "to": "ast:80b5855d567051d7"
+   },
+   {
+    "from": "library:e06554818e902b4b",
+    "relationship": "derives",
+    "to": "ast:ee57b9d841040bdd"
+   },
+   {
+    "from": "library:6cdfd271da635d49",
+    "relationship": "derives",
+    "to": "ast:f1c6fa6b39aaebee"
+   },
+   {
+    "from": "op:10c5a91b45839aca",
+    "relationship": "depends_on",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "op:8f2af9a4b4d284b1",
+    "relationship": "depends_on",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "op:b6285fadc1ce5264",
+    "relationship": "depends_on",
+    "to": "library:e06554818e902b4b"
+   },
+   {
+    "from": "op:c5f87d82727201c2",
+    "relationship": "depends_on",
+    "to": "library:6cdfd271da635d49"
+   },
+   {
+    "from": "op:e3ac79191a26dc17",
+    "relationship": "depends_on",
+    "to": "library:e06554818e902b4b"
+   }
+  ],
+  "nodes": [
+   {
+    "id": "ast:623c2ca952696418",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:623c2ca952696418"
+   },
+   {
+    "id": "file:2210d470001ebeaf",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py"
+   },
+   {
+    "id": "library:6cdfd271da635d49",
+    "kind": "library",
+    "label": "custom",
+    "ref": "custom"
+   },
+   {
+    "id": "ast:ee57b9d841040bdd",
+    "kind": "asset",
+    "label": "AES-256-GCM",
+    "ref": "ast:ee57b9d841040bdd"
+   },
+   {
+    "id": "file:d5f8039beb47e540",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py"
+   },
+   {
+    "id": "library:e06554818e902b4b",
+    "kind": "library",
+    "label": "cryptography",
+    "ref": "cryptography"
+   },
+   {
+    "id": "ast:ed852f6c33b4aa30",
+    "kind": "asset",
+    "label": "CBC",
+    "ref": "ast:ed852f6c33b4aa30"
+   },
+   {
+    "id": "file:6d29d313728ea5ea",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py"
+   },
+   {
+    "id": "ast:ea31d0804a15493e",
+    "kind": "asset",
+    "label": "CTR",
+    "ref": "ast:ea31d0804a15493e"
+   },
+   {
+    "id": "ast:f1c6fa6b39aaebee",
+    "kind": "asset",
+    "label": "ChaCha20",
+    "ref": "ast:f1c6fa6b39aaebee"
+   },
+   {
+    "id": "ast:80b5855d567051d7",
+    "kind": "asset",
+    "label": "ChaCha20-Poly1305",
+    "ref": "ast:80b5855d567051d7"
+   },
+   {
+    "id": "ast:6fcaaa853364b1d5",
+    "kind": "asset",
+    "label": "ECB",
+    "ref": "ast:6fcaaa853364b1d5"
+   },
+   {
+    "id": "ast:c8b1d8c1ee4ca074",
+    "kind": "asset",
+    "label": "GCM",
+    "ref": "ast:c8b1d8c1ee4ca074"
+   },
+   {
+    "id": "ast:52fb64cba26efc30",
+    "kind": "asset",
+    "label": "SM4",
+    "ref": "ast:52fb64cba26efc30"
+   },
+   {
+    "id": "ast:110fe673bd3a54a2",
+    "kind": "asset",
+    "label": "XTS",
+    "ref": "ast:110fe673bd3a54a2"
+   },
+   {
+    "id": "ast:3e5dea44e9158c6b",
+    "kind": "asset",
+    "label": "cryptography",
+    "ref": "ast:3e5dea44e9158c6b"
+   },
+   {
+    "id": "ast:7334c9de0d98add4",
+    "kind": "asset",
+    "label": "cryptography",
+    "ref": "ast:7334c9de0d98add4"
+   },
+   {
+    "id": "ast:172bcff23f0773c7",
+    "kind": "asset",
+    "label": "cryptography",
+    "ref": "ast:172bcff23f0773c7"
+   },
+   {
+    "id": "file:8a3053a35fc794b2",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py"
+   },
+   {
+    "id": "ast:dfdd4311af3f270a",
+    "kind": "asset",
+    "label": "cryptography",
+    "ref": "ast:dfdd4311af3f270a"
+   },
+   {
+    "id": "op:e3ac79191a26dc17",
+    "kind": "operation",
+    "label": "Storage",
+    "ref": "op:e3ac79191a26dc17"
+   },
+   {
+    "id": "op:b6285fadc1ce5264",
+    "kind": "operation",
+    "label": "Storage",
+    "ref": "op:b6285fadc1ce5264"
+   },
+   {
+    "id": "op:c5f87d82727201c2",
+    "kind": "operation",
+    "label": "Storage",
+    "ref": "op:c5f87d82727201c2"
+   },
+   {
+    "id": "op:8f2af9a4b4d284b1",
+    "kind": "operation",
+    "label": "TLS",
+    "ref": "op:8f2af9a4b4d284b1"
+   },
+   {
+    "id": "op:10c5a91b45839aca",
+    "kind": "operation",
+    "label": "TLS",
+    "ref": "op:10c5a91b45839aca"
+   }
+  ]
+ },
+ "operations": [
+  {
+   "asset_id": "ast:ee57b9d841040bdd",
+   "confidence": 0.69,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto binding alias: rust_openssl.aead.AESGCM at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py:18",
+     "snippet": "AESGCM = rust_openssl.aead.AESGCM",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto binding alias: rust_openssl.aead.AESGCM",
+    "library": "cryptography"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+    "line": 18
+   },
+   "operation_id": "op:e3ac79191a26dc17",
+   "operation_type": "Storage",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:80b5855d567051d7",
+   "confidence": 0.69,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto binding alias: rust_openssl.aead.ChaCha20Poly1305 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py:19",
+     "snippet": "ChaCha20Poly1305 = rust_openssl.aead.ChaCha20Poly1305",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto binding alias: rust_openssl.aead.ChaCha20Poly1305",
+    "library": "cryptography"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+    "line": 19
+   },
+   "operation_id": "op:b6285fadc1ce5264",
+   "operation_type": "Storage",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:f1c6fa6b39aaebee",
+   "confidence": 0.69,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.45,
+     "detail": "crypto class definition: ChaCha20 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py:106",
+     "snippet": "class ChaCha20(CipherAlgorithm):",
+     "tool": "source:ast"
+    }
+   ],
+   "implementation": {
+    "api": "crypto class definition: ChaCha20",
+    "library": "custom"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+    "line": 106
+   },
+   "operation_id": "op:c5f87d82727201c2",
+   "operation_type": "Storage",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": false,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:3e5dea44e9158c6b",
+   "confidence": 0.075,
+   "context": {
+    "exposure": "internal",
+    "notes": "Import-only; no confirmed crypto operation; provides=RSA,DSA,DH,ECDH,ECDSA,Ed25519,X25519,AES,ChaCha20-Poly1305,MD5,SHA-1,SHA-256,PBKDF2,HKDF,scrypt; fusion=conf:0.075/usage:ProvidedOnly/detectors:dependency/evidence:1/hits:1/classes:dependency"
+   },
+   "evidence": [
+    {
+     "confidence": 0.48,
+     "detail": "import cryptography.hazmat.bindings._rust.openssl found in D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+     "snippet": "import cryptography.hazmat.bindings._rust.openssl",
+     "tool": "dependency:import"
+    }
+   ],
+   "implementation": {
+    "library": "cryptography"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py"
+   },
+   "operation_id": "op:8f2af9a4b4d284b1",
+   "operation_type": "TLS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   }
+  },
+  {
+   "asset_id": "ast:172bcff23f0773c7",
+   "confidence": 0.075,
+   "context": {
+    "exposure": "internal",
+    "notes": "Import-only; no confirmed crypto operation; provides=RSA,DSA,DH,ECDH,ECDSA,Ed25519,X25519,AES,ChaCha20-Poly1305,MD5,SHA-1,SHA-256,PBKDF2,HKDF,scrypt; fusion=conf:0.075/usage:ProvidedOnly/detectors:dependency/evidence:1/hits:1/classes:dependency"
+   },
+   "evidence": [
+    {
+     "confidence": 0.48,
+     "detail": "import cryptography.hazmat.bindings._rust.openssl found in D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py",
+     "snippet": "import cryptography.hazmat.bindings._rust.openssl",
+     "tool": "dependency:import"
+    }
+   ],
+   "implementation": {
+    "library": "cryptography"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py"
+   },
+   "operation_id": "op:10c5a91b45839aca",
+   "operation_type": "TLS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   }
+  }
+ ],
+ "recommendations": [
+  {
+   "asset_ids": [
+    "ast:172bcff23f0773c7"
+   ],
+   "description": "cryptography [op:10c5a91b45839aca] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.671). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:7eb614c02a400ba9",
+   "title": "Migrate cryptography [op:10c5a91b45839aca] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:3e5dea44e9158c6b"
+   ],
+   "description": "cryptography [op:8f2af9a4b4d284b1] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.671). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:9956dd5ffa3c501d",
+   "title": "Migrate cryptography [op:8f2af9a4b4d284b1] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:ee57b9d841040bdd"
+   ],
+   "description": "AES-256-GCM [op:e3ac79191a26dc17] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.663). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:cfd30eae334ce7c7",
+   "title": "Migrate AES-256-GCM [op:e3ac79191a26dc17] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:80b5855d567051d7"
+   ],
+   "description": "ChaCha20-Poly1305 [op:b6285fadc1ce5264] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.661). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:cf4559bdcc49c942",
+   "title": "Migrate ChaCha20-Poly1305 [op:b6285fadc1ce5264] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:f1c6fa6b39aaebee"
+   ],
+   "description": "ChaCha20 [op:c5f87d82727201c2] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.661). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:8421c1a09c777c72",
+   "title": "Migrate ChaCha20 [op:c5f87d82727201c2] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  }
+ ],
+ "registry_version": "2026.09.11",
+ "risks": [
+  {
+   "asset_id": "ast:172bcff23f0773c7",
+   "class": "Low",
+   "confidence": 0.075,
+   "description": "cryptography [op:10c5a91b45839aca] (ProvidedOnly): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.29 (ProvidedOnly), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.390 -> Low.",
+   "operation_id": "op:10c5a91b45839aca",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'cryptography' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence; ProvidedOnly caps at Low (capability without use evidence)",
+   "risk_id": "risk:5c2e395f50624281",
+   "score": 3.9,
+   "title": "cryptography [op:10c5a91b45839aca]"
+  },
+  {
+   "asset_id": "ast:3e5dea44e9158c6b",
+   "class": "Low",
+   "confidence": 0.075,
+   "description": "cryptography [op:8f2af9a4b4d284b1] (ProvidedOnly): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.29 (ProvidedOnly), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.390 -> Low.",
+   "operation_id": "op:8f2af9a4b4d284b1",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'cryptography' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence; ProvidedOnly caps at Low (capability without use evidence)",
+   "risk_id": "risk:97dacda75c06399d",
+   "score": 3.9,
+   "title": "cryptography [op:8f2af9a4b4d284b1]"
+  },
+  {
+   "asset_id": "ast:ee57b9d841040bdd",
+   "class": "Low",
+   "confidence": 0.69,
+   "description": "AES-256-GCM [op:e3ac79191a26dc17] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.59 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.317 -> Low.",
+   "operation_id": "op:e3ac79191a26dc17",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:b466a5b4212b036e",
+   "score": 3.17,
+   "title": "AES-256-GCM [op:e3ac79191a26dc17]"
+  },
+  {
+   "asset_id": "ast:80b5855d567051d7",
+   "class": "Low",
+   "confidence": 0.69,
+   "description": "ChaCha20-Poly1305 [op:b6285fadc1ce5264] (Probable): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.59 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.299 -> Low.",
+   "operation_id": "op:b6285fadc1ce5264",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:609021bd59fbb6cc",
+   "score": 2.99,
+   "title": "ChaCha20-Poly1305 [op:b6285fadc1ce5264]"
+  },
+  {
+   "asset_id": "ast:f1c6fa6b39aaebee",
+   "class": "Low",
+   "confidence": 0.69,
+   "description": "ChaCha20 [op:c5f87d82727201c2] (Probable): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.59 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.299 -> Low.",
+   "operation_id": "op:c5f87d82727201c2",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:723aa3907e34ee11",
+   "score": 2.99,
+   "title": "ChaCha20 [op:c5f87d82727201c2]"
+  }
+ ],
+ "scan_id": "scan:26eadabb56f5582e",
+ "started_at": "2026-09-24T16:22:56Z",
+ "stats": {
+  "asset_count": 14,
+  "edge_count": 48,
+  "node_count": 25,
+  "operation_count": 5,
+  "recommendation_count": 5,
+  "risk_count": 5
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

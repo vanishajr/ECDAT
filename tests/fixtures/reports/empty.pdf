@@ -3,71 +3,265 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+<< /Type /Pages /Kids [4 0 R 7 0 R] /Count 2 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.0 842.0] /Resources << /Font << /F1 9 0 R /F2 9 0 R >> >> /Contents 5 0 R >>
 endobj
 4 0 obj
-<< /Length 1335 >>
+<< /Length 1129 >>
 stream
-BT /F1 18 Tf 56 800 Td (ECDAT Cryptographic Risk Report) Tj ET
-BT /F1 10 Tf 56 778 Td (Project: clean.py | Status: COMPLETE) Tj ET
-BT /F1 10 Tf 56 765 Td (Risk NONE \(0.0/10\) | Findings 0 | Operations 0 | Assets 0 | Files 1 / 1) Tj ET
-BT /F1 10 Tf 56 752 Td (ECDAT analyzed 1 files in clean.py and detected no cryptographic observations.) Tj ET
-BT /F1 10 Tf 56 739 Td (Confirmed findings: 0 | Declared capabilities \(unconfirmed\): 0) Tj ET
-BT /F1 16 Tf 56 726 Td () Tj ET
-BT /F1 16 Tf 56 704 Td (2. Priority findings) Tj ET
-BT /F1 10 Tf 56 682 Td (No confirmed findings.) Tj ET
-BT /F1 16 Tf 56 669 Td () Tj ET
-BT /F1 16 Tf 56 647 Td (3. Cryptographic inventory \(confirmed use\)) Tj ET
-BT /F1 10 Tf 56 625 Td (No confirmed cryptographic use.) Tj ET
-BT /F1 16 Tf 56 612 Td () Tj ET
-BT /F1 16 Tf 56 590 Td (4. Affected locations) Tj ET
-BT /F1 10 Tf 56 568 Td (No affected components.) Tj ET
-BT /F1 16 Tf 56 555 Td () Tj ET
-BT /F1 16 Tf 56 533 Td (5. Migration priorities) Tj ET
-BT /F1 10 Tf 56 511 Td (No migration actions.) Tj ET
-BT /F1 16 Tf 56 498 Td () Tj ET
-BT /F1 16 Tf 56 476 Td (6. Scan coverage) Tj ET
-BT /F1 10 Tf 56 454 Td (Coverage: 1 / 1 files with cryptographic evidence \(profile: standard\).) Tj ET
-BT /F1 10 Tf 56 441 Td (0 file\(s\) skipped before analysis; 0 file\(s\) analyzed with no cryptographic evidence.) Tj ET
+q
+0.100 0.230 0.360 rg
+0.00 722.00 595.00 120.00 re f
+0.290 0.170 0.430 rg
+0.00 720.00 595.00 2.00 re f
+Q
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 36.0 Tf 50.00 752.00 Td (ECDAT) Tj ET
+0.900 0.900 0.950 rg
+BT /Helvetica 14.0 Tf 50.00 722.00 Td (CRYPTOGRAPHIC RISK REPORT) Tj ET
+0.100 0.100 0.180 rg
+BT /Helvetica 14.0 Tf 50.00 662.00 Td (Target: clean.py) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 10.0 Tf 50.00 632.00 Td (Scan ID: scan-empty-001) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 10.0 Tf 50.00 612.00 Td (Period: 2026-09-10 -> 2026-09-10) Tj ET
+q
+0.150 0.390 0.750 rg
+55.00 562.00 m 205.00 562.00 l 207.24 562.00 210.00 564.76 210.00 567.00 c 210.00 587.00 l 210.00 589.24 207.24 592.00 205.00 592.00 c 55.00 592.00 l 52.76 592.00 50.00 589.24 50.00 587.00 c 50.00 567.00 l 50.00 564.76 52.76 562.00 55.00 562.00 c  f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 572.00 Td (Risk: NONE \(0.0/10\)) Tj ET
+Q
+q
+0.850 0.870 0.900 RG
+0.50 w 50.00 532.00 m 545.00 532.00 l S
+Q
+0.100 0.100 0.180 rg
+BT /Helvetica 10.0 Tf 50.00 512.00 Td (ECDAT analyzed 1 files in clean.py and detected no cryptographic observations.) Tj ET
 endstream
 endobj
 5 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.0 842.0] /Resources << /Font << /F1 9 0 R /F2 9 0 R >> >> /Contents 8 0 R >>
 endobj
 6 0 obj
-<< /Length 1121 >>
+<< /Length 6926 >>
 stream
-BT /F1 16 Tf 56 800 Td () Tj ET
-BT /F1 16 Tf 56 778 Td (7. Methodology and technical details) Tj ET
-BT /F1 10 Tf 56 756 Td (P1 quantum/classical risk engine: Mosca-style score per operation \(0.35*Q + 0.20*E + 0.15*B + 0.15*) Tj ET
-BT /F1 10 Tf 56 743 Td (+ 0.15*mosca_boost, clamped 0..1, wire scale 0..10\); classes Critical >= 8, High >= 6, Medium >= 4,) Tj ET
-BT /F1 10 Tf 56 730 Td (Low >= 2, else Informational. ProvidedOnly caps at Low; suppressed states score 0.0 Informational.) Tj ET
-BT /F1 10 Tf 56 717 Td (Risk source: no-risk-record; registry: ; profile: standard; elapsed: Nones; cache: miss.) Tj ET
-BT /F1 10 Tf 56 704 Td (Scan: scan-empty-001 | Target: clean.py | 2026-09-10T12:00:00Z .. 2026-09-10T12:00:01Z) Tj ET
-BT /F1 10 Tf 56 691 Td (Detectors: ecdat 0.1.0.) Tj ET
-BT /F1 10 Tf 56 678 Td (Unknown risk inputs stay unknown: the engine records explicit mid-range assumptions per operation) Tj ET
-BT /F1 10 Tf 56 665 Td (instead of exaggerating risk. Per-operation assumptions, full evidence, and machine-readable detail) Tj ET
-BT /F1 10 Tf 56 652 Td (are in the JSON/CIR/CSV/SARIF/CBOM exports.) Tj ET
+q
+0.100 0.230 0.360 rg
+64.00 784.00 14 0 360 arc f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 780.00 Td (1) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 16.0 Tf 85.00 792.00 Td (Executive Summary) Tj ET
+q
+0.290 0.170 0.430 RG
+2.00 w 85.00 788.00 m 221.00 788.00 l S
+Q
+q
+1.000 1.000 1.000 rg
+56.00 713.00 m 135.00 713.00 l 137.69 713.00 141.00 716.31 141.00 719.00 c 141.00 762.00 l 141.00 764.69 137.69 768.00 135.00 768.00 c 56.00 768.00 l 53.31 768.00 50.00 764.69 50.00 762.00 c 50.00 719.00 l 50.00 716.31 53.31 713.00 56.00 713.00 c  f
+0.100 0.230 0.360 rg
+50.00 764.00 91.00 4.00 re f
+0.100 0.100 0.180 rg
+BT /Helvetica-Bold 20 Tf 30.50 736.00 Td (NONE \(0.0/10\)) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8 Tf 58.00 720.00 Td (OVERALL RISK) Tj ET
+Q
+q
+1.000 1.000 1.000 rg
+157.00 713.00 m 236.00 713.00 l 238.69 713.00 242.00 716.31 242.00 719.00 c 242.00 762.00 l 242.00 764.69 238.69 768.00 236.00 768.00 c 157.00 768.00 l 154.31 768.00 151.00 764.69 151.00 762.00 c 151.00 719.00 l 151.00 716.31 154.31 713.00 157.00 713.00 c  f
+0.290 0.170 0.430 rg
+151.00 764.00 91.00 4.00 re f
+0.100 0.100 0.180 rg
+BT /Helvetica-Bold 20 Tf 191.50 736.00 Td (0) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8 Tf 159.00 720.00 Td (FINDINGS) Tj ET
+Q
+q
+1.000 1.000 1.000 rg
+258.00 713.00 m 337.00 713.00 l 339.69 713.00 343.00 716.31 343.00 719.00 c 343.00 762.00 l 343.00 764.69 339.69 768.00 337.00 768.00 c 258.00 768.00 l 255.31 768.00 252.00 764.69 252.00 762.00 c 252.00 719.00 l 252.00 716.31 255.31 713.00 258.00 713.00 c  f
+0.150 0.400 0.300 rg
+252.00 764.00 91.00 4.00 re f
+0.100 0.100 0.180 rg
+BT /Helvetica-Bold 20 Tf 292.50 736.00 Td (0) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8 Tf 260.00 720.00 Td (OPERATIONS) Tj ET
+Q
+q
+1.000 1.000 1.000 rg
+359.00 713.00 m 438.00 713.00 l 440.69 713.00 444.00 716.31 444.00 719.00 c 444.00 762.00 l 444.00 764.69 440.69 768.00 438.00 768.00 c 359.00 768.00 l 356.31 768.00 353.00 764.69 353.00 762.00 c 353.00 719.00 l 353.00 716.31 356.31 713.00 359.00 713.00 c  f
+0.400 0.250 0.500 rg
+353.00 764.00 91.00 4.00 re f
+0.100 0.100 0.180 rg
+BT /Helvetica-Bold 20 Tf 393.50 736.00 Td (0) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8 Tf 361.00 720.00 Td (ASSETS) Tj ET
+Q
+q
+1.000 1.000 1.000 rg
+460.00 713.00 m 539.00 713.00 l 541.69 713.00 545.00 716.31 545.00 719.00 c 545.00 762.00 l 545.00 764.69 541.69 768.00 539.00 768.00 c 460.00 768.00 l 457.31 768.00 454.00 764.69 454.00 762.00 c 454.00 719.00 l 454.00 716.31 457.31 713.00 460.00 713.00 c  f
+0.300 0.350 0.500 rg
+454.00 764.00 91.00 4.00 re f
+0.100 0.100 0.180 rg
+BT /Helvetica-Bold 20 Tf 474.50 736.00 Td (1 / 1) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8 Tf 462.00 720.00 Td (FILES) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 11.0 Tf 50.00 688.00 Td (Summary) Tj ET
+0.100 0.100 0.180 rg
+BT /Helvetica 10.0 Tf 50.00 670.00 Td (ECDAT analyzed 1 files in clean.py and detected no cryptographic observations.) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 9.0 Tf 50.00 647.00 Td (Confirmed findings: 0   |   Declared capabilities \(unconfirmed\): 0) Tj ET
+q
+0.100 0.230 0.360 rg
+64.00 639.00 14 0 360 arc f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 635.00 Td (2) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 16.0 Tf 85.00 647.00 Td (Severity Breakdown) Tj ET
+q
+0.290 0.170 0.430 RG
+2.00 w 85.00 643.00 m 229.00 643.00 l S
+Q
+0.400 0.400 0.500 rg
+BT /Helvetica 10.0 Tf 50.00 623.00 Td (No findings recorded.) Tj ET
+q
+0.100 0.230 0.360 rg
+64.00 595.00 14 0 360 arc f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 591.00 Td (3) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 16.0 Tf 85.00 603.00 Td (Priority Findings) Tj ET
+q
+0.290 0.170 0.430 RG
+2.00 w 85.00 599.00 m 221.00 599.00 l S
+Q
+0.400 0.400 0.500 rg
+BT /Helvetica 10.0 Tf 50.00 579.00 Td (No confirmed findings.) Tj ET
+q
+0.100 0.230 0.360 rg
+64.00 551.00 14 0 360 arc f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 547.00 Td (4) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 16.0 Tf 85.00 559.00 Td (Cryptographic Inventory \(Confirmed Use\)) Tj ET
+q
+0.290 0.170 0.430 RG
+2.00 w 85.00 555.00 m 397.00 555.00 l S
+Q
+0.400 0.400 0.500 rg
+BT /Helvetica 10.0 Tf 50.00 535.00 Td (No confirmed cryptographic use detected.) Tj ET
+q
+0.100 0.230 0.360 rg
+64.00 507.00 14 0 360 arc f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 503.00 Td (5) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 16.0 Tf 85.00 515.00 Td (Affected Locations) Tj ET
+q
+0.290 0.170 0.430 RG
+2.00 w 85.00 511.00 m 229.00 511.00 l S
+Q
+0.400 0.400 0.500 rg
+BT /Helvetica 10.0 Tf 50.00 491.00 Td (No affected components.) Tj ET
+q
+0.100 0.230 0.360 rg
+64.00 463.00 14 0 360 arc f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 459.00 Td (6) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 16.0 Tf 85.00 471.00 Td (Migration Priorities) Tj ET
+q
+0.290 0.170 0.430 RG
+2.00 w 85.00 467.00 m 245.00 467.00 l S
+Q
+0.400 0.400 0.500 rg
+BT /Helvetica 10.0 Tf 50.00 447.00 Td (No migration actions required.) Tj ET
+q
+0.100 0.230 0.360 rg
+64.00 419.00 14 0 360 arc f
+1.000 1.000 1.000 rg
+BT /Helvetica-Bold 11 Tf 60.00 415.00 Td (7) Tj ET
+Q
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 16.0 Tf 85.00 427.00 Td (Scan Coverage & Methodology) Tj ET
+q
+0.290 0.170 0.430 RG
+2.00 w 85.00 423.00 m 301.00 423.00 l S
+Q
+0.100 0.100 0.180 rg
+BT /Helvetica-Bold 10.0 Tf 50.00 403.00 Td (Coverage: 1 / 1 files) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 9.0 Tf 50.00 387.00 Td (Profile: standard  |  Cache: miss  |  Elapsed: Nones) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 9.0 Tf 50.00 369.00 Td (Skipped: 0  |  No evidence: 0) Tj ET
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 11.0 Tf 50.00 343.00 Td (Methodology) Tj ET
+0.100 0.100 0.180 rg
+BT /Helvetica 8.0 Tf 50.00 327.00 Td (P1 quantum/classical risk engine: Mosca-style score per operation \(0.35*Q + 0.20*E + 0.15*B + 0.15*C + 0.15*mosca_boost,) Tj ET
+BT /Helvetica 8.0 Tf 50.00 316.60 Td (clamped 0..1, wire scale 0..10\); classes Critical >= 8, High >= 6, Medium >= 4, Low >= 2, else Informational. ProvidedOnly) Tj ET
+BT /Helvetica 8.0 Tf 50.00 306.20 Td (caps at Low; suppressed states score 0.0 Informational.) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8.0 Tf 50.00 287.80 Td (Risk source: no-risk-record) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8.0 Tf 50.00 275.80 Td (Registry: ) Tj ET
+0.100 0.100 0.180 rg
+BT /Helvetica-Bold 8.0 Tf 50.00 263.80 Td (Detectors:) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8.0 Tf 60.00 251.80 Td (- ecdat 0.1.0) Tj ET
+q
+0.100 0.230 0.360 RG
+1.50 w 50.00 802.00 m 545.00 802.00 l S
+0.100 0.230 0.360 rg
+BT /Helvetica-Bold 8.0 Tf 50.00 806.00 Td (ECDAT Cryptographic Risk Report) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 8.0 Tf 545.00 806.00 Td (2) Tj ET
+Q
+q
+0.850 0.870 0.900 RG
+0.50 w 50.00 35.00 m 545.00 35.00 l S
+0.400 0.400 0.500 rg
+BT /Helvetica-Oblique 7.0 Tf 50.00 25.00 Td (CONFIDENTIAL - ECDAT Cryptographic Analysis) Tj ET
+0.400 0.400 0.500 rg
+BT /Helvetica 7.0 Tf 545.00 25.00 Td (Page 2) Tj ET
+Q
 endstream
 endobj
 7 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>
+endobj
+10 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique >>
+endobj
 xref
-0 8
+0 11
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000121 00000 n 
-0000000247 00000 n 
-0000001634 00000 n 
-0000001760 00000 n 
-0000002933 00000 n 
+0000000261 00000 n 
+0000001442 00000 n 
+0000001582 00000 n 
+0000008560 00000 n 
+0000008630 00000 n 
+0000008705 00000 n 
+0000008783 00000 n 
 trailer
-<< /Size 8 /Root 1 0 R /Producer (ECDAT report) >>
+<< /Size 11 /Root 1 0 R /Producer (ECDAT Report) >>
 startxref
-3003
+8866
 %%EOF

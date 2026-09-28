@@ -1,0 +1,309 @@
+{
+ "findings": [
+  {
+   "confidence": 0.9,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\enc.c",
+   "line": 864,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:a107c91eee9181b5",
+    "cir_op_id": "op:95bc77108f9c11c5",
+    "risk_class": "Medium",
+    "risk_score": 0.49,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_CIPHER_fetch(app_get0_libctx(), name->name, app_get0_propq()) | args: app_get0_libctx(), name->name, app_get0_propq()",
+   "title": "OpenSSL usage detected"
+  },
+  {
+   "confidence": 0.9,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 137,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:894012810d683baa",
+    "risk_class": "Medium",
+    "risk_score": 0.49,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_MD_fetch(app_get0_libctx(), argv[0], app_get0_propq()) | args: app_get0_libctx(), argv[0], app_get0_propq()",
+   "title": "OpenSSL hashing detected"
+  },
+  {
+   "confidence": 0.9,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 554,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:f167c3d233dd5434",
+    "risk_class": "Medium",
+    "risk_score": 0.49,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_MD_fetch(app_get0_libctx(), name->name, app_get0_propq()) | args: app_get0_libctx(), name->name, app_get0_propq()",
+   "title": "OpenSSL hashing detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\enc.c",
+   "line": 645,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:7aad6231a15dde35",
+    "cir_op_id": "op:0b215b5ec5caa2ee",
+    "risk_class": "Low",
+    "risk_score": 0.314,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "high",
+   "snippet": "PKCS5_PBKDF2_HMAC(str, (int)str_len, sptr, islen,\n                        iter, dgst, iklen + ivlen, tmpkeyiv) | args: str, (int)str_len, sptr, islen",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\enc.c",
+   "line": 419,
+   "metadata": {
+    "canonical_name": "SHA-256",
+    "cir_asset_id": "ast:7cedab55aba3f055",
+    "cir_op_id": "op:ebc86d3dcc9751a2",
+    "risk_class": "Low",
+    "risk_score": 0.296,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "SHA-256",
+   "severity": "high",
+   "snippet": "EVP_sha256()",
+   "title": "SHA-256 hashing detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 373,
+   "metadata": {
+    "canonical_name": "SHA-256",
+    "cir_asset_id": "ast:146e5c9fd5d968f9",
+    "cir_op_id": "op:0de85ffe11f85c89",
+    "risk_class": "Low",
+    "risk_score": 0.296,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "SHA-256",
+   "severity": "high",
+   "snippet": "EVP_sha256()",
+   "title": "SHA-256 hashing detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 692,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:88c7a53eda147645",
+    "risk_class": "Medium",
+    "risk_score": 0.488,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_DigestSignFinal(ctx, NULL, &tmplen) | args: ctx, NULL, &tmplen",
+   "title": "OpenSSL usage detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 681,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:02de75306219cdf3",
+    "risk_class": "Medium",
+    "risk_score": 0.488,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_DigestVerifyFinal(ctx, sigin, (unsigned int)siglen) | args: ctx, sigin, (unsigned int)siglen",
+   "title": "OpenSSL verification detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 716,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:6f7b8e96acfaf075",
+    "risk_class": "Medium",
+    "risk_score": 0.486,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_DigestFinalXOF(ctx, buf, len) | args: ctx, buf, len",
+   "title": "OpenSSL hashing detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\enc.c",
+   "line": 728,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:a107c91eee9181b5",
+    "cir_op_id": "op:019d333d8118a773",
+    "risk_class": "Medium",
+    "risk_score": 0.486,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_CipherInit_ex(ctx, cipher, NULL, key,\n                    (hiv == NULL && wrap == 1 ? NULL : iv), enc) | args: ctx, cipher, NULL, key",
+   "title": "OpenSSL usage detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 753,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:c27af3f2e220130a",
+    "risk_class": "Medium",
+    "risk_score": 0.486,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_DigestSign(ctx, NULL, &siglen_out, data, len) | args: ctx, NULL, &siglen_out, data",
+   "title": "OpenSSL usage detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 376,
+   "metadata": {
+    "canonical_name": "HMAC",
+    "cir_asset_id": "ast:9fbdd3305dd896de",
+    "cir_op_id": "op:4bebfc8c5ff40e28",
+    "risk_class": "Low",
+    "risk_score": 0.294,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "HMAC",
+   "severity": "high",
+   "snippet": "EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, NULL,\n            (unsigned char *)hmac_key,\n            strlen(hmac_key)) | args: EVP_PKEY_HMAC, NULL, (unsigned char *)hmac_key, strlen(hmac_key)",
+   "title": "HMAC key management detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 748,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:70b5ccbd0be32fbf",
+    "risk_class": "Medium",
+    "risk_score": 0.486,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "high",
+   "snippet": "EVP_DigestVerify(ctx, sigin, siglen, data, len) | args: ctx, sigin, siglen, data",
+   "title": "OpenSSL verification detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\enc.c",
+   "line": 592,
+   "metadata": {
+    "canonical_name": "Random",
+    "cir_asset_id": "ast:e3a2e7052e177ac6",
+    "cir_op_id": "op:835122b1260a0b59",
+    "risk_class": "Medium",
+    "risk_score": 0.448,
+    "usage_state": "Probable"
+   },
+   "rule_id": "RANDOM",
+   "severity": "medium",
+   "snippet": "RAND_bytes(salt, saltlen) | args: salt, saltlen",
+   "title": "Random key management detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 395,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:c09a8373f365935a",
+    "risk_class": "Medium",
+    "risk_score": 0.475,
+    "usage_state": "Probable"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "medium",
+   "snippet": "EVP_DigestVerifyInit_ex(mctx, &pctx, digestname,\n                app_get0_libctx(),\n                app_get0_propq(), sigkey, NULL) | args: mctx, &pctx, digestname, app_get0_libctx()",
+   "title": "OpenSSL verification detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 795,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:295305611d807eb0",
+    "risk_class": "Medium",
+    "risk_score": 0.475,
+    "usage_state": "Probable"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "medium",
+   "snippet": "do_oneshot_verify_sign(ctx, out, sigin, siglen, key, data,\n                filesize, sep, binout, sig_name, file)",
+   "title": "OpenSSL verification detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl\\dgst.c",
+   "line": 399,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:30bc786955a3bcb7",
+    "cir_op_id": "op:b8dad5f066e20b13",
+    "risk_class": "Medium",
+    "risk_score": 0.475,
+    "usage_state": "Probable"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "medium",
+   "snippet": "EVP_DigestSignInit_ex(mctx, &pctx, digestname,\n                app_get0_libctx(),\n                app_get0_propq(), sigkey, NULL) | args: mctx, &pctx, digestname, app_get0_libctx()",
+   "title": "OpenSSL usage detected"
+  }
+ ],
+ "finished_at": "2026-09-24T16:22:56Z",
+ "scan_id": "scan:ea8c32eff2e902a3",
+ "schema_version": "1.0",
+ "started_at": "2026-09-24T16:22:56Z",
+ "stats": {
+  "files_scanned": 2,
+  "findings_count": 17
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\openssl",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

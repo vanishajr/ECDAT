@@ -1,0 +1,52 @@
+# EVAL-NGINX — ground truth v1 (2026-09-23)
+# Slice: src/event/ngx_event_openssl.c + conf/nginx.conf @ ef0aa967dce9d30b824d4c839d3579d2a17e0666
+# Rules: X509/SSL getters-setters-frees, session plumbing (SSL_new/read/
+# write/shutdown), verify-policy and password plumbing are NOT operations
+# (excluded by rule). conf/nginx.conf ssl_* lines are commented out, so the
+# config surface correctly yields nothing (0 items by rule).
+# tier config/cert: expected-canonical coverage items (no finding can match;
+# clean FN when absent). dyn: dynamic-cipher/config ops (any canonical).
+version: 1
+repo: nginx
+items:
+  - {id: N01, file: ngx_event_openssl.c, line: 308, canonical: TLS, kind: tls, tier: strict}
+  - {id: N02, file: ngx_event_openssl.c, line: 405, canonical: TLS, kind: tls, tier: strict,
+     note: "min/max proto group (405-411); >=1 finding in window covers it"}
+  - {id: N03, file: ngx_event_openssl.c, line: 504, canonical: X.509, kind: cert, tier: strict,
+     note: "cert+key loading group in ngx_ssl_certificate (504 use_certificate fuses with 608 use_PrivateKey: same function+canonical+op); one finding covers the group"}
+  - {id: N05, file: ngx_event_openssl.c, line: 928, canonical: TLS, kind: tls-config, tier: strict,
+     note: "SSL_CTX_set_cipher_list: engine convention reports TLS config as TLS (precedent: proto-version rows)"}
+  - {id: N06, file: ngx_event_openssl.c, line: 1616, canonical: DH, kind: dh-config, tier: strict,
+     note: "SSL_CTX_set_tmp_dh (P3 row)"}
+  - {id: N07, file: ngx_event_openssl.c, line: 1737, canonical: TLS, kind: tls-config, tier: strict,
+     note: "SSL_CTX_set1_echstore reported as TLS (P3 row; no ECH canonical)"}
+  - {id: N08, file: ngx_event_openssl.c, line: 1799, canonical: ECDH, kind: dh-config, tier: strict,
+     note: "SSL_CTX_set1_curves_list (P3 row)"}
+  - {id: N09, file: ngx_event_openssl.c, line: 1825, canonical: ECDSA, kind: keygen, tier: strict}
+  - {id: N10, file: ngx_event_openssl.c, line: 4198, canonical: SHA-1, kind: hash, tier: strict,
+     note: "session-id digest group (4198-4257)"}
+  - {id: N11, file: ngx_event_openssl.c, line: 4213, canonical: SHA-1, kind: cert, tier: strict,
+     note: "X509_digest(sha1): digest-arg canonical (P3 row)"}
+  - {id: N12, file: ngx_event_openssl.c, line: 4204, canonical: DYN, kind: hash, tier: dyn,
+     note: "DigestUpdate stream of the N10 group; covered by the N10 finding"}
+  - {id: N13, file: ngx_event_openssl.c, line: 4962, canonical: SHA-256, kind: hash, tier: strict}
+  - {id: N14, file: ngx_event_openssl.c, line: 4981, canonical: AES-128-CBC, kind: encrypt, tier: strict}
+  - {id: N15, file: ngx_event_openssl.c, line: 4985, canonical: AES-256-CBC, kind: encrypt, tier: strict}
+  - {id: N16, file: ngx_event_openssl.c, line: 4989, canonical: RANDOM, kind: keygen, tier: strict}
+  - {id: N17, file: ngx_event_openssl.c, line: 4994, canonical: DYN, kind: encrypt, tier: dyn,
+     note: "EVP_EncryptInit_ex on dynamic cipher"}
+  - {id: N18, file: ngx_event_openssl.c, line: 5001, canonical: HMAC, kind: hash, tier: strict}
+  - {id: N19, file: ngx_event_openssl.c, line: 5052, canonical: DYN, kind: decrypt, tier: dyn,
+     note: "EVP_DecryptInit_ex on dynamic cipher"}
+  - {id: N20, file: ngx_event_openssl.c, line: 6370, canonical: SHA-1, kind: cert, tier: strict,
+     note: "X509_digest(sha1) session-id fallback (P3 row)"}
+  - {id: N21, file: ngx_event_openssl.c, line: 1, canonical: DH, kind: capability, tier: strict,
+     note: "DH structural fingerprint (Possible); real DH capability evidence"}
+  - {id: N22, file: ngx_event_openssl.c, line: 4109, canonical: SHA-1, kind: hash, tier: dyn,
+     note: "session_id_context call: invokes the N10 digest flow"}
+  - {id: N23, file: ngx_event_openssl.c, line: 4960, canonical: SHA-1, kind: hash, tier: strict,
+     note: "EVP_sha1() digest selection (ticket keys; ifdef fallback is real source)"}
+  - {id: N24, file: ngx_event_openssl.c, line: 5127, canonical: RANDOM, kind: keygen, tier: strict,
+     note: "RAND_bytes ticket-key provisioning"}
+  - {id: N25, file: ngx_event_openssl.c, line: 463, canonical: X.509, kind: cert, tier: dyn,
+     note: "ngx_ssl_certificate() call: invokes the N03 cert-loading flow (wrapper attribution)"}

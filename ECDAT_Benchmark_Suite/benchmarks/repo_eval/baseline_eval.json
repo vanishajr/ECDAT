@@ -1,0 +1,526 @@
+{
+ "window": 15,
+ "repos": {
+  "express": {
+   "gt_items": 0,
+   "findings": 0,
+   "tp": 0,
+   "fp": 0,
+   "fn": 0,
+   "precision": null,
+   "recall": null,
+   "f1": null,
+   "tp_items": [],
+   "fp_items": [],
+   "fn_items": []
+  },
+  "nginx": {
+   "gt_items": 21,
+   "findings": 14,
+   "tp": 13,
+   "fp": 0,
+   "fn": 8,
+   "precision": 1.0,
+   "recall": 0.619,
+   "f1": 0.7647,
+   "tp_items": [
+    "N01",
+    "N02",
+    "N09",
+    "N10",
+    "N12",
+    "N13",
+    "N14",
+    "N15",
+    "N16",
+    "N17",
+    "N18",
+    "N19",
+    "N21"
+   ],
+   "fp_items": [],
+   "fn_items": [
+    {
+     "id": "N03",
+     "file": "ngx_event_openssl.c",
+     "line": 504,
+     "canonical": "CERT",
+     "kind": "cert",
+     "tier": "config",
+     "note": ""
+    },
+    {
+     "id": "N04",
+     "file": "ngx_event_openssl.c",
+     "line": 608,
+     "canonical": "CERTKEY",
+     "kind": "cert",
+     "tier": "config",
+     "note": ""
+    },
+    {
+     "id": "N05",
+     "file": "ngx_event_openssl.c",
+     "line": 928,
+     "canonical": "TLSCONF",
+     "kind": "tls-config",
+     "tier": "config",
+     "note": ""
+    },
+    {
+     "id": "N06",
+     "file": "ngx_event_openssl.c",
+     "line": 1616,
+     "canonical": "DH",
+     "kind": "dh-config",
+     "tier": "config",
+     "note": ""
+    },
+    {
+     "id": "N07",
+     "file": "ngx_event_openssl.c",
+     "line": 1737,
+     "canonical": "ECH",
+     "kind": "tls-config",
+     "tier": "config",
+     "note": ""
+    },
+    {
+     "id": "N08",
+     "file": "ngx_event_openssl.c",
+     "line": 1799,
+     "canonical": "ECDH",
+     "kind": "dh-config",
+     "tier": "config",
+     "note": ""
+    },
+    {
+     "id": "N11",
+     "file": "ngx_event_openssl.c",
+     "line": 4213,
+     "canonical": "CERTDIGEST",
+     "kind": "cert",
+     "tier": "config",
+     "note": ""
+    },
+    {
+     "id": "N20",
+     "file": "ngx_event_openssl.c",
+     "line": 6370,
+     "canonical": "CERTDIGEST",
+     "kind": "cert",
+     "tier": "config",
+     "note": ""
+    }
+   ]
+  },
+  "openssl": {
+   "gt_items": 19,
+   "findings": 6,
+   "tp": 7,
+   "fp": 0,
+   "fn": 12,
+   "precision": 1.0,
+   "recall": 0.3684,
+   "f1": 0.5385,
+   "tp_items": [
+    "O01",
+    "O02",
+    "O03",
+    "O04",
+    "O07",
+    "O08",
+    "O09"
+   ],
+   "fp_items": [],
+   "fn_items": [
+    {
+     "id": "O05",
+     "file": "enc.c",
+     "line": 728,
+     "canonical": "DYN",
+     "kind": "encrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O06",
+     "file": "enc.c",
+     "line": 758,
+     "canonical": "DYN",
+     "kind": "encrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O10",
+     "file": "dgst.c",
+     "line": 376,
+     "canonical": "HMAC",
+     "kind": "keygen",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "O11",
+     "file": "dgst.c",
+     "line": 395,
+     "canonical": "DYN",
+     "kind": "verify",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O12",
+     "file": "dgst.c",
+     "line": 399,
+     "canonical": "DYN",
+     "kind": "sign",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O13",
+     "file": "dgst.c",
+     "line": 432,
+     "canonical": "SHA-256",
+     "kind": "hash",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "O14",
+     "file": "dgst.c",
+     "line": 554,
+     "canonical": "OPENSSL",
+     "kind": "fetch",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "O15",
+     "file": "dgst.c",
+     "line": 681,
+     "canonical": "DYN",
+     "kind": "verify",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O16",
+     "file": "dgst.c",
+     "line": 692,
+     "canonical": "DYN",
+     "kind": "sign",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O17",
+     "file": "dgst.c",
+     "line": 716,
+     "canonical": "DYN",
+     "kind": "hash",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O18",
+     "file": "dgst.c",
+     "line": 748,
+     "canonical": "DYN",
+     "kind": "verify",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "O19",
+     "file": "dgst.c",
+     "line": 753,
+     "canonical": "DYN",
+     "kind": "sign",
+     "tier": "dyn",
+     "note": ""
+    }
+   ]
+  },
+  "pyca": {
+   "gt_items": 8,
+   "findings": 4,
+   "tp": 4,
+   "fp": 0,
+   "fn": 4,
+   "precision": 1.0,
+   "recall": 0.5,
+   "f1": 0.6667,
+   "tp_items": [
+    "P01",
+    "P02",
+    "P03",
+    "P04"
+   ],
+   "fp_items": [],
+   "fn_items": [
+    {
+     "id": "P05",
+     "file": "aead.py",
+     "line": 18,
+     "canonical": "AES-256-GCM",
+     "kind": "capability",
+     "tier": "file-strict",
+     "note": ""
+    },
+    {
+     "id": "P06",
+     "file": "aead.py",
+     "line": 19,
+     "canonical": "ChaCha20-Poly1305",
+     "kind": "capability",
+     "tier": "file-strict",
+     "note": ""
+    },
+    {
+     "id": "P07",
+     "file": "algorithms.py",
+     "line": 36,
+     "canonical": "AES",
+     "kind": "capability",
+     "tier": "file-strict",
+     "note": ""
+    },
+    {
+     "id": "P08",
+     "file": "modes.py",
+     "line": 39,
+     "canonical": "CBC",
+     "kind": "capability",
+     "tier": "file-strict",
+     "note": ""
+    }
+   ]
+  },
+  "spring": {
+   "gt_items": 24,
+   "findings": 4,
+   "tp": 3,
+   "fp": 1,
+   "fn": 21,
+   "precision": 0.75,
+   "recall": 0.125,
+   "f1": 0.2143,
+   "tp_items": [
+    "S15",
+    "S16",
+    "S22"
+   ],
+   "fp_items": [
+    {
+     "finding": "RsaRawEncryptor.java:122",
+     "canonical": "AES",
+     "title": "AES usage detected"
+    }
+   ],
+   "fn_items": [
+    {
+     "id": "S01",
+     "file": "AesBytesEncryptor.java",
+     "line": 104,
+     "canonical": "PBKDF2",
+     "kind": "kdf",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S02",
+     "file": "AesBytesEncryptor.java",
+     "line": 117,
+     "canonical": "AES",
+     "kind": "key",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S03",
+     "file": "AesBytesEncryptor.java",
+     "line": 128,
+     "canonical": "AES",
+     "kind": "encrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S04",
+     "file": "AesBytesEncryptor.java",
+     "line": 138,
+     "canonical": "AES",
+     "kind": "decrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S05",
+     "file": "AesBytesEncryptor.java",
+     "line": 195,
+     "canonical": "AES",
+     "kind": "cipher-new",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S06",
+     "file": "AesCbcBytesEncryptor.java",
+     "line": 75,
+     "canonical": "AES",
+     "kind": "key",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S07",
+     "file": "AesCbcBytesEncryptor.java",
+     "line": 76,
+     "canonical": "AES",
+     "kind": "cipher-new",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S08",
+     "file": "AesCbcBytesEncryptor.java",
+     "line": 103,
+     "canonical": "AES-CBC",
+     "kind": "encrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S09",
+     "file": "AesCbcBytesEncryptor.java",
+     "line": 115,
+     "canonical": "AES-CBC",
+     "kind": "decrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S10",
+     "file": "AesCbcBytesEncryptor.java",
+     "line": 121,
+     "canonical": "PBKDF2",
+     "kind": "kdf",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S11",
+     "file": "AesGcmBytesEncryptor.java",
+     "line": 81,
+     "canonical": "AES-GCM",
+     "kind": "cipher-new",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S12",
+     "file": "AesGcmBytesEncryptor.java",
+     "line": 108,
+     "canonical": "AES-GCM",
+     "kind": "encrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S13",
+     "file": "AesGcmBytesEncryptor.java",
+     "line": 121,
+     "canonical": "AES-GCM",
+     "kind": "decrypt",
+     "tier": "dyn",
+     "note": ""
+    },
+    {
+     "id": "S14",
+     "file": "AesGcmBytesEncryptor.java",
+     "line": 128,
+     "canonical": "PBKDF2",
+     "kind": "kdf",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S17",
+     "file": "RsaRawEncryptor.java",
+     "line": 122,
+     "canonical": "RSA",
+     "kind": "encrypt",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S18",
+     "file": "RsaRawEncryptor.java",
+     "line": 146,
+     "canonical": "RSA",
+     "kind": "decrypt",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S19",
+     "file": "BCryptPasswordEncoder.java",
+     "line": 116,
+     "canonical": "bcrypt",
+     "kind": "hash",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S20",
+     "file": "BCryptPasswordEncoder.java",
+     "line": 129,
+     "canonical": "bcrypt",
+     "kind": "verify",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S21",
+     "file": "BCryptPasswordEncoder.java",
+     "line": 169,
+     "canonical": "RANDOM",
+     "kind": "keygen",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S23",
+     "file": "Pbkdf2PasswordEncoder.java",
+     "line": 228,
+     "canonical": "PBKDF2",
+     "kind": "kdf",
+     "tier": "strict",
+     "note": ""
+    },
+    {
+     "id": "S24",
+     "file": "SecureRandomBytesKeyGenerator.java",
+     "line": 48,
+     "canonical": "RANDOM",
+     "kind": "keygen",
+     "tier": "strict",
+     "note": ""
+    }
+   ]
+  }
+ },
+ "aggregate": {
+  "gt_items": 72,
+  "findings": 28,
+  "tp": 27,
+  "fp": 1,
+  "fn": 45,
+  "precision": 0.9643,
+  "recall": 0.375,
+  "f1": 0.54
+ }
+}

@@ -142,8 +142,8 @@ USAGE_CONFIDENCE: dict[str, float] = {
     "falsepositivesuppressed": 0.0,
 }
 
-_SUPPRESSED = {"suppressed", "falsepositivesuppressed", "false-positive-suppressed",
-               "false_positive_suppressed", "suppressed-fp"}
+_SUPPRESSED = {"SUPPRESSED", "FALSEPOSITIVESUPPRESSED", "FALSE-POSITIVE-SUPPRESSED",
+               "SUPPRESSED-FP"}
 
 _EXPOSURE_ALIASES = {
     "internet": "internet-facing", "public": "internet-facing",

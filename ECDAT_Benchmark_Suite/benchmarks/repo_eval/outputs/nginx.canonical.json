@@ -1,0 +1,394 @@
+{
+ "findings": [
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4198,
+   "metadata": {
+    "canonical_name": "SHA-1",
+    "cir_asset_id": "ast:b7d1d3004ff77077",
+    "cir_op_id": "op:ecdf7474a15eccd3",
+    "risk_class": "Medium",
+    "risk_score": 0.454,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "SHA-1",
+   "severity": "high",
+   "snippet": "EVP_DigestInit_ex(md, EVP_sha1(), NULL) | args: md, EVP_sha1(), NULL",
+   "title": "SHA-1 hashing detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4985,
+   "metadata": {
+    "canonical_name": "AES-256-CBC",
+    "cir_asset_id": "ast:0244ec60f4e620fd",
+    "cir_op_id": "op:10dbd53283e2a3e5",
+    "risk_class": "Low",
+    "risk_score": 0.331,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "AES-256-CBC",
+   "severity": "high",
+   "snippet": "EVP_aes_256_cbc()",
+   "title": "AES-256-CBC usage detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4981,
+   "metadata": {
+    "canonical_name": "AES-128-CBC",
+    "cir_asset_id": "ast:a92b5d6f9b560edf",
+    "cir_op_id": "op:e90c4eca9e834986",
+    "risk_class": "Low",
+    "risk_score": 0.384,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "AES-128-CBC",
+   "severity": "high",
+   "snippet": "EVP_aes_128_cbc()",
+   "title": "AES-128-CBC usage detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 405,
+   "metadata": {
+    "canonical_name": "TLS",
+    "cir_asset_id": "ast:18b75838d21ac47b",
+    "cir_op_id": "op:4866cd512e61a52d",
+    "risk_class": "Medium",
+    "risk_score": 0.454,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "TLS",
+   "severity": "high",
+   "snippet": "SSL_CTX_set_min_proto_version(ssl->ctx, 0) | args: ssl->ctx, 0",
+   "title": "TLS TLS configuration detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4960,
+   "metadata": {
+    "canonical_name": "SHA-1",
+    "cir_asset_id": "ast:b7d1d3004ff77077",
+    "cir_op_id": "op:7e56aca1bcc68218",
+    "risk_class": "Medium",
+    "risk_score": 0.454,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "SHA-1",
+   "severity": "high",
+   "snippet": "EVP_sha1()",
+   "title": "SHA-1 hashing detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 1825,
+   "metadata": {
+    "canonical_name": "ECDSA",
+    "cir_asset_id": "ast:cd5e62756c05c341",
+    "cir_op_id": "op:a4e6ccafb61f5f7b",
+    "risk_class": "High",
+    "risk_score": 0.628,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "ECDSA",
+   "severity": "high",
+   "snippet": "EC_KEY_new_by_curve_name(nid) | args: nid",
+   "title": "ECDSA key management detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4962,
+   "metadata": {
+    "canonical_name": "SHA-256",
+    "cir_asset_id": "ast:37d179b149dc1607",
+    "cir_op_id": "op:82149a1d38aa540d",
+    "risk_class": "Low",
+    "risk_score": 0.296,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "SHA-256",
+   "severity": "high",
+   "snippet": "EVP_sha256()",
+   "title": "SHA-256 hashing detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 1799,
+   "metadata": {
+    "canonical_name": "ECDH",
+    "cir_asset_id": "ast:526f2179dafe6a41",
+    "cir_op_id": "op:6f87a08fab8a4fdb",
+    "risk_class": "High",
+    "risk_score": 0.626,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "ECDH",
+   "severity": "high",
+   "snippet": "SSL_CTX_set1_curves_list(ssl->ctx, (char *) name->data) | args: ssl->ctx, (char *) name->data",
+   "title": "ECDH key management detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 6370,
+   "metadata": {
+    "canonical_name": "SHA-1",
+    "cir_asset_id": "ast:b7d1d3004ff77077",
+    "cir_op_id": "op:a8a46e7cdec0c123",
+    "risk_class": "Medium",
+    "risk_score": 0.451,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "SHA-1",
+   "severity": "high",
+   "snippet": "X509_digest(cert, EVP_sha1(), buf, &len) | args: cert, EVP_sha1(), buf, &len",
+   "title": "SHA-1 hashing detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 504,
+   "metadata": {
+    "canonical_name": "X.509",
+    "cir_asset_id": "ast:3317f139fc87af08",
+    "cir_op_id": "op:502b24549e6bff52",
+    "risk_class": "Medium",
+    "risk_score": 0.591,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "X.509",
+   "severity": "high",
+   "snippet": "SSL_CTX_use_certificate(ssl->ctx, x509) | args: ssl->ctx, x509",
+   "title": "X.509 key management detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 5001,
+   "metadata": {
+    "canonical_name": "HMAC",
+    "cir_asset_id": "ast:7d08198b2f8a27c5",
+    "cir_op_id": "op:f2a1b5a10adbc00f",
+    "risk_class": "Low",
+    "risk_score": 0.294,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "HMAC",
+   "severity": "high",
+   "snippet": "HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL) | args: hctx, key[0].hmac_key, size, digest",
+   "title": "HMAC hashing detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 1616,
+   "metadata": {
+    "canonical_name": "DH",
+    "cir_asset_id": "ast:61e8040a08d09a4f",
+    "cir_op_id": "op:d8302c29576b68f7",
+    "risk_class": "High",
+    "risk_score": 0.626,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "DH",
+   "severity": "high",
+   "snippet": "SSL_CTX_set_tmp_dh(ssl->ctx, dh) | args: ssl->ctx, dh",
+   "title": "DH key management detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 1737,
+   "metadata": {
+    "canonical_name": "TLS",
+    "cir_asset_id": "ast:18b75838d21ac47b",
+    "cir_op_id": "op:8ad61a6e24783a59",
+    "risk_class": "Medium",
+    "risk_score": 0.451,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "TLS",
+   "severity": "high",
+   "snippet": "SSL_CTX_set1_echstore(ssl->ctx, es) | args: ssl->ctx, es",
+   "title": "TLS TLS configuration detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 928,
+   "metadata": {
+    "canonical_name": "TLS",
+    "cir_asset_id": "ast:18b75838d21ac47b",
+    "cir_op_id": "op:3d389aaa8eaf3da9",
+    "risk_class": "Medium",
+    "risk_score": 0.451,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "TLS",
+   "severity": "high",
+   "snippet": "SSL_CTX_set_cipher_list(ssl->ctx, (char *) ciphers->data) | args: ssl->ctx, (char *) ciphers->data",
+   "title": "TLS TLS configuration detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4989,
+   "metadata": {
+    "canonical_name": "Random",
+    "cir_asset_id": "ast:f775a36002bfb976",
+    "cir_op_id": "op:5fce5d18b6d7b3af",
+    "risk_class": "Medium",
+    "risk_score": 0.448,
+    "usage_state": "Probable"
+   },
+   "rule_id": "RANDOM",
+   "severity": "medium",
+   "snippet": "RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)) | args: iv, EVP_CIPHER_iv_length(cipher)",
+   "title": "Random key management detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 5127,
+   "metadata": {
+    "canonical_name": "Random",
+    "cir_asset_id": "ast:f775a36002bfb976",
+    "cir_op_id": "op:c9b21849fd21784c",
+    "risk_class": "Medium",
+    "risk_score": 0.448,
+    "usage_state": "Probable"
+   },
+   "rule_id": "RANDOM",
+   "severity": "medium",
+   "snippet": "RAND_bytes(buf, 80) | args: buf, 80",
+   "title": "Random key management detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 463,
+   "metadata": {
+    "canonical_name": "X.509",
+    "cir_asset_id": "ast:3317f139fc87af08",
+    "cir_op_id": "op:bf8d01c0f8c33179",
+    "risk_class": "Medium",
+    "risk_score": 0.58,
+    "usage_state": "Probable"
+   },
+   "rule_id": "X.509",
+   "severity": "medium",
+   "snippet": "ngx_ssl_certificate(cf, ssl, &cert[i], &key[i], passwords)",
+   "title": "X.509 key management detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 5052,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:e144079b30a0c9a5",
+    "cir_op_id": "op:bdccb02f91f741a8",
+    "risk_class": "Medium",
+    "risk_score": 0.475,
+    "usage_state": "Probable"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "medium",
+   "snippet": "EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv) | args: ectx, cipher, NULL, key[i].aes_key",
+   "title": "OpenSSL decryption detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4994,
+   "metadata": {
+    "canonical_name": "OpenSSL",
+    "cir_asset_id": "ast:e144079b30a0c9a5",
+    "cir_op_id": "op:2cd859d227140c6e",
+    "risk_class": "Medium",
+    "risk_score": 0.475,
+    "usage_state": "Probable"
+   },
+   "rule_id": "OPENSSL",
+   "severity": "medium",
+   "snippet": "EVP_EncryptInit_ex(ectx, cipher, NULL, key[0].aes_key, iv) | args: ectx, cipher, NULL, key[0].aes_key",
+   "title": "OpenSSL usage detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 4109,
+   "metadata": {
+    "canonical_name": "SHA-1",
+    "cir_asset_id": "ast:b7d1d3004ff77077",
+    "cir_op_id": "op:2de963e88f69bd7e",
+    "risk_class": "Medium",
+    "risk_score": 0.44,
+    "usage_state": "Probable"
+   },
+   "rule_id": "SHA-1",
+   "severity": "medium",
+   "snippet": "ngx_ssl_session_id_context(ssl, sess_ctx, certificates)",
+   "title": "SHA-1 hashing detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 308,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "TLS",
+    "cir_asset_id": "ast:0ba9422e58b383ea",
+    "library": "openssl",
+    "protocol": "TLS",
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "TLS",
+   "severity": "high",
+   "snippet": "SSL_CTX_new(SSLv23_method()) | args: SSLv23_method()",
+   "title": "TLS usage detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+   "line": 411,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "TLS",
+    "cir_asset_id": "ast:a294bc89d7ad78c8",
+    "library": "openssl",
+    "protocol": "TLS1.3",
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "TLS",
+   "severity": "high",
+   "snippet": "SSL_CTX_set_max_proto_version(ssl->ctx, TLS1_3_VERSION) | args: ssl->ctx, TLS1_3_VERSION",
+   "title": "TLS usage detected"
+  }
+ ],
+ "finished_at": "2026-09-24T16:22:58Z",
+ "scan_id": "scan:de77acadd55cfc8c",
+ "schema_version": "1.0",
+ "started_at": "2026-09-24T16:22:58Z",
+ "stats": {
+  "files_scanned": 2,
+  "findings_count": 22
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

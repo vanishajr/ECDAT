@@ -42,7 +42,22 @@ _CURVE_RE = re.compile(r"(P-?256|P-?384|P-?521|prime256v1|secp256r1|"
                        r"X25519|X448|Ed25519|Curve25519|secp256k1)",
                        re.IGNORECASE)
 _MODE_RE = re.compile(r"\b(GCM|CBC|CTR|CCM|ECB|OFB|XTS|OCB3|POLY1305)\b",
-                      re.IGNORECASE)
+                       re.IGNORECASE)
+# Mode tokens for dotted constants (AES.MODE_ECB). _MODE_RE cannot see
+# them: the "_" in MODE_ECB is a word character, so \b never matches.
+# Tokenize explicitly instead (never guessed — membership only).
+_DOTTED_MODES = frozenset({
+    "GCM", "CBC", "CTR", "CCM", "ECB", "OFB", "XTS", "OCB3", "POLY1305",
+})
+
+
+def _dotted_mode(text: str | object) -> str | None:
+    """Mode token inside a dotted constant (``AES.MODE_ECB`` -> ``ECB``)."""
+    tail = str(text or "").strip().split(".")[-1]
+    for part in re.split(r"_", tail):
+        if part.upper() in _DOTTED_MODES:
+            return part.upper()
+    return None
 _KEYSIZE_RE = re.compile(r"\b(1024|2048|3072|4096|128|192|256)\b")
 
 _ALGO_TOKENS = (
@@ -360,6 +375,16 @@ def resolve_mode(call: SourceFact, facts: list[SourceFact]) -> ResolvedValue | N
         text = str(arg or "").strip()
         direct, quoted = _strip_quotes(text)
         candidate = direct if quoted else None
+        if candidate is None and not quoted and "." in text:
+            # Dotted constant (AES.MODE_ECB, Cipher.MODE_CBC): the
+            # attribute carries the mode; no assignment fact can ground
+            # a dotted name, so tokenize it directly (never guessed —
+            # the mode token must be present).
+            dotted = _dotted_mode(text)
+            if dotted:
+                _bump("resolutions")
+                return ResolvedValue(value=dotted, confidence=1.0,
+                                     provenance=["dotted-constant"], hops=0)
         if candidate is None and _IDENT_RE.match(text):
             sub = resolve_value(text, facts, 0, MAX_DEPTH, None,
                                 function=call.function)
@@ -370,6 +395,24 @@ def resolve_mode(call: SourceFact, facts: list[SourceFact]) -> ResolvedValue | N
                     value=match.group(1).upper() if match else candidate,
                     confidence=sub.confidence,
                     provenance=sub.provenance, hops=sub.hops)
+            if sub is None:
+                # Alias to a dotted constant (MODE = AES.MODE_ECB):
+                # resolve_value cannot ground dotted values, so scan
+                # this call's assignment facts for a mode token.
+                for fact in facts:
+                    if fact.kind not in ("assignment", "constant",
+                                         "macro"):
+                        continue
+                    if str(getattr(fact, "name", "") or "") != text:
+                        continue
+                    alias_hit = _dotted_mode(
+                        getattr(fact, "value", "") or "")
+                    if alias_hit:
+                        _bump("resolutions")
+                        return ResolvedValue(
+                            value=alias_hit,
+                            confidence=round(CONFIDENCE_DECAY, 3),
+                            provenance=[f"{fact.kind}:{text}"], hops=1)
         if candidate:
             match = _MODE_RE.search(candidate)
             if match:

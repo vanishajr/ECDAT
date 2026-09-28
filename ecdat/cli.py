@@ -45,6 +45,9 @@ def _common_scan_options(
     parser.add_argument("--allow-cloud", action="store_true")
     parser.add_argument("--allow-runtime", action="store_true")
     parser.add_argument("--cir-out", default=None, help="write CIR JSON here")
+    parser.add_argument("--replace", action="store_true",
+                        help="overwrite the stored row when this scan ID "
+                             "already exists (default: reuse the stored row)")
     _context_options(parser)
     if include_profile:
         parser.add_argument(
@@ -162,6 +165,9 @@ def build_parser() -> argparse.ArgumentParser:
     ci.add_argument("--allow-pull", action="store_true")
     ci.add_argument("--allow-build", action="store_true")
     ci.add_argument("--cir-out", default=None)
+    ci.add_argument("--replace", action="store_true",
+                    help="overwrite the stored row when this scan ID "
+                         "already exists (default: reuse the stored row)")
     ci.add_argument("--region", default=None)
     _context_options(ci)
     ci.add_argument(

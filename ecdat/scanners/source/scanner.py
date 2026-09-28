@@ -188,6 +188,13 @@ class SourceScanner(Scanner[ScannerFinding]):
         self._last_stats: dict[str, Any] = {}
         # Phase 5 cross-file context: path -> {sites, defs, impl, classification}
         self._brace_ctx: dict[str, dict[str, Any]] = {}
+        # Same-directory Java texts for enum resolution (dir -> siblings,
+        # current file prepended per call; capped; reset per scan).
+        self._java_enum_texts: dict[str, list[str]] = {}
+        # Cross-file crypto delegates: file -> {func: spec} for factory
+        # wrappers (CipherUtils.newCipher -> Cipher.getInstance). Filled
+        # during the brace scan, consumed by the post-pass. Reset per scan.
+        self._crypto_delegates: dict[str, dict[str, dict]] = {}
         # Phase 13: bounded content-hash result cache for brace-language
         # files. Keyed by (path, content sha256, lang, registry version,
         # scanner version); stores (findings, suppressed, classification)
@@ -209,6 +216,8 @@ class SourceScanner(Scanner[ScannerFinding]):
                             "semgrep": "not-run", "test_files": 0,
                             "impl_files": 0, "files": 0}
         self._brace_ctx = {}
+        self._java_enum_texts = {}
+        self._crypto_delegates = {}
 
         # Phase 2/4 inventory routing: when the orchestrator passes
         # ``artifacts`` (ArtifactRecord dicts), only inventory-confirmed
@@ -239,7 +248,43 @@ class SourceScanner(Scanner[ScannerFinding]):
 
         findings = self._merge_semgrep(target_path, findings)
         findings.extend(self._resolve_custom_invocations())
+        findings.extend(self._resolve_cross_file_wrappers(findings))
         return [normalize_finding(f) for f in findings]
+
+    def _java_enum_texts_for(self, file_path: Path,
+                               content: str) -> list[str]:
+        """Original texts for enum resolution: file + same-dir siblings.
+
+        Cached per directory per scan; capped at 50 siblings / ~2 MB so a
+        pathological directory cannot blow up a scan. Pure file reads;
+        never raises.
+        """
+        try:
+            key = str(file_path.parent)
+            siblings = self._java_enum_texts.get(key)
+            if siblings is None:
+                siblings = []
+                budget = 2 * 1024 * 1024
+                try:
+                    candidates = sorted(file_path.parent.glob("*.java"))[:50]
+                except Exception:
+                    candidates = []
+                for sib in candidates:
+                    if sib.name == file_path.name:
+                        continue
+                    try:
+                        text = sib.read_text(encoding="utf-8",
+                                             errors="ignore")
+                    except Exception:
+                        continue
+                    if len(text) > budget:
+                        break
+                    budget -= len(text)
+                    siblings.append(text)
+                self._java_enum_texts[key] = siblings
+            return [content, *siblings]
+        except Exception:
+            return [content]
 
     def _should_skip(self, path: Path) -> bool:
         skip_patterns = [
@@ -470,6 +515,12 @@ class SourceScanner(Scanner[ScannerFinding]):
 
         sites = _cp.extract_calls(masked)
         consts = _cp.collect_constants(masked)
+        if lang == "java":
+            # Masking blanks string contents, so Java string constants
+            # need the original text (same one-hop contract as above).
+            for key, value in _cp.collect_java_string_consts(
+                    content).items():
+                consts.setdefault(key, value)
         matched_sites: set[int] = set()
         # (finding, site, row_id) for the subsumption post-pass.
         produced: list[tuple[Any, Any, str]] = []
@@ -511,6 +562,22 @@ class SourceScanner(Scanner[ScannerFinding]):
                     continue
                 resolved = _cp.resolve_entry(row, site.args, consts,
                                              site.name, literals)
+                if lang == "java" and row.get("id") == "jca-cipher" \
+                        and "getJceName" in site.args \
+                        and "transformation" not in str(
+                            resolved.get("detail", "")):
+                    # Enum-dispatched transformation (RsaAlgorithm.DEFAULT
+                    # -> "RSA"): resolve through same-directory enums before
+                    # accepting the row default. Never guesses: unresolved
+                    # receivers keep the default canonical. Original text
+                    # (not masked: string contents are blanked there).
+                    enum_hit = _cp.resolve_java_enum_string(
+                        self._java_enum_texts_for(file_path, content),
+                        site.args)
+                    if enum_hit:
+                        resolved = _cp.resolve_entry(
+                            row, f'"{enum_hit}"', consts, site.name,
+                            [enum_hit])
                 args = _cp.split_args(site.args)
                 finding = self._build_finding(
                     file_path=file_path, line=site.line,
@@ -565,10 +632,37 @@ class SourceScanner(Scanner[ScannerFinding]):
 
         # One-hop wrapper resolution: local functions wrapping a crypto
         # API inherit the wrapped call's resolved semantics at reduced
-        # confidence (Probable); chains are not followed.
+        # confidence (Probable); chains are not followed. Definition and
+        # prototype lines never fire (they are not calls), and call arity
+        # must match a crypto overload's arity (overload-safe: a 1-arg
+        # call to a 2-arg crypto overload is a different function).
         wrappers = _cp.find_wrappers(
             [s for i, s in enumerate(sites) if i in matched_sites], api_names)
         if wrappers:
+            try:
+                deflines_all = _cp._def_lines_all(masked)
+            except Exception:
+                deflines_all = {}
+            crypto_arities: dict[str, set[int]] = {}
+            for _finding, wsite, _row_id in produced:
+                wfunc = getattr(wsite, "function", None)
+                if not wfunc or wfunc not in wrappers:
+                    continue
+                try:
+                    wline = int(getattr(wsite, "line", 0) or 0)
+                except Exception:
+                    continue
+                overloads = [ln for ln in deflines_all.get(wfunc, [])
+                             if ln <= wline]
+                if not overloads:
+                    continue
+                try:
+                    params = self._def_params(masked, lines, wfunc,
+                                              at_line=max(overloads))
+                    crypto_arities.setdefault(wfunc, set()).add(len(params))
+                except Exception:
+                    continue
+            func_semantics: dict[str, dict] = {}
             func_semantics: dict[str, dict] = {}
             for finding, site, row_id in produced:
                 if row_id.startswith("ossl-evp-ctor-"):
@@ -591,6 +685,21 @@ class SourceScanner(Scanner[ScannerFinding]):
                 base = site.name.split(".")[-1].split(":")[-1]
                 if base not in wrappers or site.function in wrappers:
                     continue
+                try:
+                    if int(site.line) in deflines_all.get(base, []):
+                        continue  # the definition itself is not a call
+                    statement = _cp.statement_text(
+                        list(lines or []), int(site.line))
+                    if self._looks_like_declaration(statement, base):
+                        continue  # prototypes are not calls
+                    arities = crypto_arities.get(base)
+                    if arities:
+                        call_arity = len(_cp.split_args(
+                            str(getattr(site, "args", "") or "")))
+                        if call_arity not in arities:
+                            continue
+                except Exception:
+                    pass
                 target_api = wrappers[base]
                 for row, rx in by_name.get(target_api, []):
                     inherited = dict(func_semantics.get(base, {}))
@@ -620,20 +729,532 @@ class SourceScanner(Scanner[ScannerFinding]):
         # Families already covered by API findings are skipped.
         findings.extend(self._fingerprint_findings(
             file_path, lang, masked, classification, findings))
+        # Cross-file crypto delegates (Java JCA factories): record local
+        # factory wrappers for the post-pass (call sites in other files).
+        if lang == "java" and produced:
+            self._stash_delegates(file_path, masked, lines, consts,
+                                  produced)
         self._remember_brace(cache_key, findings, suppressed, classification)
         self._stash_brace_ctx(file_path, sites, masked, classification,
                               findings)
         return findings
 
+    def _stash_delegates(self, file_path: Path, masked: str,
+                           lines: list, consts: dict,
+                           produced: list) -> None:
+        """Record local factory wrappers for cross-file attribution.
+
+        A produced direct finding (``source:api-call``) inside a locally
+        defined function makes that function a delegate: other files'
+        calls to it (exact base-name match) resolve through the wrapped
+        API. Forwarded wrapper-parameter indexes are recorded so
+        call-site literals resolve precisely; unresolvable arguments
+        fall back to the delegate default (never guessed).
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        try:
+            defs = set(_cp._def_lines(masked))
+        except Exception:
+            defs = set()
+        except Exception:
+            defs = set()
+        if not defs:
+            return
+        table: dict[str, dict] = {}
+        for finding, site, row_id in produced:
+            func = getattr(site, "function", None)
+            if not func or func not in defs or func in table:
+                continue
+            try:
+                tool = str((finding.evidence or [None])[0].tool or "")
+            except Exception:
+                tool = ""
+            if tool != "source:api-call":
+                continue
+            params = self._def_params(masked, lines, func)
+            fwd: list[int] = []
+            try:
+                for i, part in enumerate(_cp.split_args(
+                        str(getattr(site, "args", "") or ""))):
+                    if _cp.resolve_arg(part, consts) in params:
+                        fwd.append(i)
+            except Exception:
+                pass
+            table[func] = {
+                "canonical": finding.canonical,
+                "mode": finding.mode,
+                "key_size": finding.key_size,
+                "op": finding.operation_type.name
+                if finding.operation_type else "ENCRYPT",
+                "row_id": row_id,
+                "call": getattr(site, "name", ""),
+                "params": params,
+                "fwd": fwd,
+                "file": str(file_path),
+            }
+        if table:
+            self._crypto_delegates[str(file_path)] = table
+
+    @staticmethod
+    def _def_params(masked: str, lines: list, func: str,
+                    at_line: int | None = None) -> list[str]:
+        """Formal parameter names of one local function (best effort).
+
+        ``at_line`` selects a specific overload's definition line;
+        otherwise the first definition wins.
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        try:
+            if at_line is not None:
+                lineno = int(at_line)
+            else:
+                lineno = _cp._def_lines(masked).get(func) or 0
+            if not lineno:
+                return []
+            statement = _cp.statement_text(list(lines or []), int(lineno))
+            inner = statement.split("(", 1)[1].rsplit(")", 1)[0]
+            params = []
+            for part in _cp.split_args(inner):
+                tokens = re.findall(r"[A-Za-z_]\w*", part)
+                if tokens:
+                    params.append(tokens[-1])
+            return params
+        except Exception:
+            return []
+
+        except Exception:
+            return []
+
+    _WRAPPER_CIPHER_FAMILY_RE = re.compile(
+        r"AES|RSA|DES|3DES|CHACHA|BLOWFISH|CAMELLIA|ARIA|SM4")
+
+    def _resolve_cross_file_wrappers(
+            self, findings: list) -> list:
+        """Attribute cross-file delegate calls + field flows (Java-only).
+
+        Consumes ``_crypto_delegates`` (factory wrappers recorded during
+        the brace scan): call sites in other files whose base name
+        exactly matches a delegate resolve through it, with forwarded
+        string arguments re-parsed (call-site constants win) and the
+        delegate default otherwise. Same-file cipher field flows
+        (``this.f = newCipher(..)`` + ``initCipher`` direction +
+        ``doFinal`` terminal) and instance ``doFinal`` anchored to a
+        same-function cipher finding complete the one-hop picture.
+        Everything emits at Probable (reachability, not direct params);
+        anything unresolvable is skipped, never guessed.
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        table: dict[str, tuple] = {}
+        for path in sorted(self._crypto_delegates):
+            for func, spec in self._crypto_delegates[path].items():
+                table.setdefault(func, (spec, path))
+        covered: set[tuple] = set()
+        for finding in findings or []:
+            try:
+                loc = finding.location
+                covered.add((str(loc.file), int(loc.line or 0),
+                             str(finding.canonical)))
+            except Exception:
+                continue
+        out: list = []
+        for path in sorted(self._brace_ctx):
+            if not str(path).endswith(".java"):
+                continue
+            ctx = self._brace_ctx.get(path) or {}
+            sites = ctx.get("sites") or []
+            if not any(s[0] in table or s[0] in ("initCipher", "doFinal")
+                       for s in sites):
+                continue
+            try:
+                content = self._file_cache.get(str(path))
+                if content is None:
+                    content = Path(path).read_text(encoding="utf-8",
+                                                   errors="ignore")
+            except Exception:
+                continue
+            try:
+                masked, _ = _cp.mask_source(content)
+                consts = _cp.collect_constants(masked)
+                for key, value in _cp.collect_java_string_consts(
+                        content).items():
+                    consts.setdefault(key, value)
+                lines = content.splitlines()
+                call_sites = _cp.extract_calls(masked)
+            except Exception:
+                continue
+            classification = str(ctx.get("classification", "use") or "use")
+            try:
+                deflines = _cp._def_lines_all(masked)
+            except Exception:
+                deflines = {}
+            for site in call_sites:
+                base = site.name.split(".")[-1].split(":")[-1]
+                if base in table:
+                    if self._site_is_def(lines, site, base, deflines):
+                        continue
+                    item = self._delegate_call_finding(
+                        site, base, table[base], Path(path),
+                        classification, consts, lines, covered)
+                    if item is not None:
+                        out.append(item)
+                        try:
+                            covered.add((str(path), int(site.line),
+                                         str(item.canonical)))
+                        except Exception:
+                            pass
+            out.extend(self._field_flow_findings(
+                Path(path), call_sites, consts, lines, classification,
+                table, findings, covered, deflines))
+            for item in out:
+                try:
+                    loc = item.location
+                    covered.add((str(loc.file), int(loc.line or 0),
+                                 str(item.canonical)))
+                except Exception:
+                    pass
+        return out
+
+    @staticmethod
+    def _site_is_def(lines: list, site, base: str,
+                     deflines: dict) -> bool:
+        """True when a call site IS the named definition (not a call).
+
+        Covers `{`-style definitions (site line equals a def line) and
+        `;` prototypes (declaration check mirrors the API loop).
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        try:
+            if int(getattr(site, "line", 0) or 0) in \
+                    (deflines or {}).get(base, []):
+                return True
+            statement = _cp.statement_text(list(lines or []),
+                                           int(site.line))
+            return bool(SourceScanner._looks_like_declaration(
+                statement, base))
+        except Exception:
+            return False
+
+    def _delegate_call_finding(self, site, base: str, entry: tuple,
+                               file_path: Path, classification: str,
+                               consts: dict, lines: list,
+                               covered: set) -> object | None:
+        """One cross-file delegate finding (or None when unresolvable).
+
+        Only cross-file sites are handled here (same-file wrapper calls
+        belong to the same-file wrapper pass, which also owns overload
+        arity). Attribution requires a qualified call
+        (``CipherUtils.newCipher``, qualifier = defining file's type
+        name) or a capitalized factory/constructor call — bare lowercase
+        cross-file helper names (``encrypt``) are skipped to avoid
+        cross-file name collisions.
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        from ecdat.core.cir_models import UsageState
+        try:
+            spec, deffile = entry
+            if site.function == base and str(file_path) == str(deffile):
+                return None  # the delegate's own body: already covered
+            if str(file_path) == str(deffile):
+                return None  # same file: same-file wrapper pass owns it
+            if "." in (site.name or ""):
+                qual = site.name.rsplit(".", 1)[0].split(".")[-1]
+                try:
+                    stem = Path(str(deffile)).stem
+                except Exception:
+                    stem = ""
+                if qual != stem:
+                    return None
+            elif not base[:1].isupper():
+                return None  # bare lowercase cross-file: collision risk
+            parts = _cp.split_args(str(getattr(site, "args", "") or ""))
+            token = ""
+            for i in (spec.get("fwd") or []):
+                if 0 <= int(i) < len(parts):
+                    token = self._java_call_token(parts[int(i)], consts,
+                                                  lines, site.line)
+                    if token:
+                        break
+            parsed = False
+            resolved = None
+            if token:
+                parser = "jca-transformation" if "/" in token else "jca-name"
+                synth = {"id": str(spec.get("row_id", "")),
+                         "call": str(spec.get("call", "")),
+                         "parser": parser,
+                         "canonical": str(spec.get("canonical", "AES")),
+                         "op": str(spec.get("op", "ENCRYPT")),
+                         "confidence": 0.70}
+                candidate = _cp.resolve_entry(
+                    synth, f'"{token}"', {}, str(spec.get("call", "")),
+                    [token])
+                detail = str(candidate.get("detail", "") or "")
+                if "transformation" in detail or "algorithm" in detail \
+                        or "fetch" in detail or "signature" in detail:
+                    candidate["confidence"] = 0.70
+                    resolved = candidate
+                    parsed = True
+            if resolved is None:
+                resolved = {
+                    "canonical": str(spec.get("canonical", "AES")),
+                    "key_size": spec.get("key_size"),
+                    "mode": spec.get("mode"),
+                    "curve": None, "protocol": None,
+                    "op": str(spec.get("op", "ENCRYPT")),
+                    "confidence": 0.65,
+                    "detail": f"delegate default ({spec.get('call', '')})",
+                }
+            if (str(file_path), int(site.line),
+                    str(resolved.get("canonical"))) in covered:
+                return None
+            finding = self._build_finding(
+                file_path=file_path, line=site.line,
+                function=site.function, lang="java",
+                classification=classification,
+                call_text=site.call_text, api_name=site.name,
+                resolved=resolved,
+                row={"id": str(spec.get("row_id", "")),
+                     "call": str(spec.get("call", "")),
+                     "library": "jca"},
+                args=[], tool="source:wrapper-call",
+                detail_prefix="cross-file wrapper resolving to "
+                              f"{spec.get('call', '')}",
+                wrapper_from=base,
+            )
+            if finding is not None and finding.usage_state == \
+                    UsageState.CONFIRMED:
+                finding.usage_state = UsageState.PROBABLE
+            return finding
+        except Exception:
+            return None
+
+    @staticmethod
+    def _java_call_token(part: str, consts: dict, lines: list,
+                         lineno: int) -> str:
+        """Resolve one call-site argument to an algorithm string (or "")."""
+        from ecdat.scanners.source import c_parser as _cp
+        try:
+            piece = str(part or "").strip()
+            if not piece:
+                return ""
+            if '"' in piece:
+                try:
+                    raw = lines[int(lineno) - 1] \
+                        if 0 < int(lineno) <= len(lines) else ""
+                except Exception:
+                    raw = ""
+                for lit in _cp.string_literals_of_line(raw or ""):
+                    if lit:
+                        return lit
+                return ""
+            token = _cp.resolve_arg(piece, consts).strip().strip('"')
+            if not token or token in ("this", "null"):
+                return ""
+            return token
+        except Exception:
+            return ""
+
+    def _field_flow_findings(self, file_path: Path, sites: list,
+                             consts: dict, lines: list,
+                             classification: str, table: dict,
+                             findings: list, covered: set,
+                             deflines: dict | None = None) -> list:
+        """Cipher field flows: ``this.f = factory(..)`` + init + doFinal."""
+        from ecdat.scanners.source import c_parser as _cp
+        from ecdat.core.cir_models import UsageState
+        out: list = []
+        try:
+            deflines = deflines or {}
+            fields: dict[str, dict] = {}
+            assign_re = re.compile(
+                r"(?:this\.)?([A-Za-z_]\w*)\s*(?<![=!<>])=(?!=)\s*"
+                r"([^;]{1,300}?);", re.DOTALL)
+            for match in assign_re.finditer("\n".join(lines or [])):
+                field, rhs = match.group(1), match.group(2)
+                if not re.search(r"newCipher|newSecretKey|getInstance|"
+                                 r"SecretKeySpec", rhs):
+                    continue
+                sem = self._java_rhs_semantics(rhs, consts, table)
+                if sem is not None:
+                    fields.setdefault(field, sem)
+            inits: dict[str, str] = {}
+            for site in sites or []:
+                base = site.name.split(".")[-1].split(":")[-1]
+                if base != "initCipher":
+                    continue
+                if self._site_is_def(lines, site, base, deflines):
+                    continue
+                parts = _cp.split_args(str(getattr(site, "args", "") or ""))
+                if not parts:
+                    continue
+                field = parts[0].strip()
+                if field.startswith("this."):
+                    field = field[5:]
+                if not re.fullmatch(r"[A-Za-z_]\w*", field):
+                    continue
+                direction = ""
+                if re.search(r"\bDECRYPT_MODE\b", site.args or ""):
+                    direction = "DECRYPT"
+                elif re.search(r"\bENCRYPT_MODE\b", site.args or ""):
+                    direction = "ENCRYPT"
+                if direction:
+                    inits.setdefault(field, direction)
+            anchorable = []
+            for finding in findings or []:
+                try:
+                    loc = finding.location
+                    if str(loc.file) != str(file_path):
+                        continue
+                    if self._WRAPPER_CIPHER_FAMILY_RE.search(
+                            str(finding.canonical or "").upper()):
+                        anchorable.append(finding)
+                except Exception:
+                    continue
+            for site in sites or []:
+                base = site.name.split(".")[-1].split(":")[-1]
+                if base != "doFinal":
+                    continue
+                if self._site_is_def(lines, site, base, deflines):
+                    continue
+                parts = _cp.split_args(str(getattr(site, "args", "") or ""))
+                first = parts[0].strip() if parts else ""
+                if first.startswith("this."):
+                    first = first[5:]
+                canonical = mode = direction = None
+                if re.fullmatch(r"[A-Za-z_]\w*", first or "") \
+                        and first in fields and first in inits:
+                    canonical = fields[first].get("canonical")
+                    mode = fields[first].get("mode")
+                    direction = inits[first]
+                else:
+                    receiver = site.name.rsplit(".", 1)[0] \
+                        if "." in site.name else ""
+                    recv_base = receiver.split(".")[-1]
+                    if not recv_base or not recv_base[:1].islower():
+                        continue
+                    best = None
+                    for finding in anchorable:
+                        try:
+                            if str(finding.location.function or "") != \
+                                    str(site.function or ""):
+                                continue
+                            dist = abs(int(finding.location.line or 0)
+                                       - int(site.line))
+                            if best is None or dist < best[0]:
+                                best = (dist, finding)
+                        except Exception:
+                            continue
+                    if best is None:
+                        continue
+                    canonical = best[1].canonical
+                    mode = best[1].mode
+                    method = str(site.function or "").lower()
+                    if method.startswith("encrypt"):
+                        direction = "ENCRYPT"
+                    elif method.startswith("decrypt"):
+                        direction = "DECRYPT"
+                    else:
+                        continue
+                if not canonical or not direction:
+                    continue
+                key = (str(file_path), int(site.line), str(canonical))
+                if key in covered:
+                    continue
+                resolved = {"canonical": str(canonical),
+                            "key_size": None, "mode": mode, "curve": None,
+                            "protocol": None, "op": direction,
+                            "confidence": 0.70,
+                            "detail": "cipher field flow to doFinal"}
+                finding = self._build_finding(
+                    file_path=file_path, line=site.line,
+                    function=site.function, lang="java",
+                    classification=classification,
+                    call_text=site.call_text, api_name=site.name,
+                    resolved=resolved,
+                    row={"id": "jca-field-flow", "call": site.name,
+                         "library": "jca"},
+                    args=[], tool="source:wrapper-call",
+                    detail_prefix="cipher field flow to doFinal",
+                    wrapper_from=base,
+                )
+                if finding is not None:
+                    if finding.usage_state == UsageState.CONFIRMED:
+                        finding.usage_state = UsageState.PROBABLE
+                    out.append(finding)
+                    covered.add(key)
+        except Exception:
+            pass
+        return out
+
+    @staticmethod
+    def _java_rhs_semantics(rhs: str, consts: dict, table: dict) -> dict | None:
+        """Resolve a cipher-factory RHS to {canonical, mode} (or None)."""
+        from ecdat.scanners.source import c_parser as _cp
+        try:
+            text = str(rhs or "")
+            lits = re.findall(r'"((?:[^"\\]|\\.)*)"', text)
+            token = ""
+            if lits:
+                token = str(lits[0] or "")
+            else:
+                for ident in re.findall(r"[A-Za-z_]\w*", text):
+                    if ident in ("this", "new", "return", "CipherUtils",
+                                 "Cipher", "newCipher", "newSecretKey",
+                                 "getInstance", "SecretKeySpec"):
+                        continue
+                    resolved = _cp.resolve_arg(ident, consts)
+                    candidate = str(resolved or "").strip().strip('"')
+                    if candidate and candidate != ident:
+                        token = candidate
+                        break
+                    if ident in consts:
+                        continue
+                    token = ident
+                    break
+            if token:
+                synth = {"id": "jca-field", "call": "Cipher.getInstance",
+                         "parser": "jca-transformation", "canonical": "AES",
+                         "op": "ENCRYPT", "confidence": 0.70}
+                resolved = _cp.resolve_entry(synth, f'"{token}"', {},
+                                             "Cipher.getInstance", [token])
+                detail = str(resolved.get("detail", "") or "")
+                if "transformation" in detail or "algorithm" in detail:
+                    return {"canonical": str(resolved.get("canonical")),
+                            "mode": resolved.get("mode")}
+                return None
+            base = re.search(r"(\w+)\s*\(", text)
+            if base and base.group(1) in table:
+                spec = table[base.group(1)][0]
+                return {"canonical": str(spec.get("canonical", "AES")),
+                        "mode": spec.get("mode")}
+        except Exception:
+            pass
+        return None
+
     def _stash_brace_ctx(self, file_path: Path, sites: list,
-                         masked: str, classification: str,
-                         findings: list[ScannerFinding]) -> None:
+                           masked: str, classification: str,
+                           findings: list[ScannerFinding]) -> None:
         """Record per-file call/definition context for the custom-API pass."""
         from ecdat.scanners.source import fingerprints as _fp
+        from ecdat.scanners.source import c_parser as _cp
         try:
             defs = _fp.defined_functions(masked)
         except Exception:
             defs = []
+        try:
+            def_qual = _fp.definition_qualifiers(masked)
+        except Exception:
+            def_qual = {}
+        try:
+            consts = _cp.collect_constants(masked)
+        except Exception:
+            consts = {}
+        try:
+            # Configurable AES sizes from preprocessor conditionals
+            # (e.g. ``#if defined(AES256)``): merged repo-wide by the
+            # custom-invocation pass for active-vs-supported key config.
+            aes_cond = _cp.aes_key_config({}, masked)[1]
+        except Exception:
+            aes_cond = []
         impl: dict[str, float] = {}
         for finding in findings:
             try:
@@ -647,8 +1268,11 @@ class SourceScanner(Scanner[ScannerFinding]):
         ctx = {
             "sites": self._ctx_sites(file_path, sites),
             "defs": defs,
+            "def_qual": def_qual,
             "impl": impl,
             "classification": classification,
+            "consts": consts,
+            "aes_cond": aes_cond,
         }
         self._brace_ctx[str(file_path)] = ctx
         # Attach context to the cached entry as well.
@@ -770,21 +1394,58 @@ class SourceScanner(Scanner[ScannerFinding]):
         custom APIs. Same-file calls are implementation detail (covered
         by the fingerprint finding); names without an operation hint
         are skipped rather than guessed.
+
+        Definitions themselves also refine the fingerprinted signal
+        (P1): a definition such as ``aes_encrypt_cbc`` in a file with
+        AES implementation evidence yields a mode-aware custom
+        operation (``AES-CBC``/``Encrypt``). Names never create a
+        signal alone — the fingerprint gate is required. Prototypes
+        are never invocations (P2).
         """
+        from ecdat.scanners.source import c_parser as _cp
         from ecdat.scanners.source import fingerprints as _fp
-        # def base name -> (defining file, canonical, confidence)
-        providers: dict[str, tuple[str, str, float]] = {}
+        # def base name -> (defining file, canonical, confidence, qualifier)
+        providers: dict[str, tuple[str, str, float, str]] = {}
         for path, ctx in self._brace_ctx.items():
             impl = ctx.get("impl") or {}
             if not impl:
                 continue
+            qual_map = ctx.get("def_qual") or {}
             for canonical, confidence in impl.items():
                 if float(confidence or 0.0) < 0.65:
                     continue
                 for def_name, _line in ctx.get("defs") or []:
-                    if _fp.def_name_matches_family(def_name, canonical):
+                    qual = str(qual_map.get(def_name, "") or "")
+                    qname = f"{qual}::{def_name}" if qual else def_name
+                    if _fp.def_name_matches_family(qname, canonical):
                         providers.setdefault(
-                            def_name, (path, canonical, float(confidence)))
+                            def_name,
+                            (path, canonical, float(confidence), qual))
+        # Repo-level compile-time AES key config (P4): merged defines
+        # plus preprocessor-conditional sizes across scanned files.
+        merged_consts: dict[str, str] = {}
+        cond_sizes: set[int] = set()
+        for ctx in self._brace_ctx.values():
+            try:
+                merged_consts.update(ctx.get("consts") or {})
+            except Exception:
+                pass
+            try:
+                cond_sizes.update(ctx.get("aes_cond") or [])
+            except Exception:
+                pass
+        try:
+            key_active, key_supported = _cp.aes_key_config(merged_consts, "")
+            key_supported = sorted(set(key_supported) | cond_sizes)
+        except Exception:
+            key_active, key_supported = None, []
+        key_note = ""
+        if key_active is not None or key_supported:
+            active_txt = f"AES-{key_active} active" if key_active is not None \
+                else "active size unknown"
+            supported_txt = "/".join(f"AES-{s}" for s in key_supported) \
+                if key_supported else "unknown"
+            key_note = f"; key-config: {active_txt}; supported {supported_txt}"
         out: list[ScannerFinding] = []
         for path, ctx in self._brace_ctx.items():
             classification = str(ctx.get("classification") or "use")
@@ -796,31 +1457,39 @@ class SourceScanner(Scanner[ScannerFinding]):
                 provider = providers.get(base)
                 if provider is None:
                     continue
-                def_path, canonical, _conf = provider
+                def_path, canonical, _conf, def_qual = provider
                 if def_path == path:
                     continue  # implementation detail, not an invocation
-                op_name = _fp.op_hint_for_name(base)
+                sem_name = f"{def_qual}::{base}" if def_qual else base
+                op_name = _fp.op_hint_for_name(sem_name)
                 if op_name is None:
                     continue
                 try:
                     op_type = OperationType[op_name]
                 except KeyError:
                     continue
+                invoked_canonical, invoked_mode = self._invoked_canonical(
+                    sem_name, canonical)
                 if classification == "test-vector":
                     usage, confidence = UsageState.POSSIBLE, 0.39
                 else:
                     usage, confidence = UsageState.CONFIRMED, 0.85
+                detail = (f"invocation of repo-defined {canonical} "
+                          f"function {base} at {path}:{line} "
+                          f"(defined in {def_path})")
+                if invoked_mode:
+                    detail += f" [mode {invoked_mode}]"
                 out.append(ScannerFinding(
-                    canonical=canonical,
-                    original=canonical,
+                    canonical=invoked_canonical,
+                    original=invoked_canonical,
                     library="custom",
+                    key_size=(key_active if canonical == "AES" else None),
+                    mode=invoked_mode,
                     usage_state=usage,
                     confidence=confidence,
                     evidence=[create_evidence_signal(
                         tool="source:custom-invocation",
-                        detail=(f"invocation of repo-defined {canonical} "
-                                f"function {base} at {path}:{line} "
-                                f"(defined in {def_path})"),
+                        detail=detail,
                         confidence=confidence,
                         snippet=str(call_text or "")[:200],
                     )],
@@ -832,9 +1501,140 @@ class SourceScanner(Scanner[ScannerFinding]):
                         library="custom", api=base),
                     context=Context(exposure=Exposure.INTERNAL),
                 ))
+        out.extend(self._definition_findings(key_active, key_note))
         if out:
             self._last_stats["custom_invocations"] = len(out)
         return out
+
+    @staticmethod
+    def _invoked_canonical(base: str,
+                           provider_canonical: str) -> tuple[str, str | None]:
+        """Mode-aware canonical for an invoked custom function name.
+
+        The mode token refines the provider family (``aes_encrypt_cbc``
+        -> ``AES-CBC``); a missing token keeps the generic family, and a
+        conflicting family keeps the provider (collision-safe: never
+        guessed from the name alone).
+        """
+        from ecdat.scanners.source import fingerprints as _fp
+        try:
+            sem_fam, sem_mode, _ops = _fp.function_semantics(base)
+        except Exception:
+            return provider_canonical, None
+        if sem_mode and (sem_fam is None or sem_fam == provider_canonical):
+            try:
+                composed = _fp.canonical_for_semantics(
+                    provider_canonical, sem_mode)
+            except Exception:
+                composed = None
+            if composed:
+                return composed, sem_mode
+        return provider_canonical, None
+
+    def _definition_findings(self, key_active: int | None,
+                             key_note: str) -> list[ScannerFinding]:
+        """Mode-aware operations from custom crypto definitions (P1/P6).
+
+        For files carrying fingerprint implementation evidence, each
+        defined function whose name refines that signal (family token +
+        operation) becomes a custom operation finding via the existing
+        ``_build_finding`` path (usage/confidence by file
+        classification; test and header files excluded). Bodies are
+        checked for bounded local-structure corroboration (IV/counter/
+        hash staging) which enriches the evidence detail.
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        from ecdat.scanners.source import fingerprints as _fp
+        out: list[ScannerFinding] = []
+        for path, ctx in self._brace_ctx.items():
+            classification = str(ctx.get("classification") or "use")
+            if classification in ("test-vector", "header-capability"):
+                continue
+            impl = ctx.get("impl") or {}
+            try:
+                strong = {fam for fam, conf in impl.items()
+                          if float(conf or 0.0) >= 0.65}
+            except Exception:
+                continue
+            if not strong:
+                continue
+            defs = ctx.get("defs") or []
+            if not defs:
+                continue
+            qual_map = ctx.get("def_qual") or {}
+            bodies = self._definition_bodies(str(path))
+            for def_name, def_line in defs:
+                qual = str(qual_map.get(def_name, "") or "")
+                qname = f"{qual}::{def_name}" if qual else def_name
+                try:
+                    fam, mode, ops = _fp.function_semantics(qname)
+                except Exception:
+                    continue
+                if fam is None or fam not in strong or not ops:
+                    continue
+                canonical = _fp.canonical_for_semantics(fam, mode) or fam
+                notes = _fp.corroborate_definition(
+                    bodies.get(def_name, ""), mode, ops)
+                confidence = 0.90 if notes else 0.85
+                detail = f"custom {fam} implementation"
+                if notes:
+                    detail += "; structure " + ",".join(notes)
+                if fam == "AES" and key_note:
+                    detail += key_note
+                for op_name in ops:
+                    resolved = {
+                        "canonical": canonical,
+                        "key_size": (key_active if fam == "AES" else None),
+                        "mode": mode,
+                        "curve": None,
+                        "protocol": None,
+                        "detail": detail,
+                        "confidence": confidence,
+                        "op": op_name,
+                    }
+                    try:
+                        finding = self._build_finding(
+                            file_path=Path(path), line=int(def_line or 1),
+                            function=def_name, lang="c",
+                            classification=classification,
+                            call_text=f"{def_name}(...)",
+                            api_name=def_name,
+                            resolved=resolved,
+                            row={"library": "custom"},
+                            args=[],
+                            tool="source:custom-invocation",
+                            detail_prefix=(
+                                f"repo-defined {canonical} function "
+                                f"{def_name} defined"),
+                            wrapper_from=None,
+                        )
+                    except Exception:
+                        continue
+                    if finding is not None:
+                        out.append(finding)
+        return out
+
+    def _definition_bodies(self, path: str) -> dict[str, str]:
+        """Masked function bodies by name for one file (bounded, P6).
+
+        Only consulted for fingerprint-backed implementation files;
+        bodies are capped so pathological files cannot blow up the
+        scan. Never raises.
+        """
+        from ecdat.scanners.source import c_parser as _cp
+        try:
+            content = self._file_cache.get(str(path))
+            if content is None:
+                content = Path(path).read_text(encoding="utf-8",
+                                               errors="ignore")
+            masked, _ = _cp.mask_source(content)
+            bodies: dict[str, str] = {}
+            for start, end, name in _cp._function_spans(masked):
+                if name not in bodies:
+                    bodies[name] = masked[start:end][:4000]
+            return bodies
+        except Exception:
+            return {}
 
     def _remember_brace(self, cache_key: tuple, findings: list,
                         suppressed: int, classification: str) -> None:
@@ -854,15 +1654,27 @@ class SourceScanner(Scanner[ScannerFinding]):
         """Filter C-style prototypes (``int EVP_x(...);``), not calls.
 
         Multi-line prototypes are handled by the caller, which passes
-        the full statement text (see c_parser.statement_text).
+        statement text (see c_parser.statement_text). A trailing comment
+        after the terminator (``void f(...); // comment``) is stripped
+        first: callers read original (unmasked) lines, which end with the
+        comment rather than ``;``. Only the comment following the
+        statement is removed — mid-statement ``//`` notes (common in
+        multi-line prototypes) are left intact.
         """
         stripped = line.strip()
+        stripped = re.sub(r";\s*//.*$", ";", stripped).strip()
+        stripped = re.sub(r";\s*/\*.*?\*/\s*$", ";", stripped).strip()
         if "(" not in stripped or name not in stripped:
             return False
         tail = stripped.split(name, 1)[1]
         if not tail.startswith("("):
             return False
-        if stripped.endswith(";") and "{" not in stripped and "=" not in stripped.split("(", 1)[0]:
+        # The brace check applies to the tail (after the name): a `{`
+        # there opens a definition body (``void f() {``). A brace
+        # *before* the name (``class AES { ... f(...);``) is a class
+        # context, not a body — inline member declarations still end
+        # with ``;`` and must stay declarations.
+        if stripped.endswith(";") and "{" not in tail and "=" not in stripped.split("(", 1)[0]:
             # Only the return-type prefix (before the name itself) may
             # carry a type keyword: the name may legitimately contain
             # substrings like "int" (EVP_EncryptInit_ex) or "char".
@@ -1004,12 +1816,27 @@ class SourceScanner(Scanner[ScannerFinding]):
 
 
 class CryptoASTVisitor(ast.NodeVisitor):
+    # PyCryptodome block ciphers whose `.new()` constructor takes a mode
+    # argument (positional #2 or `mode=` keyword). When a mode is resolved
+    # the canonical embeds it (AES-ECB), matching the risk/recommend
+    # registry convention (risk.py QUANTUM_VULN, recommend.py registry).
+    _MODED_CIPHERS = frozenset({"AES", "DES", "DES3", "Blowfish"})
+
+    # Mode tokens accepted from constructor args (PyCryptodome + generic).
+    _MODE_TOKENS = frozenset({
+        "ECB", "CBC", "CFB", "OFB", "CTR", "OPENPGP",
+        "CCM", "EAX", "GCM", "SIV", "OCB",
+    })
+
     def __init__(self, file_path: Path, content: str):
         self.file_path = file_path
         self.content = content
         self.lines = content.splitlines()
         self.findings: list[ScannerFinding] = []
         self.imports: dict[str, str] = {}
+        # Module-level NAME -> assigned expression text (for mode aliases
+        # such as `MODE = AES.MODE_ECB`). Single bounded pass, no dataflow.
+        self._constants: dict[str, str] = {}
         self.current_function: Optional[str] = None
         self._collect_imports()
 
@@ -1025,6 +1852,13 @@ class CryptoASTVisitor(ast.NodeVisitor):
                     for alias in node.names:
                         full_name = f"{module}.{alias.name}"
                         self.imports[alias.asname or alias.name] = full_name
+                elif isinstance(node, ast.Assign) and len(node.targets) == 1 \
+                        and isinstance(node.targets[0], ast.Name):
+                    try:
+                        self._constants[node.targets[0].id] = \
+                            ast.unparse(node.value)
+                    except Exception:
+                        pass
         except Exception:
             pass
 
@@ -1043,6 +1877,193 @@ class CryptoASTVisitor(ast.NodeVisitor):
         elif isinstance(node.func, ast.Name):
             self._check_name_call(node)
         self.generic_visit(node)
+
+    # Binding aliases / class definitions that name concrete primitives
+    # (``AESGCM = rust_openssl.aead.AESGCM``, ``class AES:``) are
+    # ProvidedOnly capabilities — never Confirmed operations. Only exact
+    # allowlist hits emit; everything else (SIV variants without a
+    # canonical, generic classes, mode constants) stays silent.
+    _CRYPTO_ALIAS_ATTRS = {
+        "AESGCM": "AES-256-GCM",
+        "ChaCha20Poly1305": "ChaCha20-Poly1305",
+    }
+    _CRYPTO_MODE_CLASSES = frozenset({
+        "ECB", "CBC", "CFB", "OFB", "CTR", "GCM", "CCM", "XTS", "OCB",
+    })
+    # Class names that denote concrete primitives (pyca-style layout).
+    # The signature registry has no bare family names (only AES-128-CBC
+    # style entries), so this explicit map stands in for it here.
+    _CRYPTO_CLASS_ALGOS = {
+        "AES": "AES", "AES128": "AES", "AES256": "AES",
+        "ChaCha20": "ChaCha20", "TripleDES": "3DES", "DES": "DES",
+        "Blowfish": "Blowfish", "Camellia": "Camellia", "SEED": "SEED",
+        "SM4": "SM4", "IDEA": "IDEA", "CAST5": "CAST5", "RC4": "RC4",
+        "MD5": "MD5", "SHA1": "SHA-1", "SHA256": "SHA-256",
+        "SHA512": "SHA-512", "RSA": "RSA", "DSA": "DSA", "DH": "DH",
+        "ECDSA": "ECDSA", "Ed25519": "Ed25519", "X25519": "X25519",
+        "HMAC": "HMAC", "PBKDF2": "PBKDF2",
+    }
+
+    def visit_Assign(self, node: ast.Assign):
+        try:
+            if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                    and isinstance(node.value, ast.Attribute):
+                chain: list[str] = []
+                current: ast.expr = node.value
+                while isinstance(current, ast.Attribute):
+                    chain.append(current.attr)
+                    current = current.value
+                if isinstance(current, ast.Name):
+                    chain.append(current.id)
+                    tail = chain[0]
+                    canonical = self._CRYPTO_ALIAS_ATTRS.get(tail)
+                    if canonical is not None:
+                        dotted = ".".join(reversed(chain))
+                        root = chain[-1]
+                        library = str(self.imports.get(root, root) or "")
+                        library = library.split(".")[0]
+                        self._create_capability_finding(
+                            canonical, node.lineno,
+                            f"crypto binding alias: {dotted}", library)
+        except Exception:
+            pass
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+        try:
+            name = str(getattr(node, "name", "") or "")
+            canonical: Optional[str] = None
+            if name in self._CRYPTO_MODE_CLASSES:
+                canonical = name
+            elif name in self._CRYPTO_CLASS_ALGOS:
+                canonical = self._CRYPTO_CLASS_ALGOS[name]
+            else:
+                norm, _original = normalize_algorithm(name)
+                if norm != name and get_category(norm) is not None \
+                        and get_category(norm) != "library":
+                    canonical = norm
+            if canonical is not None:
+                self._create_capability_finding(
+                    canonical, node.lineno,
+                    f"crypto class definition: {name}", "custom")
+        except Exception:
+            pass
+        self.generic_visit(node)
+
+    def _create_capability_finding(self, canonical: str, line_no: int,
+                                   detail: str, library: str) -> None:
+        """One ProvidedOnly capability finding (never a Confirmed op)."""
+        canonical_norm, original = normalize_algorithm(canonical)
+        snippet = self.lines[line_no - 1].strip() \
+            if 0 < line_no <= len(self.lines) else ""
+        self.findings.append(ScannerFinding(
+            canonical=canonical_norm,
+            original=original,
+            library=None,
+            usage_state=UsageState.PROVIDED_ONLY,
+            confidence=0.45,
+            evidence=[create_evidence_signal(
+                tool="source:ast",
+                detail=f"{detail} at {self.file_path}:{line_no}",
+                confidence=0.45,
+                snippet=snippet[:200],
+            )],
+            location=Location(file=str(self.file_path), line=line_no,
+                              function=self.current_function),
+            operation_type=None,
+            function=self.current_function,
+            implementation=Implementation(library=library, api=detail),
+            context=Context(exposure=Exposure.INTERNAL),
+            dependency_only=True,
+        ))
+
+    def _mode_token(self, text: str) -> Optional[str]:
+        """Extract a cipher-mode token from one argument expression text.
+
+        Accepts dotted constants (``AES.MODE_ECB``), bare names
+        (``MODE_ECB``/``ECB``), and string literals (``"ECB"``).
+        Returns the upper-cased mode or None (never guesses).
+        """
+        token = str(text or "").strip().strip("'\"")
+        if not token:
+            return None
+        # Dotted constant: the attribute carries the mode (AES.MODE_ECB).
+        # Bare name: suffix after the last underscore (MODE_ECB -> ECB).
+        tail = token.split(".")[-1].upper()
+        candidate = tail.split("_")[-1] if "_" in tail else tail
+        if candidate in self._MODE_TOKENS:
+            return candidate
+        return None
+
+    def _resolve_mode_expr(self, expr: "ast.expr", _seen: frozenset = frozenset()) -> Optional[str]:
+        """Resolve a mode argument AST node to a mode token (bounded)."""
+        if isinstance(expr, ast.Attribute):
+            return self._mode_token(expr.attr)
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return self._mode_token(expr.value)
+        if isinstance(expr, ast.Name):
+            # Bare imported constant (from Crypto.Cipher.AES import
+            # MODE_ECB): the name itself carries the mode.
+            hit = self._mode_token(expr.id)
+            if hit:
+                return hit
+            if expr.id in _seen:
+                return None
+            raw = self._constants.get(expr.id)
+            if raw is None:
+                return None
+            # Alias may itself be dotted (AES.MODE_ECB) or a mode word.
+            hit = self._mode_token(raw)
+            if hit:
+                return hit
+            # One more hop: alias-to-alias (MODE2 = MODE).
+            if re.fullmatch(r"[A-Za-z_]\w*", raw.strip()):
+                try:
+                    nxt = ast.parse(raw.strip(), mode="eval").body
+                except Exception:
+                    return None
+                return self._resolve_mode_expr(nxt, _seen | {expr.id})
+            return None
+        return None
+
+    def _constructor_mode(self, node: ast.Call) -> Optional[str]:
+        """Mode for a cipher constructor call (PyCryptodome `.new()`).
+
+        Positional arg #2 (``AES.new(key, AES.MODE_ECB)``) or the ``mode=``
+        keyword. Absent/unresolvable -> None (no default-mode guessing).
+        """
+        candidates: list = []
+        if len(node.args) >= 2:
+            candidates.append(node.args[1])
+        for kw in node.keywords:
+            if kw.arg == "mode":
+                candidates.append(kw.value)
+        for expr in candidates:
+            hit = self._resolve_mode_expr(expr)
+            if hit:
+                return hit
+        return None
+
+    def _create_cipher_constructor_finding(
+        self, cipher_module: str, method_name: str,
+        node: ast.Call, line_no: int, full_call: str,
+    ) -> bool:
+        """Emit a finding for ``<Cipher>.new(...)`` (PyCryptodome style).
+
+        Returns True when handled (whether or not a mode resolved — the
+        constructor itself is an Encrypt operation on the cipher).
+        """
+        pattern = f"Crypto.Cipher.{cipher_module}"
+        entry = PYTHON_CRYPTO_PATTERNS.get(pattern)
+        if entry is None:
+            return False
+        canonical, op_type = entry
+        mode = self._constructor_mode(node)
+        if mode and canonical in self._MODED_CIPHERS:
+            canonical = f"{canonical}-{mode}"
+        self._create_finding(pattern, canonical, op_type, line_no,
+                             full_call, node, mode_override=mode)
+        return True
 
     def _check_attribute_call(self, node: ast.Call):
         if not isinstance(node.func.value, ast.Attribute):
@@ -1071,6 +2092,16 @@ class CryptoASTVisitor(ast.NodeVisitor):
                 # Fallback: Heuristic matching for common EC/RSA method names on variables
                 # when relevant crypto modules are imported
                 self._check_heuristic_methods(node, obj_name, method_name, full_call)
+                # PyCryptodome constructors: AES.new(key, AES.MODE_ECB).
+                if method_name == "new":
+                    for import_alias, full_import in self.imports.items():
+                        if obj_name_lower == import_alias.lower() \
+                                and full_import.startswith("Crypto.Cipher."):
+                            cipher_module = full_import[len("Crypto.Cipher."):]
+                            if self._create_cipher_constructor_finding(
+                                    cipher_module, method_name, node,
+                                    node.lineno, full_call):
+                                return
             elif isinstance(node.func.value, ast.Call):
                 # Constructor call: ClassName(...).method()
                 # e.g., AESGCM(key).encrypt(...) or AESGCM(key).decrypt(...)
@@ -1112,7 +2143,16 @@ class CryptoASTVisitor(ast.NodeVisitor):
             method_name = attr_chain[0]
             obj_name = attr_chain[-1]
             full_call = ".".join(reversed(attr_chain))
-            
+
+            # Fully-qualified PyCryptodome constructor:
+            # Crypto.Cipher.AES.new(key, AES.MODE_ECB).
+            if method_name == "new" and len(attr_chain) >= 4 \
+                    and attr_chain[-1] == "Crypto" \
+                    and attr_chain[-2] == "Cipher":
+                if self._create_cipher_constructor_finding(
+                        attr_chain[-3], method_name, node,
+                        node.lineno, full_call):
+                    return
             # Check if this is a known crypto method on a wrapper/instance
             self._check_wrapper_methods(node, obj_name, method_name, full_call)
             return
@@ -1287,14 +2327,17 @@ class CryptoASTVisitor(ast.NodeVisitor):
                         return
 
     def _create_finding(self, pattern: str, canonical: str, op_type: OperationType,
-                       line_no: int, call_str: str, node: ast.Call = None):
+                       line_no: int, call_str: str, node: ast.Call = None,
+                       mode_override: Optional[str] = None):
         canonical_norm, original = normalize_algorithm(canonical)
         category = get_category(canonical_norm)
         
         # Extract key_size and mode from canonical algorithm name
         key_sizes = get_key_sizes(canonical_norm)
         key_size = key_sizes[0] if key_sizes else None
-        mode = get_mode(canonical_norm)
+        # An explicitly resolved constructor mode (e.g. AES.MODE_ECB) wins
+        # over the registry default; never invent one when absent.
+        mode = mode_override or get_mode(canonical_norm)
         curves = get_curves(canonical_norm)
         curve = curves[0] if curves else None
         

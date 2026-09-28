@@ -70,15 +70,16 @@ def test_scan_binary_missing_target(tmp_path, capsys):
     assert "not found" in err
 
 
-def test_scan_binary_duplicate_is_clean_error(tmp_path, capsys):
+def test_scan_binary_duplicate_reuses_stored_row(tmp_path, capsys):
     target = _binary(tmp_path)
     assert main(["scan-binary", str(target), "--db", _db(tmp_path)]) == 0
-    _scan_id(capsys)
+    first_id = _scan_id(capsys)
     rc = main(["scan-binary", str(target), "--db", _db(tmp_path)])
-    assert rc == 1
+    assert rc == 0
     out, err = capsys.readouterr()
     assert "Traceback" not in out + err
-    assert "already exists" in err
+    assert out.strip() == first_id
+    assert "reused" in err
 
 
 # --- scan-container -----------------------------------------------------

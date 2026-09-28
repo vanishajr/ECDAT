@@ -27,8 +27,12 @@ __all__ = [
     "FingerprintHit",
     "analyze_file",
     "defined_functions",
+    "definition_qualifiers",
     "def_name_matches_family",
     "op_hint_for_name",
+    "function_semantics",
+    "canonical_for_semantics",
+    "corroborate_definition",
     "EXCLUDED_IDENTIFIERS",
 ]
 
@@ -58,7 +62,8 @@ _HEX_RE = re.compile(r"0[xX]([0-9a-fA-F]+)")
 _INT_RE = re.compile(r"(?<![\w.])(-?\d+)(?![\w])")
 _BRACE_BLOCK_RE = re.compile(r"\{([^{}]*)\}")
 _FUNC_DEF_RE = re.compile(
-    r"^\s*(?:[\w:\<\>\*]+\s+)+[\*\&]?\s*([A-Za-z_]\w*)\s*\([^;{}]*\)\s*(?:\{|$)",
+    r"^\s*(?:[\w:\<\>\*]+\s+)+[\*\&]?\s*"
+    r"(?:([A-Za-z_]\w*)::)?([A-Za-z_]\w*)\s*\([^;{}]*\)\s*(?:\{|$)",
     re.MULTILINE,
 )
 _KEYWORD_DEF_RE = re.compile(r"\b(?:if|for|while|switch|catch|return|sizeof)\b")
@@ -81,7 +86,9 @@ def _family_identifiers(canonical: str, masked: str) -> list[str]:
                 r"\b(sbox|rsbox|rcon|Rcon|MixColumn|InvMixColumn|ShiftRow|xtime)\b"],
         "DES": [r"\bDES(_ede|_ecb|_cbc|_key|_crypt)?\b",
                 r"\b(des_|Des_|DESEDE|TripleDES|tripledes)\w*\b"],
-        "3DES": [r"\b(DES_ede|DESEDE|TripleDES|tripledes|des_ede)\w*\b"],
+        "3DES": [r"\b(DES_ede|DESEDE|TripleDES|tripledes|des_ede)\w*\b",
+                 r"\b(three_des|triple_des|THREE_DES|TRIPLE_DES)\w*\b",
+                 r"\b(desede|des_ede|desede\d*|des3|tdea)\w*\b"],
         "RC4": [r"\b(RC4|rc4|ARCFOUR|arcfour)(_set_key|_crypt)?\b"],
         "Blowfish": [r"\b(blowfish|Blowfish|BLOWFISH)\w*\b"],
         "ChaCha20": [r"\b(chacha|ChaCha|CHACHA)(20)?\b"],
@@ -292,28 +299,63 @@ def analyze_file(masked: str, lang: str = "c") -> list[FingerprintHit]:
             confidence=confidence,
             detail="custom implementation (" + "; ".join(detail_bits) + ")",
         ))
-    # 3DES is a DES refinement: keep the more specific finding only.
+    # 3DES is a DES refinement: keep the more specific finding only,
+    # unless the file defines DES-only entry points too (e.g. des_crypt
+    # alongside three_des_crypt: both families are implemented).
     names = {h.canonical for h in hits}
     if "3DES" in names and "DES" in names:
-        hits = [h for h in hits
-                if not (h.canonical == "DES" and h.confidence <= next(
-                    x.confidence for x in hits if x.canonical == "3DES"))]
+        try:
+            des_only = {name for name, _line in defined_functions(masked)
+                        if def_name_matches_family(name, "DES")
+                        and not def_name_matches_family(name, "3DES")}
+        except Exception:
+            des_only = set()
+        if len(des_only) < 2:
+            hits = [h for h in hits
+                    if not (h.canonical == "DES" and h.confidence <= next(
+                        x.confidence for x in hits if x.canonical == "3DES"))]
     return sorted(hits, key=lambda h: (-h.confidence, h.canonical))
 
 
 def defined_functions(masked: str) -> list[tuple[str, int]]:
-    """Top-level function definitions in masked source: (name, line)."""
+    """Top-level function definitions in masked source: (name, line).
+
+    Names are bare method names (``EncryptECB`` for
+    ``AES::EncryptECB``); class qualifiers are available separately via
+    :func:`definition_qualifiers`.
+    """
     if not masked:
         return []
     lines = masked.split("\n")
     out: list[tuple[str, int]] = []
     for match in _FUNC_DEF_RE.finditer(masked):
-        name = match.group(1)
+        name = match.group(2)
         if _KEYWORD_DEF_RE.fullmatch(name):
             continue
         line = masked.count("\n", 0, match.start()) + 1
         _ = lines
         out.append((name, line))
+    return out
+
+
+def definition_qualifiers(masked: str) -> dict[str, str]:
+    """Class qualifiers for C++ out-of-class definitions: {method: class}.
+
+    ``unsigned char *AES::EncryptECB(...)`` maps ``EncryptECB`` ->
+    ``AES`` so the class name can corroborate the family (the method
+    name alone, e.g. ``EncryptECB``, carries no family token). First
+    definition wins. Pure; never raises.
+    """
+    out: dict[str, str] = {}
+    if not masked:
+        return out
+    try:
+        for match in _FUNC_DEF_RE.finditer(masked):
+            qual, name = match.group(1), match.group(2)
+            if qual and name and name not in out:
+                out[name] = qual
+    except Exception:
+        pass
     return out
 
 
@@ -336,14 +378,23 @@ _OP_HINTS = (
     ("schedule", "KEY_MANAGEMENT"),
     ("generate", "KEY_MANAGEMENT"),
     ("cipher", "ENCRYPT"),
+    # IV management (set_iv / iv setup) is key provisioning, not data
+    # encryption. Last so directional verbs keep priority, and only
+    # consulted after the directional pre-checks in function_semantics.
+    ("iv", "KEY_MANAGEMENT"),
 )
 
 
 def _def_cluster(masked: str, canonical: str) -> bool:
     """True when >=2 defined functions belong to the family."""
     try:
-        names = {name for name, _line in defined_functions(masked)
-                 if def_name_matches_family(name, canonical)}
+        quals = definition_qualifiers(masked)
+        names = set()
+        for name, _line in defined_functions(masked):
+            qual = quals.get(name, "")
+            qname = f"{qual}::{name}" if qual else name
+            if def_name_matches_family(qname, canonical):
+                names.add(name)
     except Exception:
         return False
     return len(names) >= 2
@@ -360,8 +411,9 @@ def def_name_matches_family(name: str, canonical: str) -> bool:
     tokens: dict[str, tuple[str, ...]] = {
         "AES": ("aes",),
         "DES": ("des", "desede", "tripledes"),
-        "3DES": ("desede", "tripledes", "des_ede"),
-        "RC4": ("rc4", "arcfour"),
+        "3DES": ("desede", "tripledes", "des_ede", "three_des",
+                 "triple_des", "des3", "tdea"),
+        "RC4": ("rc4", "arcfour", "arc4"),
         "Blowfish": ("blowfish",),
         "ChaCha20": ("chacha",),
         "Poly1305": ("poly1305",),
@@ -385,7 +437,171 @@ def def_name_matches_family(name: str, canonical: str) -> bool:
 
 def op_hint_for_name(name: str) -> str | None:
     """Operation hint from a custom crypto function name (None = unknown)."""
-    lowered = str(name or "").lower()
+    sem = function_semantics(name)
+    if sem[0] is None or not sem[2]:
+        return None
+    return sem[2][0]
+
+
+#: Cipher mode tokens recognized inside custom implementation names.
+#: Matched as whole `_`-separated tokens only (never substrings), so a
+#: bare ``aes_encrypt`` stays mode-less instead of guessing ECB.
+_MODE_TOKENS = ("ECB", "CBC", "CTR", "GCM", "CCM", "CFB", "OFB", "XTS", "SIV")
+
+#: Families checked first when resolving a function name (3DES before DES:
+#: ``three_des_crypt`` contains the ``des`` substring but is 3DES).
+_FAMILY_PRIORITY = (
+    "3DES", "DES", "AES", "RC4", "Blowfish", "ChaCha20", "Poly1305",
+    "MD2", "MD5", "SHA-1", "SHA-256", "SHA-512", "HMAC", "PBKDF2",
+    "HKDF", "RSA", "DH", "ECDSA", "ECDH", "X25519", "Ed25519",
+)
+
+
+def _camel_tokens(text: str) -> list[str]:
+    """Split identifiers on separators and CamelCase boundaries.
+
+    ``EncryptECB`` -> [``encrypt``, ``ecb``]; ``aes_encrypt_cbc`` ->
+    [``aes``, ``encrypt``, ``cbc``]. Whole-token mode matching stays
+    exact; previously glued spellings only gain modes, never lose them.
+    """
+    out: list[str] = []
+    try:
+        for piece in re.split(r"[^A-Za-z0-9]+", str(text or "")):
+            if not piece:
+                continue
+            for tok in re.findall(
+                    r"[A-Z]+(?![a-z])|[A-Z][a-z0-9]*|[a-z0-9]+", piece):
+                if tok:
+                    out.append(tok.lower())
+    except Exception:
+        pass
+    return out
+
+
+def function_semantics(name: str) -> tuple[str | None, str | None, tuple[str, ...]]:
+    """Refine a crypto signal from a custom function name.
+
+    Returns ``(family, mode, ops)`` where ``ops`` are ``OperationType``
+    names. ``(None, None, ())`` when the name carries no family token —
+    generic verbs (``encrypt``, ``hash``, ``key`` …) never resolve alone;
+    callers must corroborate with fingerprint/constant evidence first.
+
+    C++ ``Class::method`` definitions take the family from the class
+    qualifier (``AES::EncryptECB``); then the method itself must carry
+    an explicit operation/mode signal (helpers like ``XorBlocks`` and
+    constructors yield nothing — no family-fallback guessing).
+
+    Mode is only reported when a mode token is present (``_``-separated
+    or CamelCase); ``aes_encrypt`` stays mode-less (never defaulted to
+    ECB). ``xcrypt``/bare ``crypt`` entry points cover both directions
+    (``[ENCRYPT, DECRYPT]``); CBC-MAC maps to ``HASH`` (the frozen CIR
+    vocabulary has no MAC operation; message authentication is
+    integrity-class evidence).
+    """
+    text = str(name or "")
+    lowered = text.lower()
+    qual, sep, method = text.rpartition("::")
+    method = method if sep else text
+    method_lower = method.lower()
+    family: str | None = None
+    family_in_method = False
+    for candidate in _FAMILY_PRIORITY:
+        if def_name_matches_family(method, candidate):
+            family, family_in_method = candidate, True
+            break
+    if family is None and qual:
+        for candidate in _FAMILY_PRIORITY:
+            if def_name_matches_family(qual, candidate):
+                family = candidate
+                break
+    if family is None:
+        return (None, None, ())
+    # Constructors/destructors name the family itself (``AES::AES``):
+    # key provisioning, not a data operation — no ops from the name.
+    method_core = method_lower.lstrip("~").lstrip("_")
+    qual_core = qual.lower().lstrip("_") if qual else ""
+    if method_core and (method_core == qual_core
+                        or method_core == family.lower()):
+        return (family, None, ())
+    tokens = _camel_tokens(method)
+    token_set = set(tokens)
+    mode: str | None = None
+    for token in tokens:
+        if token.upper() in _MODE_TOKENS:
+            mode = token.upper()
+            break
+    if mode == "CBC" and ("mac" in token_set or "cbcmac" in token_set):
+        mode = "CBC-MAC"
+    ops: tuple[str, ...]
+    if mode == "CBC-MAC":
+        ops = ("HASH",)
+    elif "decrypt" in method_lower:
+        ops = ("DECRYPT",)
+    elif "encrypt" in method_lower:
+        ops = ("ENCRYPT",)
+    elif "xcrypt" in method_lower or "crypt" in method_lower:
+        # Shared direction-flagged entry points (DES/3DES _crypt, CTR
+        # xcrypt): one function implements both directions.
+        ops = ("ENCRYPT", "DECRYPT")
+    elif "stream" in method_lower:
+        ops = ("ENCRYPT",)
+    else:
+        explicit: str | None = None
+        for hint, op in _OP_HINTS:
+            if hint in method_lower:
+                explicit = op
+                break
+        if explicit is not None:
+            # Explicit verb signal (init/key/schedule/…): always honored.
+            ops = (explicit,)
+        elif not family_in_method:
+            # Bare family fallback (sha256_update -> HASH) only applies
+            # when the name itself references the family; qualifier-only
+            # helpers (XorBlocks, CheckLength) yield nothing.
+            return (family, mode, ())
+        else:
+            fallback = _family_fallback_op(method_lower)
+            if fallback is None:
+                return (family, mode, ())
+            ops = (fallback,)
+    return (family, mode, ops)
+
+
+_FAMILY_FALLBACK_OPS = (
+    ("md2", "HASH"), ("md5", "HASH"), ("sha1", "HASH"),
+    ("sha256", "HASH"), ("sha512", "HASH"),
+    ("hmac", "HASH"), ("poly1305", "HASH"),
+    ("pbkdf2", "KDF"), ("hkdf", "KDF"),
+    ("aes", "ENCRYPT"), ("des", "ENCRYPT"),
+    ("rc4", "ENCRYPT"), ("arcfour", "ENCRYPT"),
+    ("blowfish", "ENCRYPT"), ("chacha", "ENCRYPT"),
+    ("rsa", "KEY_MANAGEMENT"), ("dh", "KEY_EXCHANGE"),
+    ("ecdh", "KEY_EXCHANGE"), ("ecdsa", "SIGN"),
+    ("x25519", "KEY_EXCHANGE"), ("ed25519", "SIGN"),
+)
+
+
+def _family_fallback_op(lowered: str) -> str | None:
+    """Dominant operation implied by the primitive itself or None."""
+    for family, op in _FAMILY_FALLBACK_OPS:
+        if family in lowered:
+            return op
+    return None
+
+
+def _op_hint_fallback(lowered: str) -> str | None:
+    """Non-directional operation hint (key/hash/sign-style verbs)."""
+    for hint, op in _OP_HINTS:
+        if hint in lowered:
+            return op
+    # Family fallback: the primitive itself implies the dominant
+    # operation (sha256_update -> HASH). Explicit hints above win
+    # (AES_init_ctx stays KEY_MANAGEMENT, not ENCRYPT).
+    return _family_fallback_op(lowered)
+
+
+def _op_hint_fallback(lowered: str) -> str | None:
+    """Non-directional operation hint (key/hash/sign-style verbs)."""
     for hint, op in _OP_HINTS:
         if hint in lowered:
             return op
@@ -405,3 +621,52 @@ def op_hint_for_name(name: str) -> str | None:
         if family in lowered:
             return op
     return None
+
+
+def canonical_for_semantics(family: str | None,
+                            mode: str | None) -> str | None:
+    """Compose a canonical name from family + mode (None when no family).
+
+    Only AES composes mode variants (``AES-CBC``, ``AES-ECB``, …);
+    other families keep their canonical. A missing mode yields the
+    generic family canonical — never a guessed default mode.
+    """
+    if not family:
+        return None
+    if family == "AES" and mode:
+        return f"AES-{mode}"
+    return family
+
+
+def corroborate_definition(body: str, mode: str | None,
+                           ops: tuple[str, ...]) -> list[str]:
+    """Bounded local-structure notes for a definition body (P6).
+
+    Pure substring checks on the masked body: IV handling / XOR chaining
+    for CBC, counter+nonce/increment/XOR for CTR, init/update/transform
+    staging for hashes. Returns short detail tokens (possibly empty);
+    never raises, never invents operations.
+    """
+    try:
+        text = str(body or "").lower()
+    except Exception:
+        return []
+    notes: list[str] = []
+    if mode == "CBC":
+        if "iv" in text:
+            notes.append("iv-handling")
+        if "xor" in text:
+            notes.append("xor-chaining")
+    elif mode == "CTR":
+        if "counter" in text or "nonce" in text or "ctr" in text:
+            notes.append("counter-use")
+        if "++" in text or "increment" in text or "+= 1" in text or "+ 1" in text:
+            notes.append("counter-increment")
+        if "xor" in text:
+            notes.append("keystream-xor")
+    if "HASH" in (ops or ()):
+        if "transform" in text or "update" in text:
+            notes.append("hash-staging")
+        if "init" in text and "final" in text:
+            notes.append("init-final-pair")
+    return notes[:3]

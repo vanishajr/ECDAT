@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-09-19T15:28:12Z",
+  "created_at": "2026-09-24T16:19:46Z",
   "mode": "fast",
   "profiles": [
     "standard"
@@ -50,11 +50,11 @@
           "missed": [],
           "unexpected": [
             {
-              "asset_id": "ast:2d2271b014d99bd8",
+              "asset_id": "ast:00a3b205dcdd0a2b",
               "canonical": "OpenSSL",
               "original": "OpenSSL",
               "library": "openssl",
-              "usage_state": "Probable",
+              "usage_state": "ProvidedOnly",
               "confidence": 0.7,
               "evidence": [
                 {
@@ -74,7 +74,7 @@
               },
               "context": {
                 "exposure": "internal",
-                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1"
+                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
               },
               "risk_inputs": {
                 "usage_state": "Probable",
@@ -82,10 +82,10 @@
                 "sensitive_data": false,
                 "external_dependency": true
               },
-              "operation_id": "op:af4d21bf9a0f9765",
+              "operation_id": "op:256098d5ac5a68e5",
               "operation_type": "Encrypt",
               "operation": "encrypt",
-              "usage": "Probable"
+              "usage": "ProvidedOnly"
             }
           ]
         },
@@ -153,11 +153,11 @@
           "missed": [],
           "unexpected": [
             {
-              "asset_id": "ast:358c7580d411b754",
+              "asset_id": "ast:00a3b205dcdd0a2b",
               "canonical": "OpenSSL",
               "original": "OpenSSL",
               "library": "openssl",
-              "usage_state": "Probable",
+              "usage_state": "ProvidedOnly",
               "confidence": 0.7,
               "evidence": [
                 {
@@ -177,7 +177,7 @@
               },
               "context": {
                 "exposure": "internal",
-                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1"
+                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
               },
               "risk_inputs": {
                 "usage_state": "Probable",
@@ -185,10 +185,10 @@
                 "sensitive_data": false,
                 "external_dependency": true
               },
-              "operation_id": "op:575868cad7d56039",
+              "operation_id": "op:108f86288e5cea9e",
               "operation_type": "Encrypt",
               "operation": "encrypt",
-              "usage": "Probable"
+              "usage": "ProvidedOnly"
             }
           ]
         },
@@ -215,22 +215,18 @@
       {
         "id": "D09",
         "operations": {
-          "tp": 0,
+          "tp": 1,
           "fp": 0,
-          "fn": 1,
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "missed": [
-            {
-              "usage": "Confirmed"
-            }
-          ],
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
           "unexpected": []
         },
         "forbidden_hits": [],
         "recommendation_ok": true,
-        "pass": false
+        "pass": true
       },
       {
         "id": "D10",
@@ -252,111 +248,17 @@
         "id": "FP001",
         "operations": {
           "tp": 0,
-          "fp": 1,
+          "fp": 0,
           "fn": 0,
           "precision": 0.0,
           "recall": 0.0,
           "f1": 0.0,
           "missed": [],
-          "unexpected": [
-            {
-              "asset_id": "ast:e5fe39a92fd0bea4",
-              "canonical": "AES-256-GCM",
-              "original": "AES-256-GCM",
-              "key_size": 256,
-              "mode": "GCM",
-              "library": "openssl",
-              "usage_state": "Confirmed",
-              "confidence": 0.9,
-              "evidence": [
-                {
-                  "tool": "source:api-call",
-                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c:12",
-                  "confidence": 0.9,
-                  "snippet": "EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), 0, key, iv) | args: ctx, EVP_aes_256_gcm(), 0, key"
-                }
-              ],
-              "location": {
-                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c",
-                "line": 12,
-                "function": "main"
-              },
-              "implementation": {
-                "library": "openssl",
-                "api": "EVP_EncryptInit_ex"
-              },
-              "context": {
-                "exposure": "internal",
-                "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:1/hits:1"
-              },
-              "risk_inputs": {
-                "usage_state": "Confirmed",
-                "exposure": "internal",
-                "sensitive_data": false,
-                "external_dependency": true
-              },
-              "operation_id": "op:2e967f88d5f1284e",
-              "operation_type": "Encrypt",
-              "function": "main",
-              "algorithm": "AES",
-              "operation": "encrypt",
-              "usage": "Confirmed"
-            }
-          ]
+          "unexpected": []
         },
-        "forbidden_hits": [
-          {
-            "forbidden": {
-              "algorithm": "AES",
-              "usage": "Confirmed"
-            },
-            "actual": {
-              "asset_id": "ast:e5fe39a92fd0bea4",
-              "canonical": "AES-256-GCM",
-              "original": "AES-256-GCM",
-              "key_size": 256,
-              "mode": "GCM",
-              "library": "openssl",
-              "usage_state": "Confirmed",
-              "confidence": 0.9,
-              "evidence": [
-                {
-                  "tool": "source:api-call",
-                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c:12",
-                  "confidence": 0.9,
-                  "snippet": "EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), 0, key, iv) | args: ctx, EVP_aes_256_gcm(), 0, key"
-                }
-              ],
-              "location": {
-                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\FP001_adversarial_names\\main.c",
-                "line": 12,
-                "function": "main"
-              },
-              "implementation": {
-                "library": "openssl",
-                "api": "EVP_EncryptInit_ex"
-              },
-              "context": {
-                "exposure": "internal",
-                "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:1/hits:1"
-              },
-              "risk_inputs": {
-                "usage_state": "Confirmed",
-                "exposure": "internal",
-                "sensitive_data": false,
-                "external_dependency": true
-              },
-              "operation_id": "op:2e967f88d5f1284e",
-              "operation_type": "Encrypt",
-              "function": "main",
-              "algorithm": "AES",
-              "operation": "encrypt",
-              "usage": "Confirmed"
-            }
-          }
-        ],
+        "forbidden_hits": [],
         "recommendation_ok": true,
-        "pass": false
+        "pass": true
       },
       {
         "id": "S001",
@@ -521,65 +423,18 @@
       {
         "id": "S011",
         "operations": {
-          "tp": 0,
-          "fp": 1,
-          "fn": 1,
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "missed": [
-            {
-              "algorithm": "RC4",
-              "operation": "encrypt",
-              "usage": "Confirmed"
-            }
-          ],
-          "unexpected": [
-            {
-              "asset_id": "ast:54d96361506d939e",
-              "canonical": "OpenSSL",
-              "original": "OpenSSL",
-              "library": "openssl",
-              "usage_state": "Probable",
-              "confidence": 0.7,
-              "evidence": [
-                {
-                  "tool": "source:api-call",
-                  "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S011_rc4_c\\main.c:3 [cipher unresolved; library capability only]",
-                  "confidence": 0.7,
-                  "snippet": "EVP_EncryptInit_ex(ctx, EVP_rc4(), 0, k, 0) | args: ctx, EVP_rc4(), 0, k"
-                }
-              ],
-              "location": {
-                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S011_rc4_c\\main.c",
-                "line": 3,
-                "function": "f"
-              },
-              "implementation": {
-                "library": "openssl",
-                "api": "EVP_EncryptInit_ex"
-              },
-              "context": {
-                "exposure": "internal",
-                "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1"
-              },
-              "risk_inputs": {
-                "usage_state": "Probable",
-                "exposure": "internal",
-                "sensitive_data": false,
-                "external_dependency": true
-              },
-              "operation_id": "op:9450842b45e8c79e",
-              "operation_type": "Encrypt",
-              "function": "f",
-              "operation": "encrypt",
-              "usage": "Probable"
-            }
-          ]
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
         },
         "forbidden_hits": [],
         "recommendation_ok": true,
-        "pass": false
+        "pass": true
       },
       {
         "id": "S012",
@@ -664,64 +519,18 @@
       {
         "id": "S017",
         "operations": {
-          "tp": 0,
-          "fp": 1,
-          "fn": 1,
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "missed": [
-            {
-              "algorithm": "RSA",
-              "key_size": 1024,
-              "usage": "Confirmed"
-            }
-          ],
-          "unexpected": [
-            {
-              "asset_id": "ast:0adec6890596032c",
-              "canonical": "RSA",
-              "original": "RSA",
-              "library": "jca",
-              "usage_state": "Confirmed",
-              "confidence": 0.88,
-              "evidence": [
-                {
-                  "tool": "source:api-call",
-                  "detail": "direct source API call: KeyPairGenerator.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S017_rsa1024_java\\Keys.java:3 [algorithm RSA]",
-                  "confidence": 0.88,
-                  "snippet": "KeyPairGenerator.getInstance()"
-                }
-              ],
-              "location": {
-                "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\synthetic\\S017_rsa1024_java\\Keys.java",
-                "line": 3
-              },
-              "implementation": {
-                "library": "jca",
-                "api": "KeyPairGenerator.getInstance"
-              },
-              "context": {
-                "exposure": "internal",
-                "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1"
-              },
-              "risk_inputs": {
-                "usage_state": "Confirmed",
-                "exposure": "internal",
-                "sensitive_data": false,
-                "external_dependency": true
-              },
-              "operation_id": "op:23033a180e92c61f",
-              "operation_type": "KeyManagement",
-              "algorithm": "RSA",
-              "operation": "keymanagement",
-              "usage": "Confirmed"
-            }
-          ]
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
+          "unexpected": []
         },
         "forbidden_hits": [],
         "recommendation_ok": true,
-        "pass": false
+        "pass": true
       },
       {
         "id": "S018",
@@ -774,23 +583,18 @@
       {
         "id": "S021",
         "operations": {
-          "tp": 0,
+          "tp": 1,
           "fp": 0,
-          "fn": 1,
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "missed": [
-            {
-              "algorithm": "X25519",
-              "usage": "Confirmed"
-            }
-          ],
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
           "unexpected": []
         },
         "forbidden_hits": [],
         "recommendation_ok": true,
-        "pass": false
+        "pass": true
       },
       {
         "id": "S022",
@@ -843,21 +647,16 @@
       {
         "id": "S025",
         "operations": {
-          "tp": 0,
+          "tp": 1,
           "fp": 1,
-          "fn": 1,
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "missed": [
-            {
-              "algorithm": "Argon2",
-              "usage": "Confirmed"
-            }
-          ],
+          "fn": 0,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "missed": [],
           "unexpected": [
             {
-              "asset_id": "ast:6d4f35eeb9311974",
+              "asset_id": "ast:906cf3e7dc00b540",
               "canonical": "Argon2",
               "original": "Argon2",
               "library": "argon2-cffi",
@@ -880,7 +679,7 @@
               },
               "context": {
                 "exposure": "internal",
-                "notes": "Dependency-only; no confirmed crypto operation; fusion=conf:0.075/usage:ProvidedOnly/detectors:dependency/evidence:1/hits:1"
+                "notes": "Dependency-only; no confirmed crypto operation; fusion=conf:0.075/usage:ProvidedOnly/detectors:dependency/evidence:1/hits:1/classes:dependency"
               },
               "risk_inputs": {
                 "usage_state": "ProvidedOnly",
@@ -888,7 +687,7 @@
                 "sensitive_data": false,
                 "external_dependency": true
               },
-              "operation_id": "op:ad98e182d0b0cca9",
+              "operation_id": "op:9396953fd8cd25b6",
               "operation_type": "KDF",
               "algorithm": "Argon2",
               "operation": "kdf",
@@ -898,27 +697,23 @@
         },
         "forbidden_hits": [],
         "recommendation_ok": true,
-        "pass": false
+        "pass": true
       },
       {
         "id": "S026",
         "operations": {
-          "tp": 0,
+          "tp": 1,
           "fp": 0,
-          "fn": 1,
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "missed": [
-            {
-              "algorithm": "TLS1.0"
-            }
-          ],
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
           "unexpected": []
         },
         "forbidden_hits": [],
-        "recommendation_ok": false,
-        "pass": false
+        "recommendation_ok": true,
+        "pass": true
       },
       {
         "id": "S027",
@@ -996,7 +791,7 @@
           "missed": [],
           "unexpected": [
             {
-              "asset_id": "ast:9c32464dff3553a2",
+              "asset_id": "ast:4433a5c12d1432b1",
               "canonical": "OpenSSL",
               "original": "OpenSSL",
               "library": "docker",
@@ -1020,7 +815,7 @@
               },
               "context": {
                 "exposure": "internal",
-                "notes": "container-definition; service=S031_docker_openssl_unused; cmd=[\"/app.sh\"]; fusion=conf:0.075/usage:ProvidedOnly/detectors:dockerfile/evidence:1/hits:1"
+                "notes": "container-definition; service=S031_docker_openssl_unused; cmd=[\"/app.sh\"]; fusion=conf:0.075/usage:ProvidedOnly/detectors:dockerfile/evidence:1/hits:1/classes:configuration"
               },
               "risk_inputs": {
                 "usage_state": "ProvidedOnly",
@@ -1028,7 +823,7 @@
                 "sensitive_data": false,
                 "external_dependency": true
               },
-              "operation_id": "op:b0f1499bf4ee6acb",
+              "operation_id": "op:73957167bdfabe9b",
               "operation_type": "TLS",
               "operation": "tls",
               "usage": "ProvidedOnly"
@@ -1058,22 +853,18 @@
       {
         "id": "S033",
         "operations": {
-          "tp": 0,
+          "tp": 1,
           "fp": 0,
-          "fn": 1,
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "missed": [
-            {
-              "algorithm": "KMS"
-            }
-          ],
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "missed": [],
           "unexpected": []
         },
         "forbidden_hits": [],
         "recommendation_ok": true,
-        "pass": false
+        "pass": true
       },
       {
         "id": "S034",
@@ -1087,7 +878,7 @@
           "missed": [],
           "unexpected": [
             {
-              "asset_id": "ast:c9f296ae0f6f7bee",
+              "asset_id": "ast:a90d8ff505d0934a",
               "canonical": "DES",
               "original": "DES",
               "key_size": 56,
@@ -1114,7 +905,7 @@
               },
               "context": {
                 "exposure": "internal",
-                "notes": "fusion=conf:0.782/usage:FalsePositiveSuppressed/detectors:source/evidence:1/hits:1"
+                "notes": "fusion=conf:0.782/usage:FalsePositiveSuppressed/detectors:source/evidence:1/hits:1/classes:invocation"
               },
               "risk_inputs": {
                 "usage_state": "FalsePositiveSuppressed",
@@ -1122,7 +913,7 @@
                 "sensitive_data": false,
                 "external_dependency": true
               },
-              "operation_id": "op:5fab5a6c86936c13",
+              "operation_id": "op:ec0e27571516b941",
               "operation_type": "Encrypt",
               "function": "test",
               "algorithm": "DES",
@@ -1163,8 +954,8 @@
         "purpose": "mostly-negative Node control"
       },
       "profile": "standard",
-      "wall_seconds": 1.1425711000047158,
-      "peak_rss_mb": 49.90625,
+      "wall_seconds": 169.77047129999846,
+      "peak_rss_mb": 53.91796875,
       "result": {
         "scan_id": "scan:4ce876218567c357",
         "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
@@ -1172,8 +963,8 @@
           "cir_version": "0.1",
           "scan_id": "scan:4ce876218567c357",
           "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
-          "started_at": "2026-09-19T15:28:17Z",
-          "finished_at": "2026-09-19T15:28:17Z",
+          "started_at": "2026-09-24T16:22:41Z",
+          "finished_at": "2026-09-24T16:22:41Z",
           "tool_versions": {
             "source": "0.2.0",
             "dependency": "0.2.0",
@@ -1182,130 +973,17 @@
             "certificate": "certificate-v0.1.0"
           },
           "registry_version": "2026.09.11",
-          "assets": [
-            {
-              "asset_id": "ast:729a8ac9f7efcc77",
-              "canonical": "dependencies.escape-html",
-              "original": "dependencies.escape-html",
-              "usage_state": "Possible",
-              "confidence": 0.35,
-              "evidence": [
-                {
-                  "tool": "config-generic",
-                  "detail": "dependencies.escape-html = ^1.0.3",
-                  "confidence": 0.35,
-                  "snippet": "dependencies.escape-html = ^1.0.3"
-                }
-              ],
-              "location": {
-                "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
-                "uri": "json:dependencies.escape-html"
-              },
-              "implementation": {
-                "library": "generic",
-                "provider": "json"
-              },
-              "context": {
-                "exposure": "internal",
-                "notes": "service=package; endpoint=https://expressjs.com/; endpoint=https://opencollective.com/express"
-              },
-              "risk_inputs": {
-                "usage_state": "Possible",
-                "exposure": "internal",
-                "sensitive_data": false,
-                "external_dependency": false
-              }
-            },
-            {
-              "asset_id": "ast:ee0b1c69a2265d46",
-              "canonical": "keywords",
-              "original": "keywords",
-              "usage_state": "Possible",
-              "confidence": 0.35,
-              "evidence": [
-                {
-                  "tool": "config-generic",
-                  "detail": "keywords = express",
-                  "confidence": 0.35,
-                  "snippet": "keywords = express"
-                }
-              ],
-              "location": {
-                "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
-                "uri": "json:keywords"
-              },
-              "implementation": {
-                "library": "generic",
-                "provider": "json"
-              },
-              "context": {
-                "exposure": "internal",
-                "notes": "service=package; endpoint=https://expressjs.com/; endpoint=https://opencollective.com/express"
-              },
-              "risk_inputs": {
-                "usage_state": "Possible",
-                "exposure": "internal",
-                "sensitive_data": false,
-                "external_dependency": false
-              }
-            }
-          ],
+          "assets": [],
           "operations": [],
           "graph": {
-            "nodes": [
-              {
-                "id": "ast:729a8ac9f7efcc77",
-                "kind": "asset",
-                "label": "dependencies.escape-html",
-                "ref": "ast:729a8ac9f7efcc77"
-              },
-              {
-                "id": "file:3cd8bb9066af43b2",
-                "kind": "file",
-                "label": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
-                "ref": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json"
-              },
-              {
-                "id": "library:3a2e8954befdbd6e",
-                "kind": "library",
-                "label": "generic",
-                "ref": "generic"
-              },
-              {
-                "id": "ast:ee0b1c69a2265d46",
-                "kind": "asset",
-                "label": "keywords",
-                "ref": "ast:ee0b1c69a2265d46"
-              }
-            ],
-            "edges": [
-              {
-                "from": "file:3cd8bb9066af43b2",
-                "to": "ast:729a8ac9f7efcc77",
-                "relationship": "contains"
-              },
-              {
-                "from": "ast:729a8ac9f7efcc77",
-                "to": "library:3a2e8954befdbd6e",
-                "relationship": "uses"
-              },
-              {
-                "from": "file:3cd8bb9066af43b2",
-                "to": "ast:ee0b1c69a2265d46",
-                "relationship": "contains"
-              },
-              {
-                "from": "ast:ee0b1c69a2265d46",
-                "to": "library:3a2e8954befdbd6e",
-                "relationship": "uses"
-              }
-            ]
+            "nodes": [],
+            "edges": []
           },
           "stats": {
-            "asset_count": 2,
+            "asset_count": 0,
             "operation_count": 0,
-            "node_count": 4,
-            "edge_count": 4,
+            "node_count": 0,
+            "edge_count": 0,
             "risk_count": 0,
             "recommendation_count": 0
           },
@@ -1316,8 +994,8 @@
           "schema_version": "1.0",
           "scan_id": "scan:4ce876218567c357",
           "target": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD",
-          "started_at": "2026-09-19T15:28:17Z",
-          "finished_at": "2026-09-19T15:28:17Z",
+          "started_at": "2026-09-24T16:22:41Z",
+          "finished_at": "2026-09-24T16:22:41Z",
           "tool_versions": {
             "source": "0.2.0",
             "dependency": "0.2.0",
@@ -1325,41 +1003,10 @@
             "config": "config-v0.1.0",
             "certificate": "certificate-v0.1.0"
           },
-          "findings": [
-            {
-              "rule_id": "DEPENDENCIES-ESCAPE-HTML",
-              "title": "dependencies.escape-html usage detected",
-              "severity": "low",
-              "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
-              "line": 0,
-              "snippet": "dependencies.escape-html = ^1.0.3",
-              "confidence": 0.35,
-              "metadata": {
-                "cir_asset_id": "ast:729a8ac9f7efcc77",
-                "canonical_name": "dependencies.escape-html",
-                "usage_state": "Possible",
-                "asset_only": true
-              }
-            },
-            {
-              "rule_id": "KEYWORDS",
-              "title": "keywords usage detected",
-              "severity": "low",
-              "file": "C:\\Users\\jrvan\\AppData\\Local\\Temp\\ecdat-benchmark-repos\\expressjs-express-HEAD\\package.json",
-              "line": 0,
-              "snippet": "keywords = express",
-              "confidence": 0.35,
-              "metadata": {
-                "cir_asset_id": "ast:ee0b1c69a2265d46",
-                "canonical_name": "keywords",
-                "usage_state": "Possible",
-                "asset_only": true
-              }
-            }
-          ],
+          "findings": [],
           "stats": {
-            "files_scanned": 1,
-            "findings_count": 2
+            "files_scanned": 149,
+            "findings_count": 0
           }
         },
         "plan": {
@@ -1392,9 +1039,9 @@
           "unavailable": [],
           "caller": "benchmark",
           "display_target": "express",
-          "artifacts_total": 207,
+          "artifacts_total": 206,
           "artifact_counts": {
-            "unknown": 58,
+            "unknown": 57,
             "config": 7,
             "source": 141,
             "dependency": 1
@@ -1414,19 +1061,11 @@
               "reason": "duplicate-content"
             },
             {
-              "path": "test\\fixtures\\empty.txt",
-              "reason": "duplicate-content"
-            },
-            {
               "path": "test\\fixtures\\name.tmpl",
               "reason": "duplicate-content"
             },
             {
               "path": "test\\fixtures\\name.txt",
-              "reason": "duplicate-content"
-            },
-            {
-              "path": "test\\fixtures\\snow \u2603\\.gitkeep",
               "reason": "duplicate-content"
             },
             {
@@ -1485,9 +1124,9 @@
           },
           "unavailable": [],
           "scanner_status": {
-            "source": "success",
             "binary": "success",
             "dependency": "success",
+            "source": "success",
             "config": "success",
             "certificate": "success"
           },
@@ -1507,9 +1146,9 @@
             "binary-strings": "available"
           },
           "permissions_required": [],
-          "artifacts_total": 207,
+          "artifacts_total": 206,
           "artifact_counts": {
-            "unknown": 58,
+            "unknown": 57,
             "config": 7,
             "source": 141,
             "dependency": 1
@@ -1529,14 +1168,14 @@
             "config": "config-v0.1.0",
             "certificate": "certificate-v0.1.0"
           },
-          "elapsed_sec": 1.116
+          "elapsed_sec": 169.724
         }
       }
     }
   ],
   "summary": {
-    "synthetic_pass": 38,
-    "synthetic_fail": 8,
+    "synthetic_pass": 46,
+    "synthetic_fail": 0,
     "repo_runs": 1
   }
 }

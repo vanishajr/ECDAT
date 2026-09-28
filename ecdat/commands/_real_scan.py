@@ -23,7 +23,6 @@ from ecdat.adapters.pipeline import RealScanError
 from ecdat.commands import ERROR
 from ecdat.core.client import RealCoreClient
 from ecdat.store import db
-from ecdat.store import findings as fstore
 from ecdat.store import scans as sstore
 
 
@@ -126,17 +125,24 @@ def run_real_and_store(
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = db.open_db(db_path)
     try:
-        scan_id = sstore.insert_scan(conn, doc, cir)
-        fstore.insert_findings_for_scan(conn, doc)
-        # Phase 11: durable plan + diagnostics alongside the scan.
-        from ecdat.store.repository import save_meta as _save_meta
-        _save_meta(conn, scan_id, result.plan.as_dict(),
-                   result.diagnostics)
-    except sqlite3.IntegrityError:
-        print(
-            f"error: scan {doc['scan_id']} already exists in {db_path}",
-            file=sys.stderr,
-        )
+        from ecdat.store.persist import store_scan_result as _store
+        replace = bool(getattr(args, "replace", False))
+        scan_id, reused = _store(
+            conn, doc, cir, result.plan.as_dict(), result.diagnostics,
+            replace=replace)
+        if reused:
+            print(f"scan {scan_id} already stored in {db_path} (reused)",
+                  file=sys.stderr)
+            # DB/file agreement: materialize --output/--cir-out from the
+            # stored row (identical findings; first-run timestamps win).
+            stored_doc = sstore.get_scan_doc(conn, scan_id)
+            stored_cir = sstore.get_scan_cir(conn, scan_id)
+            if stored_doc is not None:
+                doc = stored_doc
+            if stored_cir is not None:
+                cir = stored_cir
+    except sqlite3.Error as exc:
+        print(f"error: could not store scan: {exc}", file=sys.stderr)
         return ERROR
     finally:
         conn.close()

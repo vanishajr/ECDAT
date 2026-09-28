@@ -96,7 +96,7 @@ def test_acquire_downloads_extracts_flattens(tmp_path, monkeypatch):
         assert (acquired["target"] / "src" / "a.py").is_file()
         assert (acquired["target"] / "readme.md").is_file()
         extracted = sorted(
-            str(p.relative_to(acquired["target"]))
+            p.relative_to(acquired["target"]).as_posix()
             for p in acquired["target"].rglob("*") if p.is_file())
         assert extracted == ["readme.md", "src/a.py"]
         assert [c.name for c in acquired["target"].iterdir()

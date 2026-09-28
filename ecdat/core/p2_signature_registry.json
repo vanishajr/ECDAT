@@ -67,9 +67,23 @@
     },
     "AES-256-CBC": {
       "canonical": "AES-256-CBC",
-      "aliases": ["AES-CBC", "AES-256-CBC", "AES_256_CBC", "aes-cbc"],
+      "aliases": ["AES-256-CBC", "AES_256_CBC"],
       "key_size": 256,
       "mode": "CBC",
+      "category": "symmetric"
+    },
+    "AES-CBC": {
+      "canonical": "AES-CBC",
+      "aliases": ["AES-CBC", "AES_CBC", "aes-cbc", "aes_cbc"],
+      "key_sizes": [128, 192, 256],
+      "mode": "CBC",
+      "category": "symmetric"
+    },
+    "AES-ECB": {
+      "canonical": "AES-ECB",
+      "aliases": ["AES-ECB", "AES_ECB", "aes-ecb", "aes_ecb"],
+      "key_sizes": [128, 192, 256],
+      "mode": "ECB",
       "category": "symmetric"
     },
     "AES-128-CBC": {
@@ -101,13 +115,15 @@
     },
     "3DES": {
       "canonical": "3DES",
-      "aliases": ["3DES", "DES3", "DES-EDE3", "triple-des", "3des"],
+      "aliases": ["3DES", "DES3", "DES-EDE3", "triple-des", "3des", "triple_des",
+                  "three_des", "three-des", "tripledes", "des3", "tdea", "des_ede",
+                  "desede", "DESEDE", "DES_EDE", "DESede"],
       "key_size": 168,
       "category": "symmetric"
     },
     "RC4": {
       "canonical": "RC4",
-      "aliases": ["RC4", "rc4", "ARC4", "arcfour"],
+      "aliases": ["RC4", "rc4", "ARC4", "arc4", "arcfour", "ARCFOUR", "ARCFOUR_stream"],
       "category": "symmetric"
     },
     "ChaCha20-Poly1305": {

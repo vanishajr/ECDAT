@@ -1,0 +1,19 @@
+{
+ "findings": [],
+ "finished_at": "2026-09-24T16:22:59Z",
+ "scan_id": "scan:120aa148b0837ceb",
+ "schema_version": "1.0",
+ "started_at": "2026-09-24T16:22:59Z",
+ "stats": {
+  "files_scanned": 6,
+  "findings_count": 0
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\express",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

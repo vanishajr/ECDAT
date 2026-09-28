@@ -78,6 +78,27 @@ CRYPTO_PACKAGES = {
     "bcprov-jdk": {"canonical": "BouncyCastle", "category": "library", "confidence": 0.6},
     "bcpkix-jdk": {"canonical": "BouncyCastle", "category": "library", "confidence": 0.6},
     "tink": {"canonical": "Tink", "category": "library", "confidence": 0.6},
+    # -- Rust (crates.io) ecosystem --------------------------------------
+    # Canonicals reuse the scanner-wide vocabulary so risk/recommend
+    # registry lookups behave identically across ecosystems.
+    "ring": {"canonical": "ring", "category": "library", "confidence": 0.6},
+    "rustls": {"canonical": "rustls", "category": "library", "confidence": 0.6},
+    "aes-gcm": {"canonical": "AES-256-GCM", "category": "symmetric", "confidence": 0.6},
+    "aes": {"canonical": "AES", "category": "symmetric", "confidence": 0.6},
+    "chacha20poly1305": {"canonical": "ChaCha20-Poly1305", "category": "symmetric", "confidence": 0.6},
+    "ed25519-dalek": {"canonical": "Ed25519", "category": "asymmetric", "confidence": 0.6},
+    "x25519-dalek": {"canonical": "X25519", "category": "key_exchange", "confidence": 0.6},
+    "rsa": {"canonical": "RSA", "category": "asymmetric", "confidence": 0.6},
+    "p256": {"canonical": "ECDSA", "category": "asymmetric", "confidence": 0.6},
+    "p384": {"canonical": "ECDSA", "category": "asymmetric", "confidence": 0.6},
+    "k256": {"canonical": "ECDSA", "category": "asymmetric", "confidence": 0.6},
+    "sha2": {"canonical": "SHA-256", "category": "hash", "confidence": 0.55},
+    "sha3": {"canonical": "SHA-3-256", "category": "hash", "confidence": 0.55},
+    "blake2": {"canonical": "BLAKE2b", "category": "hash", "confidence": 0.55},
+    "hmac": {"canonical": "HMAC", "category": "hash", "confidence": 0.55},
+    "md-5": {"canonical": "MD5", "category": "hash", "confidence": 0.55},
+    "sha1": {"canonical": "SHA-1", "category": "hash", "confidence": 0.55},
+    "pbkdf2": {"canonical": "PBKDF2", "category": "kdf", "confidence": 0.55},
 }
 
 #: Library canonical -> algorithms it can provide (capability, not use).
@@ -106,6 +127,10 @@ CRYPTO_CAPABILITIES = {
     "BouncyCastle": ("RSA", "DSA", "DH", "ECDH", "ECDSA", "Ed25519",
                      "AES", "SHA-256", "TLS"),
     "Tink": ("AES", "ChaCha20-Poly1305", "ECDSA", "Ed25519", "HKDF"),
+    "ring": ("RSA", "ECDH", "ECDSA", "Ed25519", "X25519", "AES",
+             "ChaCha20-Poly1305", "SHA-256", "HKDF"),
+    "rustls": ("TLS", "RSA", "ECDSA", "Ed25519", "AES",
+               "ChaCha20-Poly1305"),
 }
 
 #: Ecosystem-nested view for the Syft integration (same info dicts).
@@ -115,7 +140,11 @@ SYFT_CRYPTO_PACKAGES = {
             if k in ("crypto", "crypto-js", "jsonwebtoken", "jose",
                      "libsodium-wrappers", "openssl")},
     "cargo": {k: v for k, v in CRYPTO_PACKAGES.items()
-              if k in ("openssl",)},
+              if k in ("openssl", "ring", "rustls", "aes-gcm", "aes",
+                       "chacha20poly1305", "ed25519-dalek", "x25519-dalek",
+                       "rsa", "p256", "p384", "k256", "sha2", "sha3",
+                       "blake2", "hmac", "md-5", "sha1", "pbkdf2",
+                       "scrypt", "hkdf", "argon2", "oqs", "liboqs")},
     "go": {k: v for k, v in CRYPTO_PACKAGES.items()
            if k in ("openssl",)},
     "maven": {k: v for k, v in CRYPTO_PACKAGES.items()

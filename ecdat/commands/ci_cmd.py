@@ -16,8 +16,6 @@ from ecdat.commands import ERROR, TARGET_NOT_FOUND
 from ecdat.commands import export_cmd
 from ecdat.core.client import RealCoreClient
 from ecdat.store import db
-from ecdat.store import findings as fstore
-from ecdat.store import scans as sstore
 
 POLICY_FAILED = ERROR
 SEVERITIES = ("info", "low", "medium", "high", "critical")
@@ -156,11 +154,14 @@ def run(args: argparse.Namespace) -> int:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = db.open_db(db_path)
     try:
-        sstore.insert_scan(conn, doc, cir)
-        fstore.insert_findings_for_scan(conn, doc)
-        from ecdat.store.repository import save_meta as _save_meta
-        _save_meta(conn, doc["scan_id"], scan_result.plan.as_dict(),
-                   scan_result.diagnostics)
+        from ecdat.store.persist import store_scan_result as _store
+        _scan_id, reused = _store(
+            conn, doc, cir, scan_result.plan.as_dict(),
+            scan_result.diagnostics,
+            replace=bool(getattr(args, "replace", False)))
+        if reused:
+            print(f"scan {_scan_id} already stored in {db_path} (reused)",
+                  file=sys.stderr)
     except Exception as exc:
         print(f"error: could not store scan: {exc}", file=sys.stderr)
         return ERROR

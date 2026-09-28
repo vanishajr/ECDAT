@@ -1,0 +1,31 @@
+{
+ "assets": [],
+ "cir_version": "0.1",
+ "finished_at": "2026-09-24T16:22:59Z",
+ "graph": {
+  "edges": [],
+  "nodes": []
+ },
+ "operations": [],
+ "recommendations": [],
+ "registry_version": "2026.09.11",
+ "risks": [],
+ "scan_id": "scan:120aa148b0837ceb",
+ "started_at": "2026-09-24T16:22:59Z",
+ "stats": {
+  "asset_count": 0,
+  "edge_count": 0,
+  "node_count": 0,
+  "operation_count": 0,
+  "recommendation_count": 0,
+  "risk_count": 0
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\express",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

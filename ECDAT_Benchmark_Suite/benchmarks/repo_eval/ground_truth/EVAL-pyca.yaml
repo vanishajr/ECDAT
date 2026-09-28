@@ -1,0 +1,23 @@
+# EVAL-PYCA — ground truth v1 (2026-09-23)
+# Slice: ciphers/{aead,algorithms,base,modes}.py @ f717d797b8ba99da605ad37b2bd0d9d89ab62eab
+# These files define cipher/mode classes and binding aliases; they contain
+# no direct encrypt() call sites. Evaluated at two levels:
+#  - presence (tier=file): crypto presence per file (any same-file finding);
+#  - attribution (tier=file-strict): the specific algorithm named by a finding.
+# Title nits (e.g. "TLS configuration" for an openssl binding import) are
+# recorded qualitatively in notes, not scored as FP: every finding points
+# at a genuine crypto import.
+version: 1
+repo: pyca
+items:
+  - {id: P01, file: aead.py, line: null, canonical: ANY, kind: presence, tier: file}
+  - {id: P02, file: algorithms.py, line: null, canonical: ANY, kind: presence, tier: file}
+  - {id: P03, file: base.py, line: null, canonical: ANY, kind: presence, tier: file}
+  - {id: P04, file: modes.py, line: null, canonical: ANY, kind: presence, tier: file}
+  - {id: P05, file: aead.py, line: 18, canonical: AES-256-GCM, kind: capability, tier: file-strict,
+     note: "AESGCM binding alias; no finding names AES-256-GCM"}
+  - {id: P06, file: aead.py, line: 19, canonical: ChaCha20-Poly1305, kind: capability, tier: file-strict}
+  - {id: P07, file: algorithms.py, line: 36, canonical: AES, kind: capability, tier: file-strict,
+     note: "class AES def; representative of AES/AES128/AES256/ChaCha20/SM4 defs"}
+  - {id: P08, file: modes.py, line: 39, canonical: CBC, kind: capability, tier: file-strict,
+     note: "class CBC def; representative of CBC/XTS/ECB/CTR/GCM mode defs"}

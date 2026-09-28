@@ -26,6 +26,7 @@ __all__ = [
     "classify_source_file",
     "resolve_entry",
     "find_wrappers",
+    "aes_key_config",
     "TLS_VERSION_CONSTS",
     "TEST_DIR_NAMES",
     "IMPL_DIR_NAMES",
@@ -45,6 +46,18 @@ TLS_VERSION_CONSTS = {
     "DTLS1_2_VERSION": "DTLS1.2",
 }
 
+#: First-argument key-type tokens for EVP_PKEY_new_raw_*_key.
+_PKEY_TYPE_TABLE = {
+    "EVP_PKEY_HMAC": "HMAC",
+    "EVP_PKEY_RSA": "RSA",
+    "EVP_PKEY_DSA": "DSA",
+    "EVP_PKEY_DH": "DH",
+    "EVP_PKEY_EC": "ECDSA",
+    "EVP_PKEY_X25519": "X25519",
+    "EVP_PKEY_X448": "X448",
+    "EVP_PKEY_ED25519": "Ed25519",
+}
+
 #: Keywords counted inside stripped comments/strings (noise traceability).
 _NOISE_KEYWORDS = (
     "AES", "RSA", "DES", "SHA", "MD5", "HMAC", "ECDSA", "ECDH", "TLS", "SSL",
@@ -53,7 +66,10 @@ _NOISE_KEYWORDS = (
 
 _CALL_RE = re.compile(r"([A-Za-z_][\w:\.]*)\s*\(")
 _FUNC_DEF_RE = re.compile(
-    r"^\s*(?:[\w:\<\>\*]+\s+)+[\*\&]?\s*([A-Za-z_]\w*)\s*\([^;{}]*\)\s*(?:\{|$)")
+    r"^\s*(?:@[\w.]+(?:\([^;{}]*\))?\s*)*"
+    r"(?:[\w:\<\>\*\[\]]+\s+)*(?:\([^;{}]*\)\s+)?[\*\&]?\s*"
+    r"(?:([A-Za-z_]\w*)::)?([A-Za-z_]\w*)\s*\([^;{}]*\)"
+    r"\s*(?:throws\s+[\w,\s.]+)?\s*(?:[\w:\<\>\*\[\]\.]+\s+)?(?:\{|$)")
 _KEYWORD_DECL_RE = re.compile(r"\b(?:if|for|while|switch|catch|return|sizeof)\b")
 _DEFINE_RE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\s+(.+?)\s*$")
 _CONST_ASSIGN_RE = re.compile(
@@ -239,6 +255,11 @@ def _function_spans(masked: str) -> list[tuple[int, int, str]]:
     Multi-line definitions are joined before matching (offsets still map
     to real lines because only the matcher sees the collapsed buffer).
     Prototypes (``;``) and control statements never open spans.
+    Definitions nest (methods in classes, closures): sites attribute to
+    the innermost enclosing definition. Both Allman (``f() {``) and K&R
+    (``f()`` + ``{`` on the next line) styles open spans; Go receivers,
+    Java ``throws``, Go return types, and ``[]`` return types are
+    recognized. ``new X() {`` (anonymous classes) is not a definition.
     """
     spans: list[tuple[int, int, str]] = []
     lines = masked.splitlines(keepends=True)
@@ -248,18 +269,19 @@ def _function_spans(masked: str) -> list[tuple[int, int, str]]:
         offsets.append(pos)
         pos += len(line)
     depth = 0
-    pending: str | None = None
-    func_start = 0
+    open_stack: list[list] = []  # [name, start_off, open_depth]
+    pending: list | None = None  # [name, start_off, open_depth]
     buf = ""
     buf_start = 0
     for idx, line in enumerate(lines):
         stripped = line.strip()
-        if depth == 0 and pending is None:
+        if pending is None:
             if not buf:
                 buf_start = offsets[idx]
             buf += " " + stripped
             if _paren_balance(buf) <= 0:
                 candidate = buf.strip()
+                buf = ""
                 nxt = lines[idx + 1].strip() if idx + 1 < len(lines) else ""
                 if "(" in candidate and (
                         candidate.endswith("{") or nxt.startswith("{")) \
@@ -267,16 +289,75 @@ def _function_spans(masked: str) -> list[tuple[int, int, str]]:
                     match = _FUNC_DEF_RE.match(candidate)
                     if match:
                         before = candidate[:candidate.index("(")]
-                        if not _KEYWORD_DECL_RE.search(before):
-                            pending = match.group(1)
-                            func_start = buf_start
-                buf = ""
+                        if not _KEYWORD_DECL_RE.search(before) \
+                                and not re.match(r"^\s*new\s+", before):
+                            # Group 2 is the bare method name; an optional
+                            # C++ ``Class::`` qualifier (group 1) is not
+                            # part of span identity (bare names stay the
+                            # cross-file provider key).
+                            pending = [match.group(2), buf_start, depth]
         depth += line.count("{") - line.count("}")
-        if pending is not None and depth <= 0:
-            spans.append((func_start, offsets[idx] + len(line), pending))
-            pending = None
+        if depth < 0:
             depth = 0
+        if pending is not None:
+            _name, _start, _od = pending
+            if depth > _od:
+                open_stack.append([_name, _start, _od])
+                pending = None
+            elif depth < _od:
+                pending = None  # malformed; drop
+        while open_stack and depth <= open_stack[-1][2]:
+            _name, _start, _od = open_stack.pop()
+            spans.append((_start, offsets[idx] + len(line), _name))
+            if _od == 0:
+                depth = 0  # historical imbalance containment
+    spans.sort()
     return spans
+
+
+def _def_lines(masked: str) -> dict[str, int]:
+    """Defined function/method names to 1-based definition lines.
+
+    Derived from :func:`_function_spans` (brace-depth tracking), so K&R
+    definitions, class methods, and Go receivers are all covered —
+    unlike the fingerprint helper, which only sees a subset. Pure.
+    """
+    try:
+        offsets: list[int] = []
+        pos = 0
+        for line in masked.splitlines(keepends=True):
+            offsets.append(pos)
+            pos += len(line)
+        defs: dict[str, int] = {}
+        for start, _end, name in _function_spans(masked):
+            import bisect as _bisect
+            lineno = _bisect.bisect_right(offsets, start)
+            defs.setdefault(name, lineno)
+        return defs
+    except Exception:
+        return {}
+
+
+def _def_lines_all(masked: str) -> dict[str, list[int]]:
+    """All definition lines per function name (overloads included)."""
+    try:
+        offsets: list[int] = []
+        pos = 0
+        for line in masked.splitlines(keepends=True):
+            offsets.append(pos)
+            pos += len(line)
+        defs: dict[str, list[int]] = {}
+        for start, _end, name in _function_spans(masked):
+            import bisect as _bisect
+            lineno = _bisect.bisect_right(offsets, start)
+            defs.setdefault(name, [])
+            if lineno not in defs[name]:
+                defs[name].append(lineno)
+        for lines in defs.values():
+            lines.sort()
+        return defs
+    except Exception:
+        return {}
 
 
 def extract_calls(masked: str) -> list[CallSite]:
@@ -372,6 +453,27 @@ def collect_constants(masked: str) -> dict[str, str]:
     return consts
 
 
+_JAVA_STRING_CONST_RE = re.compile(
+    r"\bString\s+([A-Za-z_]\w*)\s*=\s*\"((?:[^\"\\]|\\.)*)\"\s*;")
+
+
+def collect_java_string_consts(original: str) -> dict[str, str]:
+    """Java ``String NAME = "literal"`` constants (any modifiers).
+
+    Runs on ORIGINAL text: masking blanks string contents, so the
+    generic collector never sees Java string values. Values are stored
+    quoted (same contract as :func:`collect_constants`); first
+    definition wins. Pure; never raises.
+    """
+    out: dict[str, str] = {}
+    try:
+        for match in _JAVA_STRING_CONST_RE.finditer(original or ""):
+            out.setdefault(match.group(1), f'"{match.group(2)}"')
+    except Exception:
+        pass
+    return out
+
+
 def resolve_arg(arg: str, consts: dict[str, str]) -> str:
     """Resolve one argument to a literal-ish token (one hop)."""
     token = arg.strip()
@@ -393,6 +495,43 @@ def resolve_arg(arg: str, consts: dict[str, str]) -> str:
     return token
 
 
+_AES_KEY_DEFINE_RE = re.compile(r"\bAES(128|192|256)\b")
+_AES_KEY_COND_RE = re.compile(r"defined\s*\(\s*AES(128|192|256)\s*\)")
+
+
+def aes_key_config(consts: dict[str, str],
+                   masked: str = "") -> tuple[int | None, list[int]]:
+    """Active vs supported AES key sizes from compile-time configuration.
+
+    ``consts`` is the merged ``#define`` map (masked text, so commented
+    ``//#define AES192 1`` lines never appear). A size is *active* when
+    ``AES<size>`` is defined as ``1`` (first of 128/192/256 wins);
+    *supported* adds sizes with any explicit define plus sizes named in
+    ``defined(AES<size>)`` preprocessor conditionals (configurable
+    branches). Returns ``(active_size|None, sorted_supported)`` — empty
+    evidence yields ``(None, [])`` (never guessed). Pure.
+    """
+    active: int | None = None
+    supported: set[int] = set()
+    try:
+        for size in (128, 192, 256):
+            raw = (consts or {}).get(f"AES{size}")
+            if raw is None:
+                continue
+            token = str(raw).strip().split()[0] if str(raw).strip() else ""
+            supported.add(size)
+            if active is None and token == "1":
+                active = size
+        for match in _AES_KEY_COND_RE.finditer(masked or ""):
+            try:
+                supported.add(int(match.group(1)))
+            except (TypeError, ValueError):
+                continue
+    except Exception:
+        pass
+    return active, sorted(supported)
+
+
 def string_literals_of_line(line: str) -> list[str]:
     """String literals on one ORIGINAL source line (masked code hides them).
 
@@ -403,12 +542,15 @@ def string_literals_of_line(line: str) -> list[str]:
 
 
 def _first_string(args: str, consts: dict[str, str],
-                  literals: list[str] | tuple = ()) -> str:
+                   literals: list[str] | tuple = ()) -> str:
     """First meaningful string-ish argument (one hop).
 
     Masked argument text keeps quote positions but blanks contents, so
     the original line's literals are matched positionally; propagated
-    ``NAME = "literal"`` constants resolve through ``consts``.
+    ``NAME = "literal"`` constants resolve through ``consts``. Dotted
+    and call expressions (``a.b()``, ``x.y``) are never strings: without
+    this guard ``secretKey.getEncoded()`` mis-resolves through the
+    ``EC`` substring into a bogus canonical.
     """
     str_idx = 0
     for part in split_args(args):
@@ -419,7 +561,9 @@ def _first_string(args: str, consts: dict[str, str],
             str_idx += 1
             continue
         resolved = resolve_arg(piece, consts)
-        if resolved and not re.fullmatch(r"[A-Za-z_]\w*", resolved):
+        if resolved and not re.fullmatch(r"[A-Za-z_]\w*", resolved) \
+                and "." not in resolved and "(" not in resolved \
+                and "[" not in resolved:
             return resolved
     if literals:
         return literals[0]
@@ -434,11 +578,13 @@ def _is_test_name(name: str) -> bool:
     return bool(re.search(r"(^|[_\-.])tests?([_\-.]|$)", stem))
 
 
-def statement_text(lines: list[str], lineno: int, width: int = 5) -> str:
+def statement_text(lines: list[str], lineno: int, width: int = 12) -> str:
     """Join a possibly multi-line statement (prototypes span lines).
 
     From ``lineno`` forward until the first line holding ``;`` or ``{``
-    (bounded by ``width``). Offsets elsewhere still use real lines.
+    (bounded by ``width``; custom crypto headers routinely use 8+ line
+    prototypes with per-parameter comments). Offsets elsewhere still
+    use real lines.
     """
     parts: list[str] = []
     for offset in range(width):
@@ -486,6 +632,147 @@ def find_wrappers(sites: list[CallSite], api_names: set[str]) -> dict[str, str]:
                 and site.function not in api_basenames:
             wrappers.setdefault(site.function, site.name)
     return wrappers
+
+
+_ENUM_BODY_RE = re.compile(r"\benum\s+([A-Za-z_]\w*)\s*\{", re.MULTILINE)
+_ENUM_TYPE_SUFFIXES = ("Algorithm", "Factory", "Generator", "Spec",
+                        "Helper", "Util", "Utils", "Manager", "Context",
+                        "Parameter", "Parameters", "Key")
+_ENUM_TYPE_FAMILIES = frozenset({
+    "RSA", "AES", "DES", "DESEDE", "DSA", "DH", "ECDSA", "ECDH", "HMAC",
+    "MD5", "SHA1", "SHA256", "SHA384", "SHA512", "CHACHA", "BLOWFISH",
+})
+
+
+def _family_of_typename(typename: str) -> str | None:
+    """Algorithm family from a Java type name (or None).
+
+    Strips role suffixes (``RsaAlgorithm`` -> ``Rsa``) and requires an
+    exact family token match — ``Cipher``/``SecretKey``/``PublicKey``
+    yield nothing. Never guesses beyond the name itself.
+    """
+    try:
+        stem = str(typename or "").strip()
+        for suffix in _ENUM_TYPE_SUFFIXES:
+            if len(stem) > len(suffix) and stem.endswith(suffix):
+                stem = stem[: -len(suffix)]
+                break
+        return stem.upper() if stem.upper() in _ENUM_TYPE_FAMILIES else None
+    except Exception:
+        return None
+_ENUM_CONST_RE = re.compile(r"([A-Za-z_]\w*)\s*\(\s*\"((?:[^\"\\]|\\.)*)\"")
+_FIELD_INIT_RE = re.compile(
+    r"([A-Za-z_]\w*)\s+([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\.([A-Za-z_]\w*)"
+    r"(?:\s*[,;])")
+
+
+def _java_enum_strings(original: str) -> dict[str, dict[str, str]]:
+    """Same-file Java enums: {Enum: {CONSTANT: constructor string}}.
+
+    Only constants whose FIRST constructor argument is a quoted string
+    are recorded. Runs on ORIGINAL text (masked text blanks strings).
+    Pure; never raises.
+    """
+    table: dict[str, dict[str, str]] = {}
+    try:
+        for match in _ENUM_BODY_RE.finditer(original or ""):
+            name, open_idx = match.group(1), match.end() - 1
+            inner, _ = _balanced(original, open_idx)
+            if inner is None:
+                continue
+            consts: dict[str, str] = {}
+            for cmatch in _ENUM_CONST_RE.finditer(inner):
+                consts.setdefault(cmatch.group(1), cmatch.group(2))
+            if consts:
+                table.setdefault(name, consts)
+    except Exception:
+        pass
+    return table
+
+
+def _java_field_enum_inits(original: str) -> list[tuple[str, str, str, str]]:
+    """Field/local ``E var = E.CONST`` groundings: [(enum, var, qual, const)].
+
+    Runs on original text (identifiers survive masking, but one parse
+    over the original serves both helpers). Pure; never raises.
+    """
+    out: list[tuple[str, str, str, str]] = []
+    try:
+        for fact in _FIELD_INIT_RE.finditer(original or ""):
+            out.append((fact.group(1), fact.group(2), fact.group(3),
+                        fact.group(4)))
+    except Exception:
+        pass
+    return out
+
+
+def resolve_java_enum_string(texts: str | list[str] | tuple[str, ...],
+                             args: str) -> str | None:
+    """Resolve a JCA argument through Java enums (one hop).
+
+    ``texts`` is the file's original text plus same-directory siblings'
+    (enum definitions usually live in their own file). Handles
+    ``E.CONST.getX()`` directly, and ``var.getX()`` when a field/local
+    ``E var = E.CONST`` grounds the receiver. Returns the constructor
+    string or None (never guesses: the constant must carry a quoted
+    literal, and unknown receivers stay unresolved).
+    """
+    try:
+        texts_seq = [texts] if isinstance(texts, str) else list(texts or [])
+        table: dict[str, dict[str, str]] = {}
+        inits: list[tuple[str, str, str, str]] = []
+        for body in texts_seq:
+            if not body:
+                continue
+            for enum_name, consts in _java_enum_strings(body).items():
+                table.setdefault(enum_name, consts)
+            inits.extend(_java_field_enum_inits(body))
+        if not table:
+            return None
+        text = str(args or "")
+        direct = re.search(
+            r"([A-Za-z_]\w*)\.([A-Za-z_]\w*)\s*\.\s*[A-Za-z_]\w*\s*\(\s*\)",
+            text)
+        if direct and direct.group(1) in table:
+            hit = table[direct.group(1)].get(direct.group(2))
+            if hit:
+                return hit
+        receiver = re.search(
+            r"([A-Za-z_]\w*)\s*\.\s*[A-Za-z_]\w*\s*\(\s*\)", text)
+        if not receiver:
+            return None
+        var = receiver.group(1)
+        if var == "this":
+            return None
+        for enum_name, var_name, qualifier, const in inits:
+            if var_name != var or qualifier != enum_name:
+                continue
+            consts = table.get(enum_name)
+            if consts is None:
+                continue
+            hit = consts.get(const)
+            if hit:
+                return hit
+        # Family fallback: the receiver's declared type names the family
+        # (RsaAlgorithm alg -> RSA). Declarations (params/fields/locals)
+        # are searched in all texts; disagreement means no answer.
+        fams: set[str] = set()
+        try:
+            decl_re = re.compile(
+                r"\b([A-Za-z_]\w*)\s+" + re.escape(var)
+                + r"\b(?!\s*\()")
+            for body in texts_seq:
+                for decl in decl_re.finditer(body or ""):
+                    fam = _family_of_typename(decl.group(1))
+                    if fam:
+                        fams.add(fam)
+        except Exception:
+            pass
+        if len(fams) == 1:
+            return next(iter(fams))
+    except Exception:
+        pass
+    return None
 
 
 def resolve_entry(entry: dict, args: str, consts: dict[str, str],
@@ -571,7 +858,7 @@ def resolve_entry(entry: dict, args: str, consts: dict[str, str],
         elif any(k in upper for k in ("AES", "RSA", "EC", "HMAC", "DH", "DSA",
                                       "SHA", "MD5", "TLS", "SSL", "CHACHA",
                                       "PBKDF2", "GCM", "CBC", "KYBER", "DILITHIUM")):
-            canonical = _name_to_canonical(literal)
+            canonical = _name_to_canonical(literal) or canonical
             detail = f"algorithm {literal}"
     elif parser in ("node-cipher", "node-name", "node-curve", "node-keytype"):
         literal = _first_string(args, consts, literals)
@@ -650,6 +937,35 @@ def resolve_entry(entry: dict, args: str, consts: dict[str, str],
                 canonical = "X25519"
             elif "X448" in token:
                 canonical = "X448"
+    elif parser == "ossl-pkey-type":
+        # Raw PKEY constructors carry the key type as the first argument
+        # (EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, ...)). Resolve it
+        # through a fixed table; anything else stays the row-default
+        # OpenSSL capability (never guessed).
+        token = _arg(0)
+        hit = _PKEY_TYPE_TABLE.get(token)
+        if hit is not None:
+            canonical = hit
+            detail = f"pkey type {token}"
+    elif parser == "ossl-cipher-encflag":
+        # EVP_CipherInit_ex direction flag is the 6th argument (1/0);
+        # anything else keeps the row-default ENCRYPT.
+        flag = _arg(5)
+        if flag == "0":
+            op = "DECRYPT"
+            detail = "cipher init (decrypt)"
+        elif flag == "1":
+            op = "ENCRYPT"
+            detail = "cipher init (encrypt)"
+    elif parser == "ossl-digest-arg":
+        # X509_digest(cert, EVP_sha256(), ...): the digest comes from
+        # the second argument; unresolvable stays the row-default X.509
+        # (a cert digest of unknown type, never a guessed hash).
+        token = _arg(1)
+        mapped = _name_to_canonical(token) if token else None
+        if mapped:
+            canonical = mapped
+            detail = f"cert digest {mapped}"
     elif parser in ("rust-aesgcm", "rust-bits", "rust-curve-hint"):
         if parser == "rust-aesgcm":
             if "128" in call_name:

@@ -56,14 +56,34 @@ def _scan(repo: Path) -> tuple[dict, dict]:
     return result.as_tuple()
 
 
+def _strip_root(value, root: Path):
+    """Replace the scan-root prefix inside plain values (pre-serialization).
+
+    The previous helper replaced the root *after* json.dumps, which never
+    matches on Windows (serialization doubles backslashes). Stripping on
+    the parsed document is platform-proof.
+    """
+    prefix = str(root)
+    if isinstance(value, str):
+        return value.replace(prefix, "<ROOT>")
+    if isinstance(value, list):
+        return [_strip_root(item, root) for item in value]
+    if isinstance(value, dict):
+        return {key: _strip_root(item, root)
+                for key, item in value.items()}
+    return value
+
+
 def _norm_finding(finding: dict, root: Path) -> str:
     doc = json.loads(json.dumps(finding, sort_keys=True, default=str))
-    return json.dumps(doc, sort_keys=True).replace(str(root), "<ROOT>")
+    return json.dumps(_strip_root(doc, root), sort_keys=True)
 
 
 def _norm_records(records: list, root: Path) -> list:
     return sorted(
-        json.dumps(r, sort_keys=True, default=str).replace(str(root), "<ROOT>")
+        json.dumps(_strip_root(
+            json.loads(json.dumps(r, sort_keys=True, default=str)), root),
+            sort_keys=True)
         for r in (records or []))
 
 

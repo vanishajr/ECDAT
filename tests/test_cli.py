@@ -105,15 +105,27 @@ def test_scan_invalid_scanners_fail_clean(tmp_path, capsys):
     assert err.strip() != ""
 
 
-def test_scan_duplicate_is_clean_error(tmp_path, capsys):
+def test_scan_duplicate_reuses_stored_row(tmp_path, capsys):
     target = _target(tmp_path)
     assert main(["scan", str(target), "--db", _db(tmp_path)]) == 0
-    _scan_id(capsys)
+    first_id = _scan_id(capsys)
     rc = main(["scan", str(target), "--db", _db(tmp_path)])
-    assert rc == 1
+    assert rc == 0
     out, err = capsys.readouterr()
     assert "Traceback" not in out + err
-    assert "already exists" in err
+    assert out.strip() == first_id  # same deterministic ID, reused
+    assert "reused" in err
+
+
+def test_scan_duplicate_replace_overwrites(tmp_path, capsys):
+    target = _target(tmp_path)
+    assert main(["scan", str(target), "--db", _db(tmp_path)]) == 0
+    first_id = _scan_id(capsys)
+    rc = main(["scan", str(target), "--db", _db(tmp_path), "--replace"])
+    assert rc == 0
+    out, err = capsys.readouterr()
+    assert out.strip() == first_id
+    assert "reused" not in err
 
 
 # --- list ---------------------------------------------------------------

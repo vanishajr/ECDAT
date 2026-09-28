@@ -1,0 +1,2581 @@
+{
+ "assets": [
+  {
+   "asset_id": "ast:a92b5d6f9b560edf",
+   "canonical": "AES-128-CBC",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_128_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4981",
+     "snippet": "EVP_aes_128_cbc()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_128_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5035",
+     "snippet": "EVP_aes_128_cbc()",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "EVP_aes_128_cbc",
+    "library": "openssl"
+   },
+   "key_size": 128,
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4981
+   },
+   "mode": "CBC",
+   "original": "AES-128-CBC",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:0244ec60f4e620fd",
+   "canonical": "AES-256-CBC",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_256_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4985",
+     "snippet": "EVP_aes_256_cbc()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_256_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5039",
+     "snippet": "EVP_aes_256_cbc()",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "EVP_aes_256_cbc",
+    "library": "openssl"
+   },
+   "key_size": 256,
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4985
+   },
+   "mode": "CBC",
+   "original": "AES-256-CBC",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:61e8040a08d09a4f",
+   "canonical": "DH",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set_tmp_dh at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1616",
+     "snippet": "SSL_CTX_set_tmp_dh(ssl->ctx, dh) | args: ssl->ctx, dh",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SSL_CTX_set_tmp_dh",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_dhparam",
+    "line": 1616
+   },
+   "original": "DH",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:526f2179dafe6a41",
+   "canonical": "ECDH",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set1_curves_list at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1799",
+     "snippet": "SSL_CTX_set1_curves_list(ssl->ctx, (char *) name->data) | args: ssl->ctx, (char *) name->data",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SSL_CTX_set1_curves_list",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ecdh_curve",
+    "line": 1799
+   },
+   "original": "ECDH",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:cd5e62756c05c341",
+   "canonical": "ECDSA",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EC_KEY_new_by_curve_name at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1825 [curve nid]",
+     "snippet": "EC_KEY_new_by_curve_name(nid) | args: nid",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "EC_KEY_new_by_curve_name",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ecdh_curve",
+    "line": 1825
+   },
+   "original": "ECDSA",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:7d08198b2f8a27c5",
+   "canonical": "HMAC",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:4/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5001",
+     "snippet": "HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL) | args: hctx, key[0].hmac_key, size, digest",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5006",
+     "snippet": "HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL) | args: hctx, key[0].hmac_key, size, digest",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5044",
+     "snippet": "HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL) | args: hctx, key[i].hmac_key, size, digest",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5049",
+     "snippet": "HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL) | args: hctx, key[i].hmac_key, size, digest",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "HMAC_Init_ex",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 5001
+   },
+   "original": "HMAC",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:e144079b30a0c9a5",
+   "canonical": "OpenSSL",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4994 [cipher unresolved; library capability only]",
+     "snippet": "EVP_EncryptInit_ex(ectx, cipher, NULL, key[0].aes_key, iv) | args: ectx, cipher, NULL, key[0].aes_key",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "direct source API call: EVP_DecryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5052 [cipher unresolved; library capability only]",
+     "snippet": "EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv) | args: ectx, cipher, NULL, key[i].aes_key",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "EVP_EncryptInit_ex",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4994
+   },
+   "original": "OpenSSL",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "ProvidedOnly"
+   },
+   "usage_state": "ProvidedOnly"
+  },
+  {
+   "asset_id": "ast:f775a36002bfb976",
+   "canonical": "Random",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: RAND_bytes at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4989",
+     "snippet": "RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)) | args: iv, EVP_CIPHER_iv_length(cipher)",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: RAND_bytes at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5127",
+     "snippet": "RAND_bytes(buf, 80) | args: buf, 80",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: RAND_bytes at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5166",
+     "snippet": "RAND_bytes(buf, 80) | args: buf, 80",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "RAND_bytes",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4989
+   },
+   "original": "Random",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "canonical": "SHA-1",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:3/hits:3/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to EVP_DigestInit_ex: ngx_ssl_session_id_context at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4109 [cipher unresolved; library capability only]",
+     "snippet": "ngx_ssl_session_id_context(ssl, sess_ctx, certificates)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_DigestInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4198",
+     "snippet": "EVP_DigestInit_ex(md, EVP_sha1(), NULL) | args: md, EVP_sha1(), NULL",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: X509_digest at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4213 [cert digest SHA-1]",
+     "snippet": "X509_digest(cert, EVP_sha1(), buf, &len) | args: cert, EVP_sha1(), buf, &len",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_sha1 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4251",
+     "snippet": "EVP_sha1()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_sha1 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4960",
+     "snippet": "EVP_sha1()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: X509_digest at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:6370 [cert digest SHA-1]",
+     "snippet": "X509_digest(cert, EVP_sha1(), buf, &len) | args: cert, EVP_sha1(), buf, &len",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "EVP_DigestInit_ex",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_session_id_context",
+    "line": 4198
+   },
+   "original": "SHA-1",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:37d179b149dc1607",
+   "canonical": "SHA-256",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_sha256 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4962",
+     "snippet": "EVP_sha256()",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "EVP_sha256",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4962
+   },
+   "original": "SHA-256",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:0ba9422e58b383ea",
+   "canonical": "TLS",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_new at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:308 [method SSLv23_method]",
+     "snippet": "SSL_CTX_new(SSLv23_method()) | args: SSLv23_method()",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SSL_CTX_new",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_create",
+    "line": 308
+   },
+   "original": "TLS",
+   "protocol": "TLS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:18b75838d21ac47b",
+   "canonical": "TLS",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:5/hits:3/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_min_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:405",
+     "snippet": "SSL_CTX_set_min_proto_version(ssl->ctx, 0) | args: ssl->ctx, 0",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_max_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:406",
+     "snippet": "SSL_CTX_set_max_proto_version(ssl->ctx, TLS1_2_VERSION) | args: ssl->ctx, TLS1_2_VERSION",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_min_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:410",
+     "snippet": "SSL_CTX_set_min_proto_version(ssl->ctx, 0) | args: ssl->ctx, 0",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set_cipher_list at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:928",
+     "snippet": "SSL_CTX_set_cipher_list(ssl->ctx, (char *) ciphers->data) | args: ssl->ctx, (char *) ciphers->data",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set1_echstore at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1737",
+     "snippet": "SSL_CTX_set1_echstore(ssl->ctx, es) | args: ssl->ctx, es",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SSL_CTX_set_min_proto_version",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_create",
+    "line": 405
+   },
+   "original": "TLS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:a294bc89d7ad78c8",
+   "canonical": "TLS",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/evidence:1"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_max_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:411",
+     "snippet": "SSL_CTX_set_max_proto_version(ssl->ctx, TLS1_3_VERSION) | args: ssl->ctx, TLS1_3_VERSION",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SSL_CTX_set_max_proto_version",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_create",
+    "line": 411
+   },
+   "original": "TLS",
+   "protocol": "TLS1.3",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:3317f139fc87af08",
+   "canonical": "X.509",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SSL_CTX_use_certificate: ngx_ssl_certificate at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:463",
+     "snippet": "ngx_ssl_certificate(cf, ssl, &cert[i], &key[i], passwords)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_use_certificate at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:504",
+     "snippet": "SSL_CTX_use_certificate(ssl->ctx, x509) | args: ssl->ctx, x509",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_use_PrivateKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:608",
+     "snippet": "SSL_CTX_use_PrivateKey(ssl->ctx, pkey) | args: ssl->ctx, pkey",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SSL_CTX_use_certificate",
+    "library": "openssl"
+   },
+   "library": "openssl",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_certificate",
+    "line": 504
+   },
+   "original": "X.509",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  }
+ ],
+ "cir_version": "0.1",
+ "finished_at": "2026-09-24T16:22:58Z",
+ "graph": {
+  "edges": [
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:a92b5d6f9b560edf"
+   },
+   {
+    "from": "ast:a92b5d6f9b560edf",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:0244ec60f4e620fd"
+   },
+   {
+    "from": "ast:0244ec60f4e620fd",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:61e8040a08d09a4f"
+   },
+   {
+    "from": "ast:61e8040a08d09a4f",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:526f2179dafe6a41"
+   },
+   {
+    "from": "ast:526f2179dafe6a41",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:cd5e62756c05c341"
+   },
+   {
+    "from": "ast:cd5e62756c05c341",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:7d08198b2f8a27c5"
+   },
+   {
+    "from": "ast:7d08198b2f8a27c5",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:e144079b30a0c9a5"
+   },
+   {
+    "from": "ast:e144079b30a0c9a5",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:f775a36002bfb976"
+   },
+   {
+    "from": "ast:f775a36002bfb976",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:b7d1d3004ff77077"
+   },
+   {
+    "from": "ast:b7d1d3004ff77077",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:37d179b149dc1607"
+   },
+   {
+    "from": "ast:37d179b149dc1607",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:0ba9422e58b383ea"
+   },
+   {
+    "from": "ast:0ba9422e58b383ea",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:18b75838d21ac47b"
+   },
+   {
+    "from": "ast:18b75838d21ac47b",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:a294bc89d7ad78c8"
+   },
+   {
+    "from": "ast:a294bc89d7ad78c8",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "ast:3317f139fc87af08"
+   },
+   {
+    "from": "ast:3317f139fc87af08",
+    "relationship": "uses",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:ecdf7474a15eccd3",
+    "relationship": "uses",
+    "to": "ast:b7d1d3004ff77077"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:ecdf7474a15eccd3"
+   },
+   {
+    "from": "op:10dbd53283e2a3e5",
+    "relationship": "uses",
+    "to": "ast:0244ec60f4e620fd"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:10dbd53283e2a3e5"
+   },
+   {
+    "from": "op:e90c4eca9e834986",
+    "relationship": "uses",
+    "to": "ast:a92b5d6f9b560edf"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:e90c4eca9e834986"
+   },
+   {
+    "from": "op:4866cd512e61a52d",
+    "relationship": "uses",
+    "to": "ast:18b75838d21ac47b"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:4866cd512e61a52d"
+   },
+   {
+    "from": "op:7e56aca1bcc68218",
+    "relationship": "uses",
+    "to": "ast:b7d1d3004ff77077"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:7e56aca1bcc68218"
+   },
+   {
+    "from": "op:a4e6ccafb61f5f7b",
+    "relationship": "uses",
+    "to": "ast:cd5e62756c05c341"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:a4e6ccafb61f5f7b"
+   },
+   {
+    "from": "op:82149a1d38aa540d",
+    "relationship": "uses",
+    "to": "ast:37d179b149dc1607"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:82149a1d38aa540d"
+   },
+   {
+    "from": "op:6f87a08fab8a4fdb",
+    "relationship": "uses",
+    "to": "ast:526f2179dafe6a41"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:6f87a08fab8a4fdb"
+   },
+   {
+    "from": "op:a8a46e7cdec0c123",
+    "relationship": "uses",
+    "to": "ast:b7d1d3004ff77077"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:a8a46e7cdec0c123"
+   },
+   {
+    "from": "op:502b24549e6bff52",
+    "relationship": "uses",
+    "to": "ast:3317f139fc87af08"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:502b24549e6bff52"
+   },
+   {
+    "from": "op:f2a1b5a10adbc00f",
+    "relationship": "uses",
+    "to": "ast:7d08198b2f8a27c5"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:f2a1b5a10adbc00f"
+   },
+   {
+    "from": "op:d8302c29576b68f7",
+    "relationship": "uses",
+    "to": "ast:61e8040a08d09a4f"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:d8302c29576b68f7"
+   },
+   {
+    "from": "op:8ad61a6e24783a59",
+    "relationship": "uses",
+    "to": "ast:18b75838d21ac47b"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:8ad61a6e24783a59"
+   },
+   {
+    "from": "op:3d389aaa8eaf3da9",
+    "relationship": "uses",
+    "to": "ast:18b75838d21ac47b"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:3d389aaa8eaf3da9"
+   },
+   {
+    "from": "op:5fce5d18b6d7b3af",
+    "relationship": "uses",
+    "to": "ast:f775a36002bfb976"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:5fce5d18b6d7b3af"
+   },
+   {
+    "from": "op:c9b21849fd21784c",
+    "relationship": "uses",
+    "to": "ast:f775a36002bfb976"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:c9b21849fd21784c"
+   },
+   {
+    "from": "op:bf8d01c0f8c33179",
+    "relationship": "uses",
+    "to": "ast:3317f139fc87af08"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:bf8d01c0f8c33179"
+   },
+   {
+    "from": "op:bdccb02f91f741a8",
+    "relationship": "uses",
+    "to": "ast:e144079b30a0c9a5"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:bdccb02f91f741a8"
+   },
+   {
+    "from": "op:2cd859d227140c6e",
+    "relationship": "uses",
+    "to": "ast:e144079b30a0c9a5"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:2cd859d227140c6e"
+   },
+   {
+    "from": "op:2de963e88f69bd7e",
+    "relationship": "uses",
+    "to": "ast:b7d1d3004ff77077"
+   },
+   {
+    "from": "file:6bdbce42f3d133d5",
+    "relationship": "contains",
+    "to": "op:2de963e88f69bd7e"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:0244ec60f4e620fd"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:18b75838d21ac47b"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:3317f139fc87af08"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:37d179b149dc1607"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:526f2179dafe6a41"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:61e8040a08d09a4f"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:7d08198b2f8a27c5"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:a92b5d6f9b560edf"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:b7d1d3004ff77077"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:cd5e62756c05c341"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:e144079b30a0c9a5"
+   },
+   {
+    "from": "library:41ffca929b95c496",
+    "relationship": "derives",
+    "to": "ast:f775a36002bfb976"
+   },
+   {
+    "from": "op:10dbd53283e2a3e5",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:2cd859d227140c6e",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:2cd859d227140c6e",
+    "relationship": "derives",
+    "to": "op:bdccb02f91f741a8"
+   },
+   {
+    "from": "op:2de963e88f69bd7e",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:2de963e88f69bd7e",
+    "relationship": "derives",
+    "to": "op:7e56aca1bcc68218"
+   },
+   {
+    "from": "op:3d389aaa8eaf3da9",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:3d389aaa8eaf3da9",
+    "relationship": "derives",
+    "to": "op:4866cd512e61a52d"
+   },
+   {
+    "from": "op:4866cd512e61a52d",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:4866cd512e61a52d",
+    "relationship": "derives",
+    "to": "op:8ad61a6e24783a59"
+   },
+   {
+    "from": "op:502b24549e6bff52",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:502b24549e6bff52",
+    "relationship": "derives",
+    "to": "op:bf8d01c0f8c33179"
+   },
+   {
+    "from": "op:5fce5d18b6d7b3af",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:5fce5d18b6d7b3af",
+    "relationship": "derives",
+    "to": "op:c9b21849fd21784c"
+   },
+   {
+    "from": "op:6f87a08fab8a4fdb",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:7e56aca1bcc68218",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:7e56aca1bcc68218",
+    "relationship": "derives",
+    "to": "op:a8a46e7cdec0c123"
+   },
+   {
+    "from": "op:82149a1d38aa540d",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:8ad61a6e24783a59",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:a4e6ccafb61f5f7b",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:a8a46e7cdec0c123",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:a8a46e7cdec0c123",
+    "relationship": "derives",
+    "to": "op:ecdf7474a15eccd3"
+   },
+   {
+    "from": "op:bdccb02f91f741a8",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:bf8d01c0f8c33179",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:c9b21849fd21784c",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:d8302c29576b68f7",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:e90c4eca9e834986",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:ecdf7474a15eccd3",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   },
+   {
+    "from": "op:f2a1b5a10adbc00f",
+    "relationship": "depends_on",
+    "to": "library:41ffca929b95c496"
+   }
+  ],
+  "nodes": [
+   {
+    "id": "ast:a92b5d6f9b560edf",
+    "kind": "asset",
+    "label": "AES-128-CBC",
+    "ref": "ast:a92b5d6f9b560edf"
+   },
+   {
+    "id": "file:6bdbce42f3d133d5",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c"
+   },
+   {
+    "id": "library:41ffca929b95c496",
+    "kind": "library",
+    "label": "openssl",
+    "ref": "openssl"
+   },
+   {
+    "id": "ast:0244ec60f4e620fd",
+    "kind": "asset",
+    "label": "AES-256-CBC",
+    "ref": "ast:0244ec60f4e620fd"
+   },
+   {
+    "id": "ast:61e8040a08d09a4f",
+    "kind": "asset",
+    "label": "DH",
+    "ref": "ast:61e8040a08d09a4f"
+   },
+   {
+    "id": "ast:526f2179dafe6a41",
+    "kind": "asset",
+    "label": "ECDH",
+    "ref": "ast:526f2179dafe6a41"
+   },
+   {
+    "id": "ast:cd5e62756c05c341",
+    "kind": "asset",
+    "label": "ECDSA",
+    "ref": "ast:cd5e62756c05c341"
+   },
+   {
+    "id": "ast:7d08198b2f8a27c5",
+    "kind": "asset",
+    "label": "HMAC",
+    "ref": "ast:7d08198b2f8a27c5"
+   },
+   {
+    "id": "ast:e144079b30a0c9a5",
+    "kind": "asset",
+    "label": "OpenSSL",
+    "ref": "ast:e144079b30a0c9a5"
+   },
+   {
+    "id": "ast:f775a36002bfb976",
+    "kind": "asset",
+    "label": "Random",
+    "ref": "ast:f775a36002bfb976"
+   },
+   {
+    "id": "ast:b7d1d3004ff77077",
+    "kind": "asset",
+    "label": "SHA-1",
+    "ref": "ast:b7d1d3004ff77077"
+   },
+   {
+    "id": "ast:37d179b149dc1607",
+    "kind": "asset",
+    "label": "SHA-256",
+    "ref": "ast:37d179b149dc1607"
+   },
+   {
+    "id": "ast:0ba9422e58b383ea",
+    "kind": "asset",
+    "label": "TLS",
+    "ref": "ast:0ba9422e58b383ea"
+   },
+   {
+    "id": "ast:18b75838d21ac47b",
+    "kind": "asset",
+    "label": "TLS",
+    "ref": "ast:18b75838d21ac47b"
+   },
+   {
+    "id": "ast:a294bc89d7ad78c8",
+    "kind": "asset",
+    "label": "TLS",
+    "ref": "ast:a294bc89d7ad78c8"
+   },
+   {
+    "id": "ast:3317f139fc87af08",
+    "kind": "asset",
+    "label": "X.509",
+    "ref": "ast:3317f139fc87af08"
+   },
+   {
+    "id": "op:ecdf7474a15eccd3",
+    "kind": "operation",
+    "label": "Hash",
+    "ref": "op:ecdf7474a15eccd3"
+   },
+   {
+    "id": "op:10dbd53283e2a3e5",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:10dbd53283e2a3e5"
+   },
+   {
+    "id": "op:e90c4eca9e834986",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:e90c4eca9e834986"
+   },
+   {
+    "id": "op:4866cd512e61a52d",
+    "kind": "operation",
+    "label": "TLS",
+    "ref": "op:4866cd512e61a52d"
+   },
+   {
+    "id": "op:7e56aca1bcc68218",
+    "kind": "operation",
+    "label": "Hash",
+    "ref": "op:7e56aca1bcc68218"
+   },
+   {
+    "id": "op:a4e6ccafb61f5f7b",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:a4e6ccafb61f5f7b"
+   },
+   {
+    "id": "op:82149a1d38aa540d",
+    "kind": "operation",
+    "label": "Hash",
+    "ref": "op:82149a1d38aa540d"
+   },
+   {
+    "id": "op:6f87a08fab8a4fdb",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:6f87a08fab8a4fdb"
+   },
+   {
+    "id": "op:a8a46e7cdec0c123",
+    "kind": "operation",
+    "label": "Hash",
+    "ref": "op:a8a46e7cdec0c123"
+   },
+   {
+    "id": "op:502b24549e6bff52",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:502b24549e6bff52"
+   },
+   {
+    "id": "op:f2a1b5a10adbc00f",
+    "kind": "operation",
+    "label": "Hash",
+    "ref": "op:f2a1b5a10adbc00f"
+   },
+   {
+    "id": "op:d8302c29576b68f7",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:d8302c29576b68f7"
+   },
+   {
+    "id": "op:8ad61a6e24783a59",
+    "kind": "operation",
+    "label": "TLS",
+    "ref": "op:8ad61a6e24783a59"
+   },
+   {
+    "id": "op:3d389aaa8eaf3da9",
+    "kind": "operation",
+    "label": "TLS",
+    "ref": "op:3d389aaa8eaf3da9"
+   },
+   {
+    "id": "op:5fce5d18b6d7b3af",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:5fce5d18b6d7b3af"
+   },
+   {
+    "id": "op:c9b21849fd21784c",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:c9b21849fd21784c"
+   },
+   {
+    "id": "op:bf8d01c0f8c33179",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:bf8d01c0f8c33179"
+   },
+   {
+    "id": "op:bdccb02f91f741a8",
+    "kind": "operation",
+    "label": "Decrypt",
+    "ref": "op:bdccb02f91f741a8"
+   },
+   {
+    "id": "op:2cd859d227140c6e",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:2cd859d227140c6e"
+   },
+   {
+    "id": "op:2de963e88f69bd7e",
+    "kind": "operation",
+    "label": "Hash",
+    "ref": "op:2de963e88f69bd7e"
+   }
+  ]
+ },
+ "operations": [
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:3/hits:3/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_DigestInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4198",
+     "snippet": "EVP_DigestInit_ex(md, EVP_sha1(), NULL) | args: md, EVP_sha1(), NULL",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_sha1 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4251",
+     "snippet": "EVP_sha1()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: X509_digest at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4213 [cert digest SHA-1]",
+     "snippet": "X509_digest(cert, EVP_sha1(), buf, &len) | args: cert, EVP_sha1(), buf, &len",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_session_id_context",
+   "implementation": {
+    "api": "EVP_DigestInit_ex",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_session_id_context",
+    "line": 4198
+   },
+   "operation_id": "op:ecdf7474a15eccd3",
+   "operation_type": "Hash",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:0244ec60f4e620fd",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_256_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4985",
+     "snippet": "EVP_aes_256_cbc()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_256_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5039",
+     "snippet": "EVP_aes_256_cbc()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "EVP_aes_256_cbc",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4985
+   },
+   "operation_id": "op:10dbd53283e2a3e5",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:a92b5d6f9b560edf",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_128_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4981",
+     "snippet": "EVP_aes_128_cbc()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_aes_128_cbc at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5035",
+     "snippet": "EVP_aes_128_cbc()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "EVP_aes_128_cbc",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4981
+   },
+   "operation_id": "op:e90c4eca9e834986",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:18b75838d21ac47b",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:5/hits:3/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_min_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:405",
+     "snippet": "SSL_CTX_set_min_proto_version(ssl->ctx, 0) | args: ssl->ctx, 0",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_max_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:406",
+     "snippet": "SSL_CTX_set_max_proto_version(ssl->ctx, TLS1_2_VERSION) | args: ssl->ctx, TLS1_2_VERSION",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_min_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:410",
+     "snippet": "SSL_CTX_set_min_proto_version(ssl->ctx, 0) | args: ssl->ctx, 0",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_new at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:308 [method SSLv23_method]",
+     "snippet": "SSL_CTX_new(SSLv23_method()) | args: SSLv23_method()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: SSL_CTX_set_max_proto_version at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:411",
+     "snippet": "SSL_CTX_set_max_proto_version(ssl->ctx, TLS1_3_VERSION) | args: ssl->ctx, TLS1_3_VERSION",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_create",
+   "implementation": {
+    "api": "SSL_CTX_set_min_proto_version",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_create",
+    "line": 405
+   },
+   "operation_id": "op:4866cd512e61a52d",
+   "operation_type": "TLS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_sha1 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4960",
+     "snippet": "EVP_sha1()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "EVP_sha1",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4960
+   },
+   "operation_id": "op:7e56aca1bcc68218",
+   "operation_type": "Hash",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:cd5e62756c05c341",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EC_KEY_new_by_curve_name at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1825 [curve nid]",
+     "snippet": "EC_KEY_new_by_curve_name(nid) | args: nid",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ecdh_curve",
+   "implementation": {
+    "api": "EC_KEY_new_by_curve_name",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ecdh_curve",
+    "line": 1825
+   },
+   "operation_id": "op:a4e6ccafb61f5f7b",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:37d179b149dc1607",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: EVP_sha256 at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4962",
+     "snippet": "EVP_sha256()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "EVP_sha256",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4962
+   },
+   "operation_id": "op:82149a1d38aa540d",
+   "operation_type": "Hash",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:526f2179dafe6a41",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set1_curves_list at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1799",
+     "snippet": "SSL_CTX_set1_curves_list(ssl->ctx, (char *) name->data) | args: ssl->ctx, (char *) name->data",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ecdh_curve",
+   "implementation": {
+    "api": "SSL_CTX_set1_curves_list",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ecdh_curve",
+    "line": 1799
+   },
+   "operation_id": "op:6f87a08fab8a4fdb",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: X509_digest at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:6370 [cert digest SHA-1]",
+     "snippet": "X509_digest(cert, EVP_sha1(), buf, &len) | args: cert, EVP_sha1(), buf, &len",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_get_fingerprint",
+   "implementation": {
+    "api": "X509_digest",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_get_fingerprint",
+    "line": 6370
+   },
+   "operation_id": "op:a8a46e7cdec0c123",
+   "operation_type": "Hash",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:3317f139fc87af08",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_use_certificate at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:504",
+     "snippet": "SSL_CTX_use_certificate(ssl->ctx, x509) | args: ssl->ctx, x509",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_use_PrivateKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:608",
+     "snippet": "SSL_CTX_use_PrivateKey(ssl->ctx, pkey) | args: ssl->ctx, pkey",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_certificate",
+   "implementation": {
+    "api": "SSL_CTX_use_certificate",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_certificate",
+    "line": 504
+   },
+   "operation_id": "op:502b24549e6bff52",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:7d08198b2f8a27c5",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:4/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5001",
+     "snippet": "HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL) | args: hctx, key[0].hmac_key, size, digest",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5006",
+     "snippet": "HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL) | args: hctx, key[0].hmac_key, size, digest",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5044",
+     "snippet": "HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL) | args: hctx, key[i].hmac_key, size, digest",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: HMAC_Init_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5049",
+     "snippet": "HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL) | args: hctx, key[i].hmac_key, size, digest",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "HMAC_Init_ex",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 5001
+   },
+   "operation_id": "op:f2a1b5a10adbc00f",
+   "operation_type": "Hash",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:61e8040a08d09a4f",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set_tmp_dh at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1616",
+     "snippet": "SSL_CTX_set_tmp_dh(ssl->ctx, dh) | args: ssl->ctx, dh",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_dhparam",
+   "implementation": {
+    "api": "SSL_CTX_set_tmp_dh",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_dhparam",
+    "line": 1616
+   },
+   "operation_id": "op:d8302c29576b68f7",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:18b75838d21ac47b",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set1_echstore at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:1737",
+     "snippet": "SSL_CTX_set1_echstore(ssl->ctx, es) | args: ssl->ctx, es",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ech_files",
+   "implementation": {
+    "api": "SSL_CTX_set1_echstore",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ech_files",
+    "line": 1737
+   },
+   "operation_id": "op:8ad61a6e24783a59",
+   "operation_type": "TLS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:18b75838d21ac47b",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SSL_CTX_set_cipher_list at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:928",
+     "snippet": "SSL_CTX_set_cipher_list(ssl->ctx, (char *) ciphers->data) | args: ssl->ctx, (char *) ciphers->data",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ciphers",
+   "implementation": {
+    "api": "SSL_CTX_set_cipher_list",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ciphers",
+    "line": 928
+   },
+   "operation_id": "op:3d389aaa8eaf3da9",
+   "operation_type": "TLS",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:f775a36002bfb976",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: RAND_bytes at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4989",
+     "snippet": "RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)) | args: iv, EVP_CIPHER_iv_length(cipher)",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "RAND_bytes",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4989
+   },
+   "operation_id": "op:5fce5d18b6d7b3af",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:f775a36002bfb976",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: RAND_bytes at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5127",
+     "snippet": "RAND_bytes(buf, 80) | args: buf, 80",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: RAND_bytes at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5166",
+     "snippet": "RAND_bytes(buf, 80) | args: buf, 80",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_rotate_ticket_keys",
+   "implementation": {
+    "api": "RAND_bytes",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_rotate_ticket_keys",
+    "line": 5127
+   },
+   "operation_id": "op:c9b21849fd21784c",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:3317f139fc87af08",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SSL_CTX_use_certificate: ngx_ssl_certificate at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:463",
+     "snippet": "ngx_ssl_certificate(cf, ssl, &cert[i], &key[i], passwords)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "ngx_ssl_certificates",
+   "implementation": {
+    "api": "ngx_ssl_certificate",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_certificates",
+    "line": 463
+   },
+   "operation_id": "op:bf8d01c0f8c33179",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:e144079b30a0c9a5",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "direct source API call: EVP_DecryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:5052 [cipher unresolved; library capability only]",
+     "snippet": "EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv) | args: ectx, cipher, NULL, key[i].aes_key",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "EVP_DecryptInit_ex",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 5052
+   },
+   "operation_id": "op:bdccb02f91f741a8",
+   "operation_type": "Decrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:e144079b30a0c9a5",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "direct source API call: EVP_EncryptInit_ex at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4994 [cipher unresolved; library capability only]",
+     "snippet": "EVP_EncryptInit_ex(ectx, cipher, NULL, key[0].aes_key, iv) | args: ectx, cipher, NULL, key[0].aes_key",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "ngx_ssl_ticket_key_callback",
+   "implementation": {
+    "api": "EVP_EncryptInit_ex",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_ticket_key_callback",
+    "line": 4994
+   },
+   "operation_id": "op:2cd859d227140c6e",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to EVP_DigestInit_ex: ngx_ssl_session_id_context at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c:4109 [cipher unresolved; library capability only]",
+     "snippet": "ngx_ssl_session_id_context(ssl, sess_ctx, certificates)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "ngx_ssl_session_cache",
+   "implementation": {
+    "api": "ngx_ssl_session_id_context",
+    "library": "openssl"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c",
+    "function": "ngx_ssl_session_cache",
+    "line": 4109
+   },
+   "operation_id": "op:2de963e88f69bd7e",
+   "operation_type": "Hash",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  }
+ ],
+ "recommendations": [
+  {
+   "asset_ids": [
+    "ast:526f2179dafe6a41"
+   ],
+   "description": "ECDH [op:6f87a08fab8a4fdb] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> hybrid X25519+ML-KEM-768. ECDH/X25519 key agreement is quantum-vulnerable despite classical strength; augment with ML-KEM hybrid. Priority High (replacement_score 0.845). Effort M; latency/cost low; compatibility medium. Blockers: peer hybrid key-exchange support; library ML-KEM support in deployed stack.",
+   "pqc_target": "X25519+ML-KEM-768",
+   "priority": "High",
+   "recommendation_id": "rec:7194c252dc219c09",
+   "title": "Migrate ECDH [op:6f87a08fab8a4fdb] to hybrid X25519+ML-KEM-768"
+  },
+  {
+   "asset_ids": [
+    "ast:61e8040a08d09a4f"
+   ],
+   "description": "DH [op:d8302c29576b68f7] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> hybrid X25519+ML-KEM-768 (TLS 1.3 KEM). Finite-field DH is quantum-vulnerable; move to TLS 1.3 and a ML-KEM hybrid group where available. Priority High (replacement_score 0.830). Effort M; latency/cost low; compatibility medium. Blockers: TLS 1.3 deployment before group migration; peer hybrid-group support.",
+   "pqc_target": "X25519+ML-KEM-768",
+   "priority": "High",
+   "recommendation_id": "rec:eb9a32aef0beccc0",
+   "title": "Migrate DH [op:d8302c29576b68f7] to hybrid X25519+ML-KEM-768 (TLS 1.3 KEM)"
+  },
+  {
+   "asset_ids": [
+    "ast:cd5e62756c05c341"
+   ],
+   "description": "ECDSA [op:a4e6ccafb61f5f7b] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> ML-DSA-65 (alt: SLH-DSA-128s conservative profile). ECDSA is quantum-vulnerable; migrate signing to ML-DSA (primary) or SLH-DSA (conservative/hash-based). Track signature size and verification cost. Priority High (replacement_score 0.760). Effort L; latency/cost medium; compatibility low. Blockers: PKI and verifier ML-DSA support; signature size limits in protocols/storage.",
+   "pqc_target": "ML-DSA-65",
+   "priority": "High",
+   "recommendation_id": "rec:d1fcbd86971deb3b",
+   "title": "Migrate ECDSA [op:a4e6ccafb61f5f7b] to ML-DSA-65 (alt: SLH-DSA-128s conservative profile)"
+  },
+  {
+   "asset_ids": [
+    "ast:e144079b30a0c9a5"
+   ],
+   "description": "OpenSSL [op:2cd859d227140c6e] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> TLS 1.3 (AEAD ciphers, modern groups, PQ-hybrid-ready stack). SSL/TLS 1.0/1.1 and weak ciphers are classically broken; upgrade to TLS 1.3 first, then pilot PQ-hybrid groups. Fix classical risk before claiming PQ readiness. Priority Medium (replacement_score 0.861). Effort S; latency/cost low; compatibility high. Blockers: legacy client compatibility window; cipher-suite and certificate rollout coordination.",
+   "pqc_target": "TLS 1.3",
+   "priority": "Medium",
+   "recommendation_id": "rec:bddf1772b5660223",
+   "title": "Migrate OpenSSL [op:2cd859d227140c6e] to TLS 1.3 (AEAD ciphers, modern groups, PQ-hybrid-ready stack)"
+  },
+  {
+   "asset_ids": [
+    "ast:e144079b30a0c9a5"
+   ],
+   "description": "OpenSSL [op:bdccb02f91f741a8] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> TLS 1.3 (AEAD ciphers, modern groups, PQ-hybrid-ready stack). SSL/TLS 1.0/1.1 and weak ciphers are classically broken; upgrade to TLS 1.3 first, then pilot PQ-hybrid groups. Fix classical risk before claiming PQ readiness. Priority Medium (replacement_score 0.861). Effort S; latency/cost low; compatibility high. Blockers: legacy client compatibility window; cipher-suite and certificate rollout coordination.",
+   "pqc_target": "TLS 1.3",
+   "priority": "Medium",
+   "recommendation_id": "rec:226b98c62f65f686",
+   "title": "Migrate OpenSSL [op:bdccb02f91f741a8] to TLS 1.3 (AEAD ciphers, modern groups, PQ-hybrid-ready stack)"
+  },
+  {
+   "asset_ids": [
+    "ast:b7d1d3004ff77077"
+   ],
+   "description": "SHA-1 [op:7e56aca1bcc68218] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> SHA-256 / SHA-384 / SHA-3-256. MD5/SHA-1 are broken for collision resistance; use SHA-256/384 or SHA-3 (checksum-only uses should be labelled, not scored). Priority Medium (replacement_score 0.843). Effort S; latency/cost low; compatibility high. Blockers: collision-risk review of each use site; checksum-only uses must be labelled, not migrated.",
+   "pqc_target": "SHA-256 / SHA-384 / SHA-3-256",
+   "priority": "Medium",
+   "recommendation_id": "rec:c10ed7a905fad703",
+   "title": "Migrate SHA-1 [op:7e56aca1bcc68218] to SHA-256 / SHA-384 / SHA-3-256"
+  },
+  {
+   "asset_ids": [
+    "ast:b7d1d3004ff77077"
+   ],
+   "description": "SHA-1 [op:ecdf7474a15eccd3] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> SHA-256 / SHA-384 / SHA-3-256. MD5/SHA-1 are broken for collision resistance; use SHA-256/384 or SHA-3 (checksum-only uses should be labelled, not scored). Priority Medium (replacement_score 0.843). Effort S; latency/cost low; compatibility high. Blockers: collision-risk review of each use site; checksum-only uses must be labelled, not migrated.",
+   "pqc_target": "SHA-256 / SHA-384 / SHA-3-256",
+   "priority": "Medium",
+   "recommendation_id": "rec:5a0248b2286e5b9c",
+   "title": "Migrate SHA-1 [op:ecdf7474a15eccd3] to SHA-256 / SHA-384 / SHA-3-256"
+  },
+  {
+   "asset_ids": [
+    "ast:b7d1d3004ff77077"
+   ],
+   "description": "SHA-1 [op:a8a46e7cdec0c123] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> SHA-256 / SHA-384 / SHA-3-256. MD5/SHA-1 are broken for collision resistance; use SHA-256/384 or SHA-3 (checksum-only uses should be labelled, not scored). Priority Medium (replacement_score 0.842). Effort S; latency/cost low; compatibility high. Blockers: collision-risk review of each use site; checksum-only uses must be labelled, not migrated.",
+   "pqc_target": "SHA-256 / SHA-384 / SHA-3-256",
+   "priority": "Medium",
+   "recommendation_id": "rec:ee42f3f736cd0761",
+   "title": "Migrate SHA-1 [op:a8a46e7cdec0c123] to SHA-256 / SHA-384 / SHA-3-256"
+  },
+  {
+   "asset_ids": [
+    "ast:b7d1d3004ff77077"
+   ],
+   "description": "SHA-1 [op:2de963e88f69bd7e] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> SHA-256 / SHA-384 / SHA-3-256. MD5/SHA-1 are broken for collision resistance; use SHA-256/384 or SHA-3 (checksum-only uses should be labelled, not scored). Priority Medium (replacement_score 0.836). Effort S; latency/cost low; compatibility high. Blockers: collision-risk review of each use site; checksum-only uses must be labelled, not migrated.",
+   "pqc_target": "SHA-256 / SHA-384 / SHA-3-256",
+   "priority": "Medium",
+   "recommendation_id": "rec:23966e18f18eab57",
+   "title": "Migrate SHA-1 [op:2de963e88f69bd7e] to SHA-256 / SHA-384 / SHA-3-256"
+  },
+  {
+   "asset_ids": [
+    "ast:3317f139fc87af08"
+   ],
+   "description": "X.509 [op:502b24549e6bff52] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> ML-DSA-65 (alt: SLH-DSA-128s conservative profile). RSA signatures are quantum-vulnerable; plan ML-DSA migration (SLH-DSA where hash-based conservatism is required). PKI/tooling compatibility is the main blocker. Priority Medium (replacement_score 0.760). Effort L; latency/cost medium; compatibility low. Blockers: PKI and verifier ML-DSA support; certificate chain migration; signature size limits in protocols/storage.",
+   "pqc_target": "ML-DSA-65",
+   "priority": "Medium",
+   "recommendation_id": "rec:4c21b1fe1850c018",
+   "title": "Migrate X.509 [op:502b24549e6bff52] to ML-DSA-65 (alt: SLH-DSA-128s conservative profile)"
+  },
+  {
+   "asset_ids": [
+    "ast:3317f139fc87af08"
+   ],
+   "description": "X.509 [op:bf8d01c0f8c33179] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> ML-DSA-65 (alt: SLH-DSA-128s conservative profile). RSA signatures are quantum-vulnerable; plan ML-DSA migration (SLH-DSA where hash-based conservatism is required). PKI/tooling compatibility is the main blocker. Priority Medium (replacement_score 0.760). Effort L; latency/cost medium; compatibility low. Blockers: PKI and verifier ML-DSA support; certificate chain migration; signature size limits in protocols/storage.",
+   "pqc_target": "ML-DSA-65",
+   "priority": "Medium",
+   "recommendation_id": "rec:981b33806c4c2ebf",
+   "title": "Migrate X.509 [op:bf8d01c0f8c33179] to ML-DSA-65 (alt: SLH-DSA-128s conservative profile)"
+  },
+  {
+   "asset_ids": [
+    "ast:18b75838d21ac47b"
+   ],
+   "description": "TLS [op:4866cd512e61a52d] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Medium (replacement_score 0.678). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Medium",
+   "recommendation_id": "rec:8b427eaf68f8c0cd",
+   "title": "Migrate TLS [op:4866cd512e61a52d] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:18b75838d21ac47b"
+   ],
+   "description": "TLS [op:3d389aaa8eaf3da9] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Medium (replacement_score 0.677). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Medium",
+   "recommendation_id": "rec:534aaf1d3502acfa",
+   "title": "Migrate TLS [op:3d389aaa8eaf3da9] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:18b75838d21ac47b"
+   ],
+   "description": "TLS [op:8ad61a6e24783a59] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Medium (replacement_score 0.677). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Medium",
+   "recommendation_id": "rec:8b23bd712af69757",
+   "title": "Migrate TLS [op:8ad61a6e24783a59] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:f775a36002bfb976"
+   ],
+   "description": "Random [op:5fce5d18b6d7b3af] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Medium (replacement_score 0.507). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Medium",
+   "recommendation_id": "rec:d6786cd6c7e1fe72",
+   "title": "Migrate Random [op:5fce5d18b6d7b3af] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:f775a36002bfb976"
+   ],
+   "description": "Random [op:c9b21849fd21784c] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Medium (replacement_score 0.507). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Medium",
+   "recommendation_id": "rec:82595585c0a22516",
+   "title": "Migrate Random [op:c9b21849fd21784c] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:a92b5d6f9b560edf"
+   ],
+   "description": "AES-128-CBC [op:e90c4eca9e834986] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> AES-256-GCM (alt: ChaCha20-Poly1305). Unauthenticated CBC/CTR needs random IV plus a MAC; an AEAD simplifies the design -- prefer AES-GCM or ChaCha20-Poly1305. Priority Low (replacement_score 0.763). Effort S; latency/cost low; compatibility high. Blockers: protocol message-format change window; interoperability testing with peers.",
+   "pqc_target": "AES-256-GCM",
+   "priority": "Low",
+   "recommendation_id": "rec:9355aaf52d025420",
+   "title": "Migrate AES-128-CBC [op:e90c4eca9e834986] to AES-256-GCM (alt: ChaCha20-Poly1305)"
+  },
+  {
+   "asset_ids": [
+    "ast:0244ec60f4e620fd"
+   ],
+   "description": "AES-256-CBC [op:10dbd53283e2a3e5] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> AES-256-GCM (alt: ChaCha20-Poly1305). Unauthenticated CBC/CTR needs random IV plus a MAC; an AEAD simplifies the design -- prefer AES-GCM or ChaCha20-Poly1305. Priority Low (replacement_score 0.737). Effort S; latency/cost low; compatibility high. Blockers: protocol message-format change window; interoperability testing with peers.",
+   "pqc_target": "AES-256-GCM",
+   "priority": "Low",
+   "recommendation_id": "rec:3035db5ad33b694f",
+   "title": "Migrate AES-256-CBC [op:10dbd53283e2a3e5] to AES-256-GCM (alt: ChaCha20-Poly1305)"
+  },
+  {
+   "asset_ids": [
+    "ast:37d179b149dc1607"
+   ],
+   "description": "SHA-256 [op:82149a1d38aa540d] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.661). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:9f3e72f389354f8f",
+   "title": "Migrate SHA-256 [op:82149a1d38aa540d] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:7d08198b2f8a27c5"
+   ],
+   "description": "HMAC [op:f2a1b5a10adbc00f] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx\\ngx_event_openssl.c -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.661). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:dd9f3f9bf9dc9700",
+   "title": "Migrate HMAC [op:f2a1b5a10adbc00f] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  }
+ ],
+ "registry_version": "2026.09.11",
+ "risks": [
+  {
+   "asset_id": "ast:cd5e62756c05c341",
+   "class": "High",
+   "confidence": 0.88,
+   "description": "ECDSA [op:a4e6ccafb61f5f7b] (Confirmed): Q=1.00 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.628 -> High.",
+   "operation_id": "op:a4e6ccafb61f5f7b",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:a51759f39d379085",
+   "score": 6.28,
+   "title": "ECDSA [op:a4e6ccafb61f5f7b]"
+  },
+  {
+   "asset_id": "ast:526f2179dafe6a41",
+   "class": "High",
+   "confidence": 0.85,
+   "description": "ECDH [op:6f87a08fab8a4fdb] (Confirmed): Q=1.00 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.626 -> High.",
+   "operation_id": "op:6f87a08fab8a4fdb",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:28a12d53bf7ddaed",
+   "score": 6.26,
+   "title": "ECDH [op:6f87a08fab8a4fdb]"
+  },
+  {
+   "asset_id": "ast:61e8040a08d09a4f",
+   "class": "High",
+   "confidence": 0.85,
+   "description": "DH [op:d8302c29576b68f7] (Confirmed): Q=1.00 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.626 -> High.",
+   "operation_id": "op:d8302c29576b68f7",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:a11b24f825ff887f",
+   "score": 6.26,
+   "title": "DH [op:d8302c29576b68f7]"
+  },
+  {
+   "asset_id": "ast:3317f139fc87af08",
+   "class": "Medium",
+   "confidence": 0.85,
+   "description": "X.509 [op:502b24549e6bff52] (Confirmed): Q=0.90 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.591 -> Medium.",
+   "operation_id": "op:502b24549e6bff52",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:0c40a1accd3e1a87",
+   "score": 5.91,
+   "title": "X.509 [op:502b24549e6bff52]"
+  },
+  {
+   "asset_id": "ast:3317f139fc87af08",
+   "class": "Medium",
+   "confidence": 0.7,
+   "description": "X.509 [op:bf8d01c0f8c33179] (Probable): Q=0.90 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.580 -> Medium.",
+   "operation_id": "op:bf8d01c0f8c33179",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:5957dd707f8ee38e",
+   "score": 5.8,
+   "title": "X.509 [op:bf8d01c0f8c33179]"
+  },
+  {
+   "asset_id": "ast:e144079b30a0c9a5",
+   "class": "Medium",
+   "confidence": 0.7,
+   "description": "OpenSSL [op:2cd859d227140c6e] (Probable): Q=0.60 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.475 -> Medium.",
+   "operation_id": "op:2cd859d227140c6e",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:fce8981f236263a9",
+   "score": 4.75,
+   "title": "OpenSSL [op:2cd859d227140c6e]"
+  },
+  {
+   "asset_id": "ast:e144079b30a0c9a5",
+   "class": "Medium",
+   "confidence": 0.7,
+   "description": "OpenSSL [op:bdccb02f91f741a8] (Probable): Q=0.60 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.475 -> Medium.",
+   "operation_id": "op:bdccb02f91f741a8",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:5e369ceb438d4d25",
+   "score": 4.75,
+   "title": "OpenSSL [op:bdccb02f91f741a8]"
+  },
+  {
+   "asset_id": "ast:18b75838d21ac47b",
+   "class": "Medium",
+   "confidence": 0.88,
+   "description": "TLS [op:4866cd512e61a52d] (Confirmed): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.454 -> Medium.",
+   "operation_id": "op:4866cd512e61a52d",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'TLS' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:1c64f265ddab51ec",
+   "score": 4.54,
+   "title": "TLS [op:4866cd512e61a52d]"
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "class": "Medium",
+   "confidence": 0.88,
+   "description": "SHA-1 [op:7e56aca1bcc68218] (Confirmed): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.454 -> Medium.",
+   "operation_id": "op:7e56aca1bcc68218",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'SHA-1' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:3a58ba32ea546502",
+   "score": 4.54,
+   "title": "SHA-1 [op:7e56aca1bcc68218]"
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "class": "Medium",
+   "confidence": 0.88,
+   "description": "SHA-1 [op:ecdf7474a15eccd3] (Confirmed): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.454 -> Medium.",
+   "operation_id": "op:ecdf7474a15eccd3",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'SHA-1' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:030166922256578c",
+   "score": 4.54,
+   "title": "SHA-1 [op:ecdf7474a15eccd3]"
+  },
+  {
+   "asset_id": "ast:18b75838d21ac47b",
+   "class": "Medium",
+   "confidence": 0.85,
+   "description": "TLS [op:3d389aaa8eaf3da9] (Confirmed): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.451 -> Medium.",
+   "operation_id": "op:3d389aaa8eaf3da9",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'TLS' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:7a32852d4d236fb1",
+   "score": 4.51,
+   "title": "TLS [op:3d389aaa8eaf3da9]"
+  },
+  {
+   "asset_id": "ast:18b75838d21ac47b",
+   "class": "Medium",
+   "confidence": 0.85,
+   "description": "TLS [op:8ad61a6e24783a59] (Confirmed): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.451 -> Medium.",
+   "operation_id": "op:8ad61a6e24783a59",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'TLS' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:b52e75f1a296a40c",
+   "score": 4.51,
+   "title": "TLS [op:8ad61a6e24783a59]"
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "class": "Medium",
+   "confidence": 0.85,
+   "description": "SHA-1 [op:a8a46e7cdec0c123] (Confirmed): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.451 -> Medium.",
+   "operation_id": "op:a8a46e7cdec0c123",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'SHA-1' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:6ffb0977023ed9b6",
+   "score": 4.51,
+   "title": "SHA-1 [op:a8a46e7cdec0c123]"
+  },
+  {
+   "asset_id": "ast:f775a36002bfb976",
+   "class": "Medium",
+   "confidence": 0.8,
+   "description": "Random [op:5fce5d18b6d7b3af] (Probable): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.65 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.448 -> Medium.",
+   "operation_id": "op:5fce5d18b6d7b3af",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'Random' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:9afc025d07955fa7",
+   "score": 4.48,
+   "title": "Random [op:5fce5d18b6d7b3af]"
+  },
+  {
+   "asset_id": "ast:f775a36002bfb976",
+   "class": "Medium",
+   "confidence": 0.8,
+   "description": "Random [op:c9b21849fd21784c] (Probable): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.65 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.448 -> Medium.",
+   "operation_id": "op:c9b21849fd21784c",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'Random' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:376a2d5bce513f1d",
+   "score": 4.48,
+   "title": "Random [op:c9b21849fd21784c]"
+  },
+  {
+   "asset_id": "ast:b7d1d3004ff77077",
+   "class": "Medium",
+   "confidence": 0.7,
+   "description": "SHA-1 [op:2de963e88f69bd7e] (Probable): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.440 -> Medium.",
+   "operation_id": "op:2de963e88f69bd7e",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'SHA-1' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:9532bce7fe6c23d9",
+   "score": 4.4,
+   "title": "SHA-1 [op:2de963e88f69bd7e]"
+  },
+  {
+   "asset_id": "ast:a92b5d6f9b560edf",
+   "class": "Low",
+   "confidence": 0.88,
+   "description": "AES-128-CBC [op:e90c4eca9e834986] (Confirmed): Q=0.30 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.384 -> Low.",
+   "operation_id": "op:e90c4eca9e834986",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:f3eb6ae0bbeb7e50",
+   "score": 3.84,
+   "title": "AES-128-CBC [op:e90c4eca9e834986]"
+  },
+  {
+   "asset_id": "ast:0244ec60f4e620fd",
+   "class": "Low",
+   "confidence": 0.88,
+   "description": "AES-256-CBC [op:10dbd53283e2a3e5] (Confirmed): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.331 -> Low.",
+   "operation_id": "op:10dbd53283e2a3e5",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:db016c96749590c6",
+   "score": 3.31,
+   "title": "AES-256-CBC [op:10dbd53283e2a3e5]"
+  },
+  {
+   "asset_id": "ast:37d179b149dc1607",
+   "class": "Low",
+   "confidence": 0.88,
+   "description": "SHA-256 [op:82149a1d38aa540d] (Confirmed): Q=0.05 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.296 -> Low.",
+   "operation_id": "op:82149a1d38aa540d",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:ff3113c2df6162b1",
+   "score": 2.96,
+   "title": "SHA-256 [op:82149a1d38aa540d]"
+  },
+  {
+   "asset_id": "ast:7d08198b2f8a27c5",
+   "class": "Low",
+   "confidence": 0.85,
+   "description": "HMAC [op:f2a1b5a10adbc00f] (Confirmed): Q=0.05 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.294 -> Low.",
+   "operation_id": "op:f2a1b5a10adbc00f",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:68127babcd333765",
+   "score": 2.94,
+   "title": "HMAC [op:f2a1b5a10adbc00f]"
+  }
+ ],
+ "scan_id": "scan:de77acadd55cfc8c",
+ "started_at": "2026-09-24T16:22:58Z",
+ "stats": {
+  "asset_count": 14,
+  "edge_count": 108,
+  "node_count": 36,
+  "operation_count": 20,
+  "recommendation_count": 20,
+  "risk_count": 20
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\nginx",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

@@ -1,0 +1,547 @@
+{
+ "findings": [
+  {
+   "confidence": 0.9,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+   "line": 122,
+   "metadata": {
+    "canonical_name": "RSA",
+    "cir_asset_id": "ast:4ecaf2763c216929",
+    "cir_op_id": "op:b854b435746a716e",
+    "risk_class": "High",
+    "risk_score": 0.63,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "RSA",
+   "severity": "high",
+   "snippet": "Cipher.getInstance(alg.getJceName()) | args: alg.getJceName()",
+   "title": "RSA usage detected"
+  },
+  {
+   "confidence": 0.9,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+   "line": 146,
+   "metadata": {
+    "canonical_name": "RSA",
+    "cir_asset_id": "ast:4ecaf2763c216929",
+    "cir_op_id": "op:fc9ed04f54651d3c",
+    "risk_class": "High",
+    "risk_score": 0.63,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "RSA",
+   "severity": "high",
+   "snippet": "Cipher.getInstance(alg.getJceName()) | args: alg.getJceName()",
+   "title": "RSA usage detected"
+  },
+  {
+   "confidence": 0.9,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java",
+   "line": 75,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:1a28f29b6038b7f2",
+    "cir_op_id": "op:9283aa09b1873e12",
+    "risk_class": "Low",
+    "risk_score": 0.332,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "AES",
+   "severity": "high",
+   "snippet": "Cipher.getInstance(algorithm) | args: algorithm",
+   "title": "AES usage detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+   "line": 129,
+   "metadata": {
+    "canonical_name": "bcrypt",
+    "cir_asset_id": "ast:9ea40cb4eb839e0b",
+    "cir_op_id": "op:d838bf0ba3d9a26f",
+    "risk_class": "Low",
+    "risk_score": 0.296,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "BCRYPT",
+   "severity": "high",
+   "snippet": "BCrypt.checkpw(rawPassword.toString(), encodedPassword) | args: rawPassword.toString(), encodedPassword",
+   "title": "bcrypt verification detected"
+  },
+  {
+   "confidence": 0.88,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+   "line": 116,
+   "metadata": {
+    "canonical_name": "bcrypt",
+    "cir_asset_id": "ast:9ea40cb4eb839e0b",
+    "cir_op_id": "op:88918b40ab0d06ee",
+    "risk_class": "Low",
+    "risk_score": 0.296,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "BCRYPT",
+   "severity": "high",
+   "snippet": "BCrypt.hashpw(rawPassword.toString(), salt) | args: rawPassword.toString(), salt",
+   "title": "bcrypt hashing detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+   "line": 174,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:526c433bde84e90a",
+    "cir_op_id": "op:6a5948a99a3facce",
+    "risk_class": "Low",
+    "risk_score": 0.311,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "high",
+   "snippet": "SecretKeyFactory.getInstance(algorithmName) | args: algorithmName",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java",
+   "line": 59,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:1c8815220a5f4364",
+    "cir_op_id": "op:462f9472b6889b36",
+    "risk_class": "Low",
+    "risk_score": 0.311,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "high",
+   "snippet": "SecretKeyFactory.getInstance(algorithm) | args: algorithm",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.85,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+   "line": 228,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:526c433bde84e90a",
+    "cir_op_id": "op:2cdfd94f9cc22cd2",
+    "risk_class": "Low",
+    "risk_score": 0.311,
+    "usage_state": "Confirmed"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "high",
+   "snippet": "SecretKeyFactory.getInstance(this.algorithm) | args: this.algorithm",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java",
+   "line": 48,
+   "metadata": {
+    "canonical_name": "RANDOM",
+    "cir_asset_id": "ast:6d200940ad636776",
+    "cir_op_id": "op:e97206f54da89d42",
+    "risk_class": "Medium",
+    "risk_score": 0.448,
+    "usage_state": "Probable"
+   },
+   "rule_id": "RANDOM",
+   "severity": "medium",
+   "snippet": "SecureRandom()",
+   "title": "RANDOM key management detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+   "line": 117,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:4d1bf776c017de44",
+    "cir_op_id": "op:6faad2f6f1d2949f",
+    "risk_class": "Low",
+    "risk_score": 0.325,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+   "title": "AES key management detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+   "line": 80,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:b6950886832a72c1",
+    "cir_op_id": "op:feb8ae4b707d7455",
+    "risk_class": "Low",
+    "risk_score": 0.325,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+   "title": "AES key management detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+   "line": 169,
+   "metadata": {
+    "canonical_name": "RANDOM",
+    "cir_asset_id": "ast:3ceb319457f9e8a9",
+    "cir_op_id": "op:c013b9c33bacddcf",
+    "risk_class": "Medium",
+    "risk_score": 0.448,
+    "usage_state": "Probable"
+   },
+   "rule_id": "RANDOM",
+   "severity": "medium",
+   "snippet": "SecureRandom()",
+   "title": "RANDOM key management detected"
+  },
+  {
+   "confidence": 0.8,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+   "line": 75,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:d685eea8880cccfe",
+    "cir_op_id": "op:6df28b00695a1cda",
+    "risk_class": "Low",
+    "risk_score": 0.325,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+   "title": "AES key management detected"
+  },
+  {
+   "confidence": 0.782,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+   "line": 116,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:b3dff41e53dc60d4",
+    "cir_op_id": "op:b1790b447e60fd21",
+    "risk_class": "Low",
+    "risk_score": 0.324,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "CipherUtils.doFinal(this.decryptor, ciphertext)",
+   "title": "AES decryption detected"
+  },
+  {
+   "confidence": 0.782,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+   "line": 104,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:b3dff41e53dc60d4",
+    "cir_op_id": "op:68143c6b8205bd8d",
+    "risk_class": "Low",
+    "risk_score": 0.324,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "CipherUtils.doFinal(this.encryptor, bytes)",
+   "title": "AES usage detected"
+  },
+  {
+   "confidence": 0.782,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+   "line": 110,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:23940367517274a9",
+    "cir_op_id": "op:69a0a09e6d38507f",
+    "risk_class": "Low",
+    "risk_score": 0.324,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "CipherUtils.doFinal(this.encryptor, bytes)",
+   "title": "AES usage detected"
+  },
+  {
+   "confidence": 0.782,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+   "line": 76,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:b3dff41e53dc60d4",
+    "cir_op_id": "op:3022483cd5aefbab",
+    "risk_class": "Low",
+    "risk_score": 0.324,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "CipherUtils.newCipher(ALGORITHM)",
+   "title": "AES usage detected"
+  },
+  {
+   "confidence": 0.782,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+   "line": 81,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:23940367517274a9",
+    "cir_op_id": "op:d47dc3322e944a2e",
+    "risk_class": "Low",
+    "risk_score": 0.324,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "CipherUtils.newCipher(ALGORITHM)",
+   "title": "AES usage detected"
+  },
+  {
+   "confidence": 0.782,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+   "line": 123,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:23940367517274a9",
+    "cir_op_id": "op:beb217ff7097e79e",
+    "risk_class": "Low",
+    "risk_score": 0.324,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "CipherUtils.doFinal(this.decryptor, ciphertext)",
+   "title": "AES decryption detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+   "line": 154,
+   "metadata": {
+    "canonical_name": "RSA",
+    "cir_asset_id": "ast:4ecaf2763c216929",
+    "cir_op_id": "op:ab3e7e39de35699e",
+    "risk_class": "High",
+    "risk_score": 0.615,
+    "usage_state": "Probable"
+   },
+   "rule_id": "RSA",
+   "severity": "medium",
+   "snippet": "cipher.doFinal()",
+   "title": "RSA decryption detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+   "line": 128,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:8f168df3a97e6240",
+    "cir_op_id": "op:70b985a61e43bf54",
+    "risk_class": "Low",
+    "risk_score": 0.37,
+    "usage_state": "Probable"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "medium",
+   "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256))",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+   "line": 167,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:b6950886832a72c1",
+    "cir_op_id": "op:a159c4df983216ec",
+    "risk_class": "Low",
+    "risk_score": 0.318,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "AesGcmBytesEncryptor(this.secretKey, this.ivGenerator)",
+   "title": "AES key management detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+   "line": 199,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:526c433bde84e90a",
+    "cir_op_id": "op:33ea18bac6e69c1c",
+    "risk_class": "Low",
+    "risk_score": 0.3,
+    "usage_state": "Probable"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "medium",
+   "snippet": "encodedNonNullPassword(rawPassword, salt)",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+   "line": 121,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:72177ccbe35bcd41",
+    "cir_op_id": "op:c6c3df1519e846eb",
+    "risk_class": "Low",
+    "risk_score": 0.37,
+    "usage_state": "Probable"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "medium",
+   "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256))",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+   "line": 127,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:526c433bde84e90a",
+    "cir_op_id": "op:308e6909ae7c41f8",
+    "risk_class": "Low",
+    "risk_score": 0.3,
+    "usage_state": "Probable"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "medium",
+   "snippet": "setAlgorithm(secretKeyFactoryAlgorithm)",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+   "line": 214,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:526c433bde84e90a",
+    "cir_op_id": "op:f35a92aade9dd5bb",
+    "risk_class": "Low",
+    "risk_score": 0.3,
+    "usage_state": "Probable"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "medium",
+   "snippet": "encodedNonNullPassword(rawPassword, salt)",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+   "line": 104,
+   "metadata": {
+    "canonical_name": "PBKDF2",
+    "cir_asset_id": "ast:adff82177371fbb8",
+    "cir_op_id": "op:68b475289f806f3a",
+    "risk_class": "Low",
+    "risk_score": 0.3,
+    "usage_state": "Probable"
+   },
+   "rule_id": "PBKDF2",
+   "severity": "medium",
+   "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), 1024, 256))",
+   "title": "PBKDF2 key derivation detected"
+  },
+  {
+   "confidence": 0.7,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+   "line": 160,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:d685eea8880cccfe",
+    "cir_op_id": "op:745708fecec2a98f",
+    "risk_class": "Low",
+    "risk_score": 0.318,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "AesCbcBytesEncryptor(this.secretKey, this.ivGenerator)",
+   "title": "AES key management detected"
+  },
+  {
+   "confidence": 0.69,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java",
+   "line": 71,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:f502db98eba71b99",
+    "cir_op_id": "op:20aeb1fa677e7819",
+    "risk_class": "Low",
+    "risk_score": 0.317,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "AesBytesEncryptor(password.toString(), salt, KeyGenerators.secureRandom(16))",
+   "title": "AES key management detected"
+  },
+  {
+   "confidence": 0.69,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+   "line": 195,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:4d1bf776c017de44",
+    "cir_op_id": "op:9042dc4a8d0db9a7",
+    "risk_class": "Low",
+    "risk_score": 0.317,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "CipherUtils.newCipher(this.toString())",
+   "title": "AES usage detected"
+  },
+  {
+   "confidence": 0.69,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java",
+   "line": 50,
+   "metadata": {
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:f502db98eba71b99",
+    "cir_op_id": "op:48e302e101e4e125",
+    "risk_class": "Low",
+    "risk_score": 0.317,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES",
+   "severity": "medium",
+   "snippet": "AesBytesEncryptor(password.toString(), salt, KeyGenerators.secureRandom(16),\n\t\t\t\tAesBytesEncryptor.CipherAlgorithm.GCM)",
+   "title": "AES key management detected"
+  }
+ ],
+ "finished_at": "2026-09-24T16:22:58Z",
+ "scan_id": "scan:69d7fcc694f7e0f0",
+ "schema_version": "1.0",
+ "started_at": "2026-09-24T16:22:58Z",
+ "stats": {
+  "files_scanned": 9,
+  "findings_count": 31
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

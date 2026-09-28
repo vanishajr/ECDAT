@@ -522,6 +522,90 @@ class DependencyScanner(Scanner[ScannerFinding]):
 
         return findings
 
+    def _scan_cargo_toml(self, file_path: Path) -> list[ScannerFinding]:
+        """Parse Cargo.toml dependency tables (manifest, not lockfile).
+
+        Covers [dependencies], [dev-dependencies], [build-dependencies],
+        [target.<cfg>.dependencies], and [workspace.dependencies]. Each
+        entry is a version string or an inline table ({version, git,
+        path, ...}). Findings mirror the lockfile path: ProvidedOnly,
+        dependency-only, exposure=internal. Malformed TOML -> [].
+        """
+        findings: list[ScannerFinding] = []
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except Exception:
+            return findings
+        try:
+            data = tomllib.loads(content)
+        except Exception:
+            return findings
+        if not isinstance(data, dict):
+            return findings
+        tables: list[tuple[str, dict]] = []
+        for section in ("dependencies", "dev-dependencies",
+                        "build-dependencies"):
+            deps = data.get(section)
+            if isinstance(deps, dict):
+                tables.append((section, deps))
+        target = data.get("target")
+        if isinstance(target, dict):
+            for _cfg, cfg_body in target.items():
+                if isinstance(cfg_body, dict):
+                    for section in ("dependencies", "dev-dependencies",
+                                    "build-dependencies"):
+                        deps = cfg_body.get(section)
+                        if isinstance(deps, dict):
+                            tables.append((f"target.{section}", deps))
+        workspace = data.get("workspace")
+        if isinstance(workspace, dict):
+            deps = workspace.get("dependencies")
+            if isinstance(deps, dict):
+                tables.append(("workspace.dependencies", deps))
+        seen: set[str] = set()
+        for section, deps in tables:
+            for raw_name, spec in deps.items():
+                name = str(raw_name or "").strip().lower().replace("_", "-")
+                if not name or name in seen:
+                    continue
+                if name not in CRYPTO_PACKAGES:
+                    continue
+                seen.add(name)
+                version = ""
+                try:
+                    if isinstance(spec, str):
+                        version = spec.strip()
+                    elif isinstance(spec, dict):
+                        version = str(spec.get("version", "") or "").strip()
+                except Exception:
+                    version = ""
+                version = re.sub(r"^[\s\^~>=<]+", "", version).strip()
+                info = CRYPTO_PACKAGES[name]
+                canonical, original = normalize_algorithm(info["canonical"])
+                evidence = create_evidence_signal(
+                    tool="dependency:cargo-toml",
+                    detail=f"dependency {name}@{version or 'unspecified'}"
+                    f" found in Cargo.toml [{section}]",
+                    confidence=info["confidence"],
+                    snippet=f"{name}=={version}" if version else name,
+                )
+                findings.append(ScannerFinding(
+                    canonical=canonical,
+                    original=original,
+                    library=name,
+                    usage_state=UsageState.PROVIDED_ONLY,
+                    confidence=info["confidence"],
+                    evidence=[evidence],
+                    location=Location(file=str(file_path)),
+                    implementation=Implementation(library=name,
+                                                  version=version or None),
+                    context=Context(
+                        exposure=Exposure.INTERNAL,
+                        notes="Dependency-only; no confirmed crypto operation"),
+                    dependency_only=True,
+                ))
+        return findings
+
     def _scan_cargo_lock(self, file_path: Path) -> list[ScannerFinding]:
         findings: list[ScannerFinding] = []
         try:

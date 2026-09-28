@@ -1,0 +1,242 @@
+{
+ "findings": [
+  {
+   "confidence": 0.69,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+   "line": 18,
+   "metadata": {
+    "canonical_name": "AES-256-GCM",
+    "cir_asset_id": "ast:ee57b9d841040bdd",
+    "cir_op_id": "op:e3ac79191a26dc17",
+    "risk_class": "Low",
+    "risk_score": 0.317,
+    "usage_state": "Probable"
+   },
+   "rule_id": "AES-256-GCM",
+   "severity": "medium",
+   "snippet": "AESGCM = rust_openssl.aead.AESGCM",
+   "title": "AES-256-GCM key/certificate storage detected"
+  },
+  {
+   "confidence": 0.69,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+   "line": 19,
+   "metadata": {
+    "canonical_name": "ChaCha20-Poly1305",
+    "cir_asset_id": "ast:80b5855d567051d7",
+    "cir_op_id": "op:b6285fadc1ce5264",
+    "risk_class": "Low",
+    "risk_score": 0.299,
+    "usage_state": "Probable"
+   },
+   "rule_id": "CHACHA20-POLY1305",
+   "severity": "medium",
+   "snippet": "ChaCha20Poly1305 = rust_openssl.aead.ChaCha20Poly1305",
+   "title": "ChaCha20-Poly1305 key/certificate storage detected"
+  },
+  {
+   "confidence": 0.69,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+   "line": 106,
+   "metadata": {
+    "canonical_name": "ChaCha20",
+    "cir_asset_id": "ast:f1c6fa6b39aaebee",
+    "cir_op_id": "op:c5f87d82727201c2",
+    "risk_class": "Low",
+    "risk_score": 0.299,
+    "usage_state": "Probable"
+   },
+   "rule_id": "CHACHA20",
+   "severity": "medium",
+   "snippet": "class ChaCha20(CipherAlgorithm):",
+   "title": "ChaCha20 key/certificate storage detected"
+  },
+  {
+   "confidence": 0.075,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\aead.py",
+   "line": 0,
+   "metadata": {
+    "canonical_name": "cryptography",
+    "cir_asset_id": "ast:3e5dea44e9158c6b",
+    "cir_op_id": "op:8f2af9a4b4d284b1",
+    "risk_class": "Low",
+    "risk_score": 0.39,
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "CRYPTOGRAPHY",
+   "severity": "info",
+   "snippet": "import cryptography.hazmat.bindings._rust.openssl",
+   "title": "cryptography TLS configuration detected"
+  },
+  {
+   "confidence": 0.075,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\base.py",
+   "line": 0,
+   "metadata": {
+    "canonical_name": "cryptography",
+    "cir_asset_id": "ast:172bcff23f0773c7",
+    "cir_op_id": "op:10c5a91b45839aca",
+    "risk_class": "Low",
+    "risk_score": 0.39,
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "CRYPTOGRAPHY",
+   "severity": "info",
+   "snippet": "import cryptography.hazmat.bindings._rust.openssl",
+   "title": "cryptography TLS configuration detected"
+  },
+  {
+   "confidence": 0.45,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+   "line": 36,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "AES",
+    "cir_asset_id": "ast:623c2ca952696418",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "AES",
+   "severity": "info",
+   "snippet": "class AES(BlockCipherAlgorithm):",
+   "title": "AES usage detected"
+  },
+  {
+   "confidence": 0.45,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+   "line": 39,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "CBC",
+    "cir_asset_id": "ast:ed852f6c33b4aa30",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "CBC",
+   "severity": "info",
+   "snippet": "class CBC(ModeWithInitializationVector):",
+   "title": "CBC usage detected"
+  },
+  {
+   "confidence": 0.075,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+   "line": 0,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "cryptography",
+    "cir_asset_id": "ast:7334c9de0d98add4",
+    "library": "cryptography",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "CRYPTOGRAPHY",
+   "severity": "info",
+   "snippet": "import cryptography.utils",
+   "title": "cryptography usage detected"
+  },
+  {
+   "confidence": 0.075,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+   "line": 0,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "cryptography",
+    "cir_asset_id": "ast:dfdd4311af3f270a",
+    "library": "cryptography",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "CRYPTOGRAPHY",
+   "severity": "info",
+   "snippet": "import cryptography.utils",
+   "title": "cryptography usage detected"
+  },
+  {
+   "confidence": 0.45,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+   "line": 88,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "CTR",
+    "cir_asset_id": "ast:ea31d0804a15493e",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "CTR",
+   "severity": "info",
+   "snippet": "class CTR(ModeWithNonce):",
+   "title": "CTR usage detected"
+  },
+  {
+   "confidence": 0.45,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+   "line": 82,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "ECB",
+    "cir_asset_id": "ast:6fcaaa853364b1d5",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "ECB",
+   "severity": "info",
+   "snippet": "class ECB(Mode):",
+   "title": "ECB usage detected"
+  },
+  {
+   "confidence": 0.45,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+   "line": 104,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "GCM",
+    "cir_asset_id": "ast:c8b1d8c1ee4ca074",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "GCM",
+   "severity": "info",
+   "snippet": "class GCM(ModeWithInitializationVector, ModeWithAuthenticationTag):",
+   "title": "GCM usage detected"
+  },
+  {
+   "confidence": 0.45,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\algorithms.py",
+   "line": 128,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "SM4",
+    "cir_asset_id": "ast:52fb64cba26efc30",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "SM4",
+   "severity": "info",
+   "snippet": "class SM4(BlockCipherAlgorithm):",
+   "title": "SM4 usage detected"
+  },
+  {
+   "confidence": 0.45,
+   "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca\\modes.py",
+   "line": 53,
+   "metadata": {
+    "asset_only": true,
+    "canonical_name": "XTS",
+    "cir_asset_id": "ast:110fe673bd3a54a2",
+    "usage_state": "ProvidedOnly"
+   },
+   "rule_id": "XTS",
+   "severity": "info",
+   "snippet": "class XTS(ModeWithTweak):",
+   "title": "XTS usage detected"
+  }
+ ],
+ "finished_at": "2026-09-24T16:22:56Z",
+ "scan_id": "scan:26eadabb56f5582e",
+ "schema_version": "1.0",
+ "started_at": "2026-09-24T16:22:56Z",
+ "stats": {
+  "files_scanned": 4,
+  "findings_count": 14
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\pyca",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}

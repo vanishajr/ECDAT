@@ -1,0 +1,64 @@
+# EVAL-SPRING — ground truth v1 (2026-09-23)
+# Slice: 9 spring-security crypto files @ 3d23cf3f317c685b7b75fdd7cd54cb60ee0b78cc
+# Rules: init+doFinal of one encrypt/decrypt flow = one item; adjacent
+# encryptor/decryptor constructions (newCipher x2) = one item; imports and
+# interface/abstract declarations are NOT operations (excluded by rule).
+# dyn: JCA algorithm string is dynamic/unresolved at the site.
+version: 1
+repo: spring
+items:
+  - {id: S01, file: AesBytesEncryptor.java, line: 104, canonical: PBKDF2, kind: kdf, tier: strict}
+  - {id: S02, file: AesBytesEncryptor.java, line: 117, canonical: AES, kind: key, tier: strict,
+     note: "SecretKeySpec(..., AES)"}
+  - {id: S03, file: AesBytesEncryptor.java, line: 128, canonical: AES, kind: encrypt, tier: dyn,
+     note: "init+doFinal encrypt flow (128-129); alg constant AES/CBC or AES/GCM"}
+  - {id: S04, file: AesBytesEncryptor.java, line: 138, canonical: AES, kind: decrypt, tier: dyn,
+     note: "init+doFinal decrypt flow (138-139)"}
+  - {id: S05, file: AesBytesEncryptor.java, line: 195, canonical: AES, kind: cipher-new, tier: dyn,
+     note: "newCipher(this.toString()) delegate"}
+  - {id: S06, file: AesCbcBytesEncryptor.java, line: 75, canonical: AES, kind: key, tier: strict}
+  - {id: S07, file: AesCbcBytesEncryptor.java, line: 76, canonical: AES, kind: cipher-new, tier: dyn,
+     note: "encryptor+decryptor constructions (76-77); ALGORITHM=AES/CBC/PKCS5Padding"}
+  - {id: S08, file: AesCbcBytesEncryptor.java, line: 103, canonical: AES-CBC, kind: encrypt, tier: dyn,
+     note: "init+doFinal (103-104)"}
+  - {id: S09, file: AesCbcBytesEncryptor.java, line: 115, canonical: AES-CBC, kind: decrypt, tier: dyn,
+     note: "init+doFinal (115-116)"}
+  - {id: S10, file: AesCbcBytesEncryptor.java, line: 121, canonical: PBKDF2, kind: kdf, tier: strict}
+  - {id: S11, file: AesGcmBytesEncryptor.java, line: 81, canonical: AES-GCM, kind: cipher-new, tier: dyn,
+     note: "encryptor+decryptor constructions (81-82); ALGORITHM=AES/GCM/NoPadding"}
+  - {id: S12, file: AesGcmBytesEncryptor.java, line: 108, canonical: AES-GCM, kind: encrypt, tier: dyn,
+     note: "init+doFinal (108-110)"}
+  - {id: S13, file: AesGcmBytesEncryptor.java, line: 121, canonical: AES-GCM, kind: decrypt, tier: dyn,
+     note: "init+doFinal (121-123)"}
+  - {id: S14, file: AesGcmBytesEncryptor.java, line: 128, canonical: PBKDF2, kind: kdf, tier: strict}
+  - {id: S15, file: CipherUtils.java, line: 59, canonical: PBKDF2, kind: kdf, tier: dyn,
+     note: "SecretKeyFactory delegate; dynamic algorithm"}
+  - {id: S16, file: CipherUtils.java, line: 75, canonical: AES, kind: cipher-new, tier: dyn,
+     note: "Cipher.getInstance delegate; dynamic algorithm"}
+  - {id: S17, file: RsaRawEncryptor.java, line: 122, canonical: RSA, kind: encrypt, tier: strict,
+     note: "getJceName()=RSA[/ECB/OAEPPadding]; ECDAT labels AES (misattribution)"}
+  - {id: S18, file: RsaRawEncryptor.java, line: 146, canonical: RSA, kind: decrypt, tier: strict}
+  - {id: S19, file: BCryptPasswordEncoder.java, line: 116, canonical: bcrypt, kind: hash, tier: strict,
+     note: "BCrypt.hashpw"}
+  - {id: S20, file: BCryptPasswordEncoder.java, line: 129, canonical: bcrypt, kind: verify, tier: strict,
+     note: "BCrypt.checkpw"}
+  - {id: S21, file: BCryptPasswordEncoder.java, line: 169, canonical: RANDOM, kind: keygen, tier: strict,
+     note: "new SecureRandom() salt source"}
+  - {id: S22, file: Pbkdf2PasswordEncoder.java, line: 174, canonical: PBKDF2, kind: kdf, tier: strict}
+  - {id: S23, file: Pbkdf2PasswordEncoder.java, line: 228, canonical: PBKDF2, kind: kdf, tier: strict,
+     note: "second SecretKeyFactory site; distinct instance from S22"}
+  - {id: S24, file: SecureRandomBytesKeyGenerator.java, line: 48, canonical: RANDOM, kind: keygen, tier: strict}
+  - {id: S25, file: Encryptors.java, line: 50, canonical: AES, kind: encrypt, tier: dyn,
+     note: "new AesBytesEncryptor(..., GCM): real AES construction via ctor delegate"}
+  - {id: S26, file: Encryptors.java, line: 71, canonical: AES, kind: encrypt, tier: dyn,
+     note: "new AesBytesEncryptor(...) default (CBC): real AES construction"}
+  - {id: S27, file: AesCbcBytesEncryptor.java, line: 160, canonical: AES, kind: encrypt, tier: dyn,
+     note: "Builder new AesCbcBytesEncryptor(secretKey, ivGenerator)"}
+  - {id: S28, file: AesGcmBytesEncryptor.java, line: 167, canonical: AES, kind: encrypt, tier: dyn,
+     note: "Builder new AesGcmBytesEncryptor(secretKey, ivGenerator)"}
+  - {id: S29, file: Pbkdf2PasswordEncoder.java, line: 127, canonical: PBKDF2, kind: kdf, tier: dyn,
+     note: "setAlgorithm call re-inits the SecretKeyFactory"}
+  - {id: S30, file: Pbkdf2PasswordEncoder.java, line: 199, canonical: PBKDF2, kind: kdf, tier: dyn,
+     note: "2-arg overload resolves to the PBKDF2 implementation (arity-checked)"}
+  - {id: S31, file: Pbkdf2PasswordEncoder.java, line: 214, canonical: PBKDF2, kind: kdf, tier: dyn,
+     note: "2-arg overload resolves to the PBKDF2 implementation (arity-checked)"}

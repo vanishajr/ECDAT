@@ -51,6 +51,19 @@ def test_ci_subcommand_registered():
     assert args.profile == "standard"
 
 
+def test_ci_repeat_run_reuses_stored_row(tmp_path, capsys):
+    target = _crypto(tmp_path)
+    assert main(["ci", str(target), "--db", _db(tmp_path)]) == 0
+    capsys.readouterr()
+    # Second run against the same DB must gate on policy, never crash on
+    # the deterministic scan ID (UNIQUE constraint regression).
+    rc = main(["ci", str(target), "--db", _db(tmp_path)])
+    out, err = capsys.readouterr()
+    assert "Traceback" not in out + err
+    assert "UNIQUE" not in err
+    assert "reused" in err
+
+
 # --- basic execution / persistence --------------------------------------
 
 

@@ -1,0 +1,3549 @@
+{
+ "assets": [
+  {
+   "asset_id": "ast:4d1bf776c017de44",
+   "canonical": "AES",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecretKeySpec at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java:117 [algorithm AES]",
+     "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.65,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java:195 [delegate default (Cipher.getInstance)]",
+     "snippet": "CipherUtils.newCipher(this.toString())",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecretKeySpec",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+    "function": "AesBytesEncryptor",
+    "line": 117
+   },
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:d685eea8880cccfe",
+   "canonical": "AES",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecretKeySpec at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:75 [algorithm AES]",
+     "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeySpec: AesCbcBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:160",
+     "snippet": "AesCbcBytesEncryptor(this.secretKey, this.ivGenerator)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecretKeySpec",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "AesCbcBytesEncryptor",
+    "line": 75
+   },
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:b3dff41e53dc60d4",
+   "canonical": "AES",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:2/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:76 [transformation AES/CBC/PKCS5Padding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:77 [transformation AES/CBC/PKCS5Padding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:104 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.encryptor, bytes)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:116 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.decryptor, ciphertext)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "CipherUtils.newCipher",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "AesCbcBytesEncryptor",
+    "line": 76
+   },
+   "mode": "CBC",
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:b6950886832a72c1",
+   "canonical": "AES",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecretKeySpec at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:80 [algorithm AES]",
+     "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeySpec: AesGcmBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:167",
+     "snippet": "AesGcmBytesEncryptor(this.secretKey, this.ivGenerator)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecretKeySpec",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "AesGcmBytesEncryptor",
+    "line": 80
+   },
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:23940367517274a9",
+   "canonical": "AES",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:2/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:81 [transformation AES/GCM/NoPadding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:82 [transformation AES/GCM/NoPadding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:110 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.encryptor, bytes)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:123 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.decryptor, ciphertext)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "CipherUtils.newCipher",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "AesGcmBytesEncryptor",
+    "line": 81
+   },
+   "mode": "GCM",
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:1a28f29b6038b7f2",
+   "canonical": "AES",
+   "confidence": 0.9,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.9,
+     "detail": "direct source API call: Cipher.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java:75",
+     "snippet": "Cipher.getInstance(algorithm) | args: algorithm",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "Cipher.getInstance",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java",
+    "function": "newCipher",
+    "line": 75
+   },
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:f502db98eba71b99",
+   "canonical": "AES",
+   "confidence": 0.69,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.65,
+     "detail": "cross-file wrapper resolving to SecretKeySpec: AesBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java:50 [delegate default (SecretKeySpec)]",
+     "snippet": "AesBytesEncryptor(password.toString(), salt, KeyGenerators.secureRandom(16),\n\t\t\t\tAesBytesEncryptor.CipherAlgorithm.GCM)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.65,
+     "detail": "cross-file wrapper resolving to SecretKeySpec: AesBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java:71 [delegate default (SecretKeySpec)]",
+     "snippet": "AesBytesEncryptor(password.toString(), salt, KeyGenerators.secureRandom(16))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "AesBytesEncryptor",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java",
+    "function": "stronger",
+    "line": 50
+   },
+   "original": "AES",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:adff82177371fbb8",
+   "canonical": "PBKDF2",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to SecretKeyFactory.getInstance: CipherUtils.newSecretKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java:104 [algorithm new PBEKeySpec(password.toCharArray(), Hex.decode(salt), 1024, 256)]",
+     "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), 1024, 256))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "CipherUtils.newSecretKey",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+    "function": "AesBytesEncryptor",
+    "line": 104
+   },
+   "original": "PBKDF2",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:72177ccbe35bcd41",
+   "canonical": "PBKDF2",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to SecretKeyFactory.getInstance: CipherUtils.newSecretKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:121 [algorithm new PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256)]",
+     "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "CipherUtils.newSecretKey",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "deriveKey",
+    "line": 121
+   },
+   "original": "PBKDF2",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:8f168df3a97e6240",
+   "canonical": "PBKDF2",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to SecretKeyFactory.getInstance: CipherUtils.newSecretKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:128 [algorithm new PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256)]",
+     "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "CipherUtils.newSecretKey",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "deriveKey",
+    "line": 128
+   },
+   "original": "PBKDF2",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:1c8815220a5f4364",
+   "canonical": "PBKDF2",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SecretKeyFactory.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java:59",
+     "snippet": "SecretKeyFactory.getInstance(algorithm) | args: algorithm",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecretKeyFactory.getInstance",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java",
+    "function": "newSecretKey",
+    "line": 59
+   },
+   "original": "PBKDF2",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "canonical": "PBKDF2",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeyFactory.getInstance: setAlgorithm at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:127",
+     "snippet": "setAlgorithm(secretKeyFactoryAlgorithm)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SecretKeyFactory.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:174",
+     "snippet": "SecretKeyFactory.getInstance(algorithmName) | args: algorithmName",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeyFactory.getInstance: encodedNonNullPassword at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:199",
+     "snippet": "encodedNonNullPassword(rawPassword, salt)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeyFactory.getInstance: encodedNonNullPassword at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:214",
+     "snippet": "encodedNonNullPassword(rawPassword, salt)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SecretKeyFactory.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:228",
+     "snippet": "SecretKeyFactory.getInstance(this.algorithm) | args: this.algorithm",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecretKeyFactory.getInstance",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+    "function": "setAlgorithm",
+    "line": 174
+   },
+   "original": "PBKDF2",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:3ceb319457f9e8a9",
+   "canonical": "RANDOM",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecureRandom at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java:169",
+     "snippet": "SecureRandom()",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecureRandom",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+    "line": 169
+   },
+   "original": "RANDOM",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:6d200940ad636776",
+   "canonical": "RANDOM",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecureRandom at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java:48",
+     "snippet": "SecureRandom()",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecureRandom",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java",
+    "function": "SecureRandomBytesKeyGenerator",
+    "line": 48
+   },
+   "original": "RANDOM",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   },
+   "usage_state": "Probable"
+  },
+  {
+   "asset_id": "ast:4ecaf2763c216929",
+   "canonical": "RSA",
+   "confidence": 0.9,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.9,
+     "detail": "direct source API call: Cipher.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:122 [algorithm RSA]",
+     "snippet": "Cipher.getInstance(alg.getJceName()) | args: alg.getJceName()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: cipher.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:130 [cipher field flow to doFinal]",
+     "snippet": "cipher.doFinal()",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.9,
+     "detail": "direct source API call: Cipher.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:146 [algorithm RSA]",
+     "snippet": "Cipher.getInstance(alg.getJceName()) | args: alg.getJceName()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: cipher.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:154 [cipher field flow to doFinal]",
+     "snippet": "cipher.doFinal()",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "implementation": {
+    "api": "Cipher.getInstance",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+    "function": "encrypt",
+    "line": 122
+   },
+   "original": "RSA",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  },
+  {
+   "asset_id": "ast:9ea40cb4eb839e0b",
+   "canonical": "bcrypt",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: BCrypt.hashpw at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java:116",
+     "snippet": "BCrypt.hashpw(rawPassword.toString(), salt) | args: rawPassword.toString(), salt",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: BCrypt.checkpw at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java:129",
+     "snippet": "BCrypt.checkpw(rawPassword.toString(), encodedPassword) | args: rawPassword.toString(), encodedPassword",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "BCrypt.hashpw",
+    "library": "jca"
+   },
+   "library": "jca",
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+    "function": "encodeNonNullPassword",
+    "line": 116
+   },
+   "original": "bcrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   },
+   "usage_state": "Confirmed"
+  }
+ ],
+ "cir_version": "0.1",
+ "finished_at": "2026-09-24T16:22:58Z",
+ "graph": {
+  "edges": [
+   {
+    "from": "file:cf22500b665e5ea0",
+    "relationship": "contains",
+    "to": "ast:4d1bf776c017de44"
+   },
+   {
+    "from": "ast:4d1bf776c017de44",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "ast:d685eea8880cccfe"
+   },
+   {
+    "from": "ast:d685eea8880cccfe",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "ast:b3dff41e53dc60d4"
+   },
+   {
+    "from": "ast:b3dff41e53dc60d4",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "ast:b6950886832a72c1"
+   },
+   {
+    "from": "ast:b6950886832a72c1",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "ast:23940367517274a9"
+   },
+   {
+    "from": "ast:23940367517274a9",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:0314a73fc39b8a3c",
+    "relationship": "contains",
+    "to": "ast:1a28f29b6038b7f2"
+   },
+   {
+    "from": "ast:1a28f29b6038b7f2",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:f585222e13b04f0f",
+    "relationship": "contains",
+    "to": "ast:f502db98eba71b99"
+   },
+   {
+    "from": "ast:f502db98eba71b99",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:cf22500b665e5ea0",
+    "relationship": "contains",
+    "to": "ast:adff82177371fbb8"
+   },
+   {
+    "from": "ast:adff82177371fbb8",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "ast:72177ccbe35bcd41"
+   },
+   {
+    "from": "ast:72177ccbe35bcd41",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "ast:8f168df3a97e6240"
+   },
+   {
+    "from": "ast:8f168df3a97e6240",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:0314a73fc39b8a3c",
+    "relationship": "contains",
+    "to": "ast:1c8815220a5f4364"
+   },
+   {
+    "from": "ast:1c8815220a5f4364",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:0e86379d81ec7680",
+    "relationship": "contains",
+    "to": "ast:526c433bde84e90a"
+   },
+   {
+    "from": "ast:526c433bde84e90a",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:d66c44c63ea43fb2",
+    "relationship": "contains",
+    "to": "ast:3ceb319457f9e8a9"
+   },
+   {
+    "from": "ast:3ceb319457f9e8a9",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:a4b154f33b661620",
+    "relationship": "contains",
+    "to": "ast:6d200940ad636776"
+   },
+   {
+    "from": "ast:6d200940ad636776",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:fd36f7b5ebe649ba",
+    "relationship": "contains",
+    "to": "ast:4ecaf2763c216929"
+   },
+   {
+    "from": "ast:4ecaf2763c216929",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "file:d66c44c63ea43fb2",
+    "relationship": "contains",
+    "to": "ast:9ea40cb4eb839e0b"
+   },
+   {
+    "from": "ast:9ea40cb4eb839e0b",
+    "relationship": "uses",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:b854b435746a716e",
+    "relationship": "uses",
+    "to": "ast:4ecaf2763c216929"
+   },
+   {
+    "from": "file:fd36f7b5ebe649ba",
+    "relationship": "contains",
+    "to": "op:b854b435746a716e"
+   },
+   {
+    "from": "op:fc9ed04f54651d3c",
+    "relationship": "uses",
+    "to": "ast:4ecaf2763c216929"
+   },
+   {
+    "from": "file:fd36f7b5ebe649ba",
+    "relationship": "contains",
+    "to": "op:fc9ed04f54651d3c"
+   },
+   {
+    "from": "op:9283aa09b1873e12",
+    "relationship": "uses",
+    "to": "ast:1a28f29b6038b7f2"
+   },
+   {
+    "from": "file:0314a73fc39b8a3c",
+    "relationship": "contains",
+    "to": "op:9283aa09b1873e12"
+   },
+   {
+    "from": "op:d838bf0ba3d9a26f",
+    "relationship": "uses",
+    "to": "ast:9ea40cb4eb839e0b"
+   },
+   {
+    "from": "file:d66c44c63ea43fb2",
+    "relationship": "contains",
+    "to": "op:d838bf0ba3d9a26f"
+   },
+   {
+    "from": "op:88918b40ab0d06ee",
+    "relationship": "uses",
+    "to": "ast:9ea40cb4eb839e0b"
+   },
+   {
+    "from": "file:d66c44c63ea43fb2",
+    "relationship": "contains",
+    "to": "op:88918b40ab0d06ee"
+   },
+   {
+    "from": "op:6a5948a99a3facce",
+    "relationship": "uses",
+    "to": "ast:526c433bde84e90a"
+   },
+   {
+    "from": "file:0e86379d81ec7680",
+    "relationship": "contains",
+    "to": "op:6a5948a99a3facce"
+   },
+   {
+    "from": "op:462f9472b6889b36",
+    "relationship": "uses",
+    "to": "ast:1c8815220a5f4364"
+   },
+   {
+    "from": "file:0314a73fc39b8a3c",
+    "relationship": "contains",
+    "to": "op:462f9472b6889b36"
+   },
+   {
+    "from": "op:2cdfd94f9cc22cd2",
+    "relationship": "uses",
+    "to": "ast:526c433bde84e90a"
+   },
+   {
+    "from": "file:0e86379d81ec7680",
+    "relationship": "contains",
+    "to": "op:2cdfd94f9cc22cd2"
+   },
+   {
+    "from": "op:e97206f54da89d42",
+    "relationship": "uses",
+    "to": "ast:6d200940ad636776"
+   },
+   {
+    "from": "file:a4b154f33b661620",
+    "relationship": "contains",
+    "to": "op:e97206f54da89d42"
+   },
+   {
+    "from": "op:6faad2f6f1d2949f",
+    "relationship": "uses",
+    "to": "ast:4d1bf776c017de44"
+   },
+   {
+    "from": "file:cf22500b665e5ea0",
+    "relationship": "contains",
+    "to": "op:6faad2f6f1d2949f"
+   },
+   {
+    "from": "op:feb8ae4b707d7455",
+    "relationship": "uses",
+    "to": "ast:b6950886832a72c1"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "op:feb8ae4b707d7455"
+   },
+   {
+    "from": "op:c013b9c33bacddcf",
+    "relationship": "uses",
+    "to": "ast:3ceb319457f9e8a9"
+   },
+   {
+    "from": "file:d66c44c63ea43fb2",
+    "relationship": "contains",
+    "to": "op:c013b9c33bacddcf"
+   },
+   {
+    "from": "op:6df28b00695a1cda",
+    "relationship": "uses",
+    "to": "ast:d685eea8880cccfe"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "op:6df28b00695a1cda"
+   },
+   {
+    "from": "op:b1790b447e60fd21",
+    "relationship": "uses",
+    "to": "ast:b3dff41e53dc60d4"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "op:b1790b447e60fd21"
+   },
+   {
+    "from": "op:68143c6b8205bd8d",
+    "relationship": "uses",
+    "to": "ast:b3dff41e53dc60d4"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "op:68143c6b8205bd8d"
+   },
+   {
+    "from": "op:69a0a09e6d38507f",
+    "relationship": "uses",
+    "to": "ast:23940367517274a9"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "op:69a0a09e6d38507f"
+   },
+   {
+    "from": "op:3022483cd5aefbab",
+    "relationship": "uses",
+    "to": "ast:b3dff41e53dc60d4"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "op:3022483cd5aefbab"
+   },
+   {
+    "from": "op:d47dc3322e944a2e",
+    "relationship": "uses",
+    "to": "ast:23940367517274a9"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "op:d47dc3322e944a2e"
+   },
+   {
+    "from": "op:beb217ff7097e79e",
+    "relationship": "uses",
+    "to": "ast:23940367517274a9"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "op:beb217ff7097e79e"
+   },
+   {
+    "from": "op:ab3e7e39de35699e",
+    "relationship": "uses",
+    "to": "ast:4ecaf2763c216929"
+   },
+   {
+    "from": "file:fd36f7b5ebe649ba",
+    "relationship": "contains",
+    "to": "op:ab3e7e39de35699e"
+   },
+   {
+    "from": "op:70b985a61e43bf54",
+    "relationship": "uses",
+    "to": "ast:8f168df3a97e6240"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "op:70b985a61e43bf54"
+   },
+   {
+    "from": "op:a159c4df983216ec",
+    "relationship": "uses",
+    "to": "ast:b6950886832a72c1"
+   },
+   {
+    "from": "file:f3cd9efaa2437447",
+    "relationship": "contains",
+    "to": "op:a159c4df983216ec"
+   },
+   {
+    "from": "op:33ea18bac6e69c1c",
+    "relationship": "uses",
+    "to": "ast:526c433bde84e90a"
+   },
+   {
+    "from": "file:0e86379d81ec7680",
+    "relationship": "contains",
+    "to": "op:33ea18bac6e69c1c"
+   },
+   {
+    "from": "op:c6c3df1519e846eb",
+    "relationship": "uses",
+    "to": "ast:72177ccbe35bcd41"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "op:c6c3df1519e846eb"
+   },
+   {
+    "from": "op:308e6909ae7c41f8",
+    "relationship": "uses",
+    "to": "ast:526c433bde84e90a"
+   },
+   {
+    "from": "file:0e86379d81ec7680",
+    "relationship": "contains",
+    "to": "op:308e6909ae7c41f8"
+   },
+   {
+    "from": "op:f35a92aade9dd5bb",
+    "relationship": "uses",
+    "to": "ast:526c433bde84e90a"
+   },
+   {
+    "from": "file:0e86379d81ec7680",
+    "relationship": "contains",
+    "to": "op:f35a92aade9dd5bb"
+   },
+   {
+    "from": "op:68b475289f806f3a",
+    "relationship": "uses",
+    "to": "ast:adff82177371fbb8"
+   },
+   {
+    "from": "file:cf22500b665e5ea0",
+    "relationship": "contains",
+    "to": "op:68b475289f806f3a"
+   },
+   {
+    "from": "op:745708fecec2a98f",
+    "relationship": "uses",
+    "to": "ast:d685eea8880cccfe"
+   },
+   {
+    "from": "file:2f036011d68372f0",
+    "relationship": "contains",
+    "to": "op:745708fecec2a98f"
+   },
+   {
+    "from": "op:20aeb1fa677e7819",
+    "relationship": "uses",
+    "to": "ast:f502db98eba71b99"
+   },
+   {
+    "from": "file:f585222e13b04f0f",
+    "relationship": "contains",
+    "to": "op:20aeb1fa677e7819"
+   },
+   {
+    "from": "op:9042dc4a8d0db9a7",
+    "relationship": "uses",
+    "to": "ast:4d1bf776c017de44"
+   },
+   {
+    "from": "file:cf22500b665e5ea0",
+    "relationship": "contains",
+    "to": "op:9042dc4a8d0db9a7"
+   },
+   {
+    "from": "op:48e302e101e4e125",
+    "relationship": "uses",
+    "to": "ast:f502db98eba71b99"
+   },
+   {
+    "from": "file:f585222e13b04f0f",
+    "relationship": "contains",
+    "to": "op:48e302e101e4e125"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:1a28f29b6038b7f2"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:1c8815220a5f4364"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:23940367517274a9"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:3ceb319457f9e8a9"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:4d1bf776c017de44"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:4ecaf2763c216929"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:526c433bde84e90a"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:6d200940ad636776"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:72177ccbe35bcd41"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:8f168df3a97e6240"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:9ea40cb4eb839e0b"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:adff82177371fbb8"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:b3dff41e53dc60d4"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:b6950886832a72c1"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:d685eea8880cccfe"
+   },
+   {
+    "from": "library:4d74898d00e7ffaa",
+    "relationship": "derives",
+    "to": "ast:f502db98eba71b99"
+   },
+   {
+    "from": "op:20aeb1fa677e7819",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:20aeb1fa677e7819",
+    "relationship": "derives",
+    "to": "op:48e302e101e4e125"
+   },
+   {
+    "from": "op:2cdfd94f9cc22cd2",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:2cdfd94f9cc22cd2",
+    "relationship": "derives",
+    "to": "op:308e6909ae7c41f8"
+   },
+   {
+    "from": "op:3022483cd5aefbab",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:3022483cd5aefbab",
+    "relationship": "derives",
+    "to": "op:68143c6b8205bd8d"
+   },
+   {
+    "from": "op:308e6909ae7c41f8",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:308e6909ae7c41f8",
+    "relationship": "derives",
+    "to": "op:33ea18bac6e69c1c"
+   },
+   {
+    "from": "op:33ea18bac6e69c1c",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:33ea18bac6e69c1c",
+    "relationship": "derives",
+    "to": "op:6a5948a99a3facce"
+   },
+   {
+    "from": "op:462f9472b6889b36",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:48e302e101e4e125",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:68143c6b8205bd8d",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:68143c6b8205bd8d",
+    "relationship": "derives",
+    "to": "op:b1790b447e60fd21"
+   },
+   {
+    "from": "op:68b475289f806f3a",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:69a0a09e6d38507f",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:69a0a09e6d38507f",
+    "relationship": "derives",
+    "to": "op:beb217ff7097e79e"
+   },
+   {
+    "from": "op:6a5948a99a3facce",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:6a5948a99a3facce",
+    "relationship": "derives",
+    "to": "op:f35a92aade9dd5bb"
+   },
+   {
+    "from": "op:6df28b00695a1cda",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:6df28b00695a1cda",
+    "relationship": "derives",
+    "to": "op:745708fecec2a98f"
+   },
+   {
+    "from": "op:6faad2f6f1d2949f",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:6faad2f6f1d2949f",
+    "relationship": "derives",
+    "to": "op:9042dc4a8d0db9a7"
+   },
+   {
+    "from": "op:70b985a61e43bf54",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:745708fecec2a98f",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:88918b40ab0d06ee",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:88918b40ab0d06ee",
+    "relationship": "derives",
+    "to": "op:d838bf0ba3d9a26f"
+   },
+   {
+    "from": "op:9042dc4a8d0db9a7",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:9283aa09b1873e12",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:a159c4df983216ec",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:a159c4df983216ec",
+    "relationship": "derives",
+    "to": "op:feb8ae4b707d7455"
+   },
+   {
+    "from": "op:ab3e7e39de35699e",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:ab3e7e39de35699e",
+    "relationship": "derives",
+    "to": "op:b854b435746a716e"
+   },
+   {
+    "from": "op:b1790b447e60fd21",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:b854b435746a716e",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:b854b435746a716e",
+    "relationship": "derives",
+    "to": "op:fc9ed04f54651d3c"
+   },
+   {
+    "from": "op:beb217ff7097e79e",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:beb217ff7097e79e",
+    "relationship": "derives",
+    "to": "op:d47dc3322e944a2e"
+   },
+   {
+    "from": "op:c013b9c33bacddcf",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:c6c3df1519e846eb",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:d47dc3322e944a2e",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:d838bf0ba3d9a26f",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:e97206f54da89d42",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:f35a92aade9dd5bb",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:fc9ed04f54651d3c",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   },
+   {
+    "from": "op:feb8ae4b707d7455",
+    "relationship": "depends_on",
+    "to": "library:4d74898d00e7ffaa"
+   }
+  ],
+  "nodes": [
+   {
+    "id": "ast:4d1bf776c017de44",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:4d1bf776c017de44"
+   },
+   {
+    "id": "file:cf22500b665e5ea0",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java"
+   },
+   {
+    "id": "library:4d74898d00e7ffaa",
+    "kind": "library",
+    "label": "jca",
+    "ref": "jca"
+   },
+   {
+    "id": "ast:d685eea8880cccfe",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:d685eea8880cccfe"
+   },
+   {
+    "id": "file:2f036011d68372f0",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java"
+   },
+   {
+    "id": "ast:b3dff41e53dc60d4",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:b3dff41e53dc60d4"
+   },
+   {
+    "id": "ast:b6950886832a72c1",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:b6950886832a72c1"
+   },
+   {
+    "id": "file:f3cd9efaa2437447",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java"
+   },
+   {
+    "id": "ast:23940367517274a9",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:23940367517274a9"
+   },
+   {
+    "id": "ast:1a28f29b6038b7f2",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:1a28f29b6038b7f2"
+   },
+   {
+    "id": "file:0314a73fc39b8a3c",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java"
+   },
+   {
+    "id": "ast:f502db98eba71b99",
+    "kind": "asset",
+    "label": "AES",
+    "ref": "ast:f502db98eba71b99"
+   },
+   {
+    "id": "file:f585222e13b04f0f",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java"
+   },
+   {
+    "id": "ast:adff82177371fbb8",
+    "kind": "asset",
+    "label": "PBKDF2",
+    "ref": "ast:adff82177371fbb8"
+   },
+   {
+    "id": "ast:72177ccbe35bcd41",
+    "kind": "asset",
+    "label": "PBKDF2",
+    "ref": "ast:72177ccbe35bcd41"
+   },
+   {
+    "id": "ast:8f168df3a97e6240",
+    "kind": "asset",
+    "label": "PBKDF2",
+    "ref": "ast:8f168df3a97e6240"
+   },
+   {
+    "id": "ast:1c8815220a5f4364",
+    "kind": "asset",
+    "label": "PBKDF2",
+    "ref": "ast:1c8815220a5f4364"
+   },
+   {
+    "id": "ast:526c433bde84e90a",
+    "kind": "asset",
+    "label": "PBKDF2",
+    "ref": "ast:526c433bde84e90a"
+   },
+   {
+    "id": "file:0e86379d81ec7680",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java"
+   },
+   {
+    "id": "ast:3ceb319457f9e8a9",
+    "kind": "asset",
+    "label": "RANDOM",
+    "ref": "ast:3ceb319457f9e8a9"
+   },
+   {
+    "id": "file:d66c44c63ea43fb2",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java"
+   },
+   {
+    "id": "ast:6d200940ad636776",
+    "kind": "asset",
+    "label": "RANDOM",
+    "ref": "ast:6d200940ad636776"
+   },
+   {
+    "id": "file:a4b154f33b661620",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java"
+   },
+   {
+    "id": "ast:4ecaf2763c216929",
+    "kind": "asset",
+    "label": "RSA",
+    "ref": "ast:4ecaf2763c216929"
+   },
+   {
+    "id": "file:fd36f7b5ebe649ba",
+    "kind": "file",
+    "label": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+    "ref": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java"
+   },
+   {
+    "id": "ast:9ea40cb4eb839e0b",
+    "kind": "asset",
+    "label": "bcrypt",
+    "ref": "ast:9ea40cb4eb839e0b"
+   },
+   {
+    "id": "op:b854b435746a716e",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:b854b435746a716e"
+   },
+   {
+    "id": "op:fc9ed04f54651d3c",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:fc9ed04f54651d3c"
+   },
+   {
+    "id": "op:9283aa09b1873e12",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:9283aa09b1873e12"
+   },
+   {
+    "id": "op:d838bf0ba3d9a26f",
+    "kind": "operation",
+    "label": "Verify",
+    "ref": "op:d838bf0ba3d9a26f"
+   },
+   {
+    "id": "op:88918b40ab0d06ee",
+    "kind": "operation",
+    "label": "Hash",
+    "ref": "op:88918b40ab0d06ee"
+   },
+   {
+    "id": "op:6a5948a99a3facce",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:6a5948a99a3facce"
+   },
+   {
+    "id": "op:462f9472b6889b36",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:462f9472b6889b36"
+   },
+   {
+    "id": "op:2cdfd94f9cc22cd2",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:2cdfd94f9cc22cd2"
+   },
+   {
+    "id": "op:e97206f54da89d42",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:e97206f54da89d42"
+   },
+   {
+    "id": "op:6faad2f6f1d2949f",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:6faad2f6f1d2949f"
+   },
+   {
+    "id": "op:feb8ae4b707d7455",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:feb8ae4b707d7455"
+   },
+   {
+    "id": "op:c013b9c33bacddcf",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:c013b9c33bacddcf"
+   },
+   {
+    "id": "op:6df28b00695a1cda",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:6df28b00695a1cda"
+   },
+   {
+    "id": "op:b1790b447e60fd21",
+    "kind": "operation",
+    "label": "Decrypt",
+    "ref": "op:b1790b447e60fd21"
+   },
+   {
+    "id": "op:68143c6b8205bd8d",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:68143c6b8205bd8d"
+   },
+   {
+    "id": "op:69a0a09e6d38507f",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:69a0a09e6d38507f"
+   },
+   {
+    "id": "op:3022483cd5aefbab",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:3022483cd5aefbab"
+   },
+   {
+    "id": "op:d47dc3322e944a2e",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:d47dc3322e944a2e"
+   },
+   {
+    "id": "op:beb217ff7097e79e",
+    "kind": "operation",
+    "label": "Decrypt",
+    "ref": "op:beb217ff7097e79e"
+   },
+   {
+    "id": "op:ab3e7e39de35699e",
+    "kind": "operation",
+    "label": "Decrypt",
+    "ref": "op:ab3e7e39de35699e"
+   },
+   {
+    "id": "op:70b985a61e43bf54",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:70b985a61e43bf54"
+   },
+   {
+    "id": "op:a159c4df983216ec",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:a159c4df983216ec"
+   },
+   {
+    "id": "op:33ea18bac6e69c1c",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:33ea18bac6e69c1c"
+   },
+   {
+    "id": "op:c6c3df1519e846eb",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:c6c3df1519e846eb"
+   },
+   {
+    "id": "op:308e6909ae7c41f8",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:308e6909ae7c41f8"
+   },
+   {
+    "id": "op:f35a92aade9dd5bb",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:f35a92aade9dd5bb"
+   },
+   {
+    "id": "op:68b475289f806f3a",
+    "kind": "operation",
+    "label": "KDF",
+    "ref": "op:68b475289f806f3a"
+   },
+   {
+    "id": "op:745708fecec2a98f",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:745708fecec2a98f"
+   },
+   {
+    "id": "op:20aeb1fa677e7819",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:20aeb1fa677e7819"
+   },
+   {
+    "id": "op:9042dc4a8d0db9a7",
+    "kind": "operation",
+    "label": "Encrypt",
+    "ref": "op:9042dc4a8d0db9a7"
+   },
+   {
+    "id": "op:48e302e101e4e125",
+    "kind": "operation",
+    "label": "KeyManagement",
+    "ref": "op:48e302e101e4e125"
+   }
+  ]
+ },
+ "operations": [
+  {
+   "asset_id": "ast:4ecaf2763c216929",
+   "confidence": 0.9,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:2/hits:2/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.9,
+     "detail": "direct source API call: Cipher.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:122 [algorithm RSA]",
+     "snippet": "Cipher.getInstance(alg.getJceName()) | args: alg.getJceName()",
+     "tool": "source:api-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: cipher.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:130 [cipher field flow to doFinal]",
+     "snippet": "cipher.doFinal()",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "encrypt",
+   "implementation": {
+    "api": "Cipher.getInstance",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+    "function": "encrypt",
+    "line": 122
+   },
+   "operation_id": "op:b854b435746a716e",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:4ecaf2763c216929",
+   "confidence": 0.9,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.9,
+     "detail": "direct source API call: Cipher.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:146 [algorithm RSA]",
+     "snippet": "Cipher.getInstance(alg.getJceName()) | args: alg.getJceName()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "decrypt",
+   "implementation": {
+    "api": "Cipher.getInstance",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+    "function": "decrypt",
+    "line": 146
+   },
+   "operation_id": "op:fc9ed04f54651d3c",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:1a28f29b6038b7f2",
+   "confidence": 0.9,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.9/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.9,
+     "detail": "direct source API call: Cipher.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java:75",
+     "snippet": "Cipher.getInstance(algorithm) | args: algorithm",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "newCipher",
+   "implementation": {
+    "api": "Cipher.getInstance",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java",
+    "function": "newCipher",
+    "line": 75
+   },
+   "operation_id": "op:9283aa09b1873e12",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:9ea40cb4eb839e0b",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: BCrypt.checkpw at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java:129",
+     "snippet": "BCrypt.checkpw(rawPassword.toString(), encodedPassword) | args: rawPassword.toString(), encodedPassword",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "matchesNonNull",
+   "implementation": {
+    "api": "BCrypt.checkpw",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+    "function": "matchesNonNull",
+    "line": 129
+   },
+   "operation_id": "op:d838bf0ba3d9a26f",
+   "operation_type": "Verify",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:9ea40cb4eb839e0b",
+   "confidence": 0.88,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.88/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.88,
+     "detail": "direct source API call: BCrypt.hashpw at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java:116",
+     "snippet": "BCrypt.hashpw(rawPassword.toString(), salt) | args: rawPassword.toString(), salt",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "encodeNonNullPassword",
+   "implementation": {
+    "api": "BCrypt.hashpw",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+    "function": "encodeNonNullPassword",
+    "line": 116
+   },
+   "operation_id": "op:88918b40ab0d06ee",
+   "operation_type": "Hash",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SecretKeyFactory.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:174",
+     "snippet": "SecretKeyFactory.getInstance(algorithmName) | args: algorithmName",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "setAlgorithm",
+   "implementation": {
+    "api": "SecretKeyFactory.getInstance",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+    "function": "setAlgorithm",
+    "line": 174
+   },
+   "operation_id": "op:6a5948a99a3facce",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:1c8815220a5f4364",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SecretKeyFactory.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java:59",
+     "snippet": "SecretKeyFactory.getInstance(algorithm) | args: algorithm",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "newSecretKey",
+   "implementation": {
+    "api": "SecretKeyFactory.getInstance",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java",
+    "function": "newSecretKey",
+    "line": 59
+   },
+   "operation_id": "op:462f9472b6889b36",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "confidence": 0.85,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.85/usage:Confirmed/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.85,
+     "detail": "direct source API call: SecretKeyFactory.getInstance at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:228",
+     "snippet": "SecretKeyFactory.getInstance(this.algorithm) | args: this.algorithm",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "encodedNonNullPassword",
+   "implementation": {
+    "api": "SecretKeyFactory.getInstance",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+    "function": "encodedNonNullPassword",
+    "line": 228
+   },
+   "operation_id": "op:2cdfd94f9cc22cd2",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Confirmed"
+   }
+  },
+  {
+   "asset_id": "ast:6d200940ad636776",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecureRandom at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java:48",
+     "snippet": "SecureRandom()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "SecureRandomBytesKeyGenerator",
+   "implementation": {
+    "api": "SecureRandom",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java",
+    "function": "SecureRandomBytesKeyGenerator",
+    "line": 48
+   },
+   "operation_id": "op:e97206f54da89d42",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:4d1bf776c017de44",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecretKeySpec at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java:117 [algorithm AES]",
+     "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "AesBytesEncryptor",
+   "implementation": {
+    "api": "SecretKeySpec",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+    "function": "AesBytesEncryptor",
+    "line": 117
+   },
+   "operation_id": "op:6faad2f6f1d2949f",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:b6950886832a72c1",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecretKeySpec at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:80 [algorithm AES]",
+     "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "AesGcmBytesEncryptor",
+   "implementation": {
+    "api": "SecretKeySpec",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "AesGcmBytesEncryptor",
+    "line": 80
+   },
+   "operation_id": "op:feb8ae4b707d7455",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:3ceb319457f9e8a9",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecureRandom at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java:169",
+     "snippet": "SecureRandom()",
+     "tool": "source:api-call"
+    }
+   ],
+   "implementation": {
+    "api": "SecureRandom",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java",
+    "line": 169
+   },
+   "operation_id": "op:c013b9c33bacddcf",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:d685eea8880cccfe",
+   "confidence": 0.8,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.8/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.8,
+     "detail": "direct source API call: SecretKeySpec at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:75 [algorithm AES]",
+     "snippet": "SecretKeySpec(secretKey.getEncoded(),) | args: secretKey.getEncoded()",
+     "tool": "source:api-call"
+    }
+   ],
+   "function": "AesCbcBytesEncryptor",
+   "implementation": {
+    "api": "SecretKeySpec",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "AesCbcBytesEncryptor",
+    "line": 75
+   },
+   "operation_id": "op:6df28b00695a1cda",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:b3dff41e53dc60d4",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:116 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.decryptor, ciphertext)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "decrypt",
+   "implementation": {
+    "api": "CipherUtils.doFinal",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "decrypt",
+    "line": 116
+   },
+   "operation_id": "op:b1790b447e60fd21",
+   "operation_type": "Decrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:b3dff41e53dc60d4",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:104 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.encryptor, bytes)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "encrypt",
+   "implementation": {
+    "api": "CipherUtils.doFinal",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "encrypt",
+    "line": 104
+   },
+   "operation_id": "op:68143c6b8205bd8d",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:23940367517274a9",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:110 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.encryptor, bytes)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "encrypt",
+   "implementation": {
+    "api": "CipherUtils.doFinal",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "encrypt",
+    "line": 110
+   },
+   "operation_id": "op:69a0a09e6d38507f",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:b3dff41e53dc60d4",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:2/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:76 [transformation AES/CBC/PKCS5Padding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:77 [transformation AES/CBC/PKCS5Padding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "AesCbcBytesEncryptor",
+   "implementation": {
+    "api": "CipherUtils.newCipher",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "AesCbcBytesEncryptor",
+    "line": 76
+   },
+   "operation_id": "op:3022483cd5aefbab",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:23940367517274a9",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:2/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:81 [transformation AES/GCM/NoPadding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    },
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:82 [transformation AES/GCM/NoPadding]",
+     "snippet": "CipherUtils.newCipher(ALGORITHM)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "AesGcmBytesEncryptor",
+   "implementation": {
+    "api": "CipherUtils.newCipher",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "AesGcmBytesEncryptor",
+    "line": 81
+   },
+   "operation_id": "op:d47dc3322e944a2e",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:23940367517274a9",
+   "confidence": 0.782,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.782/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: CipherUtils.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:123 [cipher field flow to doFinal]",
+     "snippet": "CipherUtils.doFinal(this.decryptor, ciphertext)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "decrypt",
+   "implementation": {
+    "api": "CipherUtils.doFinal",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "decrypt",
+    "line": 123
+   },
+   "operation_id": "op:beb217ff7097e79e",
+   "operation_type": "Decrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:4ecaf2763c216929",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cipher field flow to doFinal: cipher.doFinal at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java:154 [cipher field flow to doFinal]",
+     "snippet": "cipher.doFinal()",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "decrypt",
+   "implementation": {
+    "api": "cipher.doFinal",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java",
+    "function": "decrypt",
+    "line": 154
+   },
+   "operation_id": "op:ab3e7e39de35699e",
+   "operation_type": "Decrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:8f168df3a97e6240",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to SecretKeyFactory.getInstance: CipherUtils.newSecretKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:128 [algorithm new PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256)]",
+     "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "deriveKey",
+   "implementation": {
+    "api": "CipherUtils.newSecretKey",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "deriveKey",
+    "line": 128
+   },
+   "operation_id": "op:70b985a61e43bf54",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:b6950886832a72c1",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeySpec: AesGcmBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java:167",
+     "snippet": "AesGcmBytesEncryptor(this.secretKey, this.ivGenerator)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "build",
+   "implementation": {
+    "api": "AesGcmBytesEncryptor",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java",
+    "function": "build",
+    "line": 167
+   },
+   "operation_id": "op:a159c4df983216ec",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeyFactory.getInstance: encodedNonNullPassword at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:199",
+     "snippet": "encodedNonNullPassword(rawPassword, salt)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "encodeNonNullPassword",
+   "implementation": {
+    "api": "encodedNonNullPassword",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+    "function": "encodeNonNullPassword",
+    "line": 199
+   },
+   "operation_id": "op:33ea18bac6e69c1c",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:72177ccbe35bcd41",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to SecretKeyFactory.getInstance: CipherUtils.newSecretKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:121 [algorithm new PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256)]",
+     "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), DEFAULT_PBKDF2_ITERATIONS, 256))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "deriveKey",
+   "implementation": {
+    "api": "CipherUtils.newSecretKey",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "deriveKey",
+    "line": 121
+   },
+   "operation_id": "op:c6c3df1519e846eb",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeyFactory.getInstance: setAlgorithm at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:127",
+     "snippet": "setAlgorithm(secretKeyFactoryAlgorithm)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "Pbkdf2PasswordEncoder",
+   "implementation": {
+    "api": "setAlgorithm",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+    "function": "Pbkdf2PasswordEncoder",
+    "line": 127
+   },
+   "operation_id": "op:308e6909ae7c41f8",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeyFactory.getInstance: encodedNonNullPassword at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java:214",
+     "snippet": "encodedNonNullPassword(rawPassword, salt)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "matchesNonNull",
+   "implementation": {
+    "api": "encodedNonNullPassword",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java",
+    "function": "matchesNonNull",
+    "line": 214
+   },
+   "operation_id": "op:f35a92aade9dd5bb",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:adff82177371fbb8",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "cross-file wrapper resolving to SecretKeyFactory.getInstance: CipherUtils.newSecretKey at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java:104 [algorithm new PBEKeySpec(password.toCharArray(), Hex.decode(salt), 1024, 256)]",
+     "snippet": "CipherUtils.newSecretKey(,\n\t\t\t\tnew PBEKeySpec(password.toCharArray(), Hex.decode(salt), 1024, 256))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "AesBytesEncryptor",
+   "implementation": {
+    "api": "CipherUtils.newSecretKey",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+    "function": "AesBytesEncryptor",
+    "line": 104
+   },
+   "operation_id": "op:68b475289f806f3a",
+   "operation_type": "KDF",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:d685eea8880cccfe",
+   "confidence": 0.7,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.7/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.7,
+     "detail": "wrapper call resolving to SecretKeySpec: AesCbcBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java:160",
+     "snippet": "AesCbcBytesEncryptor(this.secretKey, this.ivGenerator)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "build",
+   "implementation": {
+    "api": "AesCbcBytesEncryptor",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java",
+    "function": "build",
+    "line": 160
+   },
+   "operation_id": "op:745708fecec2a98f",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:f502db98eba71b99",
+   "confidence": 0.69,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.65,
+     "detail": "cross-file wrapper resolving to SecretKeySpec: AesBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java:71 [delegate default (SecretKeySpec)]",
+     "snippet": "AesBytesEncryptor(password.toString(), salt, KeyGenerators.secureRandom(16))",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "standard",
+   "implementation": {
+    "api": "AesBytesEncryptor",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java",
+    "function": "standard",
+    "line": 71
+   },
+   "operation_id": "op:20aeb1fa677e7819",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:4d1bf776c017de44",
+   "confidence": 0.69,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.65,
+     "detail": "cross-file wrapper resolving to Cipher.getInstance: CipherUtils.newCipher at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java:195 [delegate default (Cipher.getInstance)]",
+     "snippet": "CipherUtils.newCipher(this.toString())",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "createCipher",
+   "implementation": {
+    "api": "CipherUtils.newCipher",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java",
+    "function": "createCipher",
+    "line": 195
+   },
+   "operation_id": "op:9042dc4a8d0db9a7",
+   "operation_type": "Encrypt",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  },
+  {
+   "asset_id": "ast:f502db98eba71b99",
+   "confidence": 0.69,
+   "context": {
+    "exposure": "internal",
+    "notes": "fusion=conf:0.69/usage:Probable/detectors:source/evidence:1/hits:1/classes:invocation"
+   },
+   "evidence": [
+    {
+     "confidence": 0.65,
+     "detail": "cross-file wrapper resolving to SecretKeySpec: AesBytesEncryptor at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java:50 [delegate default (SecretKeySpec)]",
+     "snippet": "AesBytesEncryptor(password.toString(), salt, KeyGenerators.secureRandom(16),\n\t\t\t\tAesBytesEncryptor.CipherAlgorithm.GCM)",
+     "tool": "source:wrapper-call"
+    }
+   ],
+   "function": "stronger",
+   "implementation": {
+    "api": "AesBytesEncryptor",
+    "library": "jca"
+   },
+   "location": {
+    "file": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java",
+    "function": "stronger",
+    "line": 50
+   },
+   "operation_id": "op:48e302e101e4e125",
+   "operation_type": "KeyManagement",
+   "risk_inputs": {
+    "exposure": "internal",
+    "external_dependency": true,
+    "sensitive_data": false,
+    "usage_state": "Probable"
+   }
+  }
+ ],
+ "recommendations": [
+  {
+   "asset_ids": [
+    "ast:4ecaf2763c216929"
+   ],
+   "description": "RSA [op:ab3e7e39de35699e] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java -> ML-KEM-768 (hybrid X25519+ML-KEM during transition). RSA key exchange/encryption is quantum-vulnerable; move KEM use to ML-KEM, hybrid with X25519 while peers lack PQC support. Priority High (replacement_score 0.830). Effort M; latency/cost medium; compatibility medium. Blockers: peer PQC support (hybrid negotiation); certificate/key inventory for KEM migration; library ML-KEM support in deployed stack.",
+   "pqc_target": "ML-KEM-768",
+   "priority": "High",
+   "recommendation_id": "rec:24b19a00bfe75403",
+   "title": "Migrate RSA [op:ab3e7e39de35699e] to ML-KEM-768 (hybrid X25519+ML-KEM during transition)"
+  },
+  {
+   "asset_ids": [
+    "ast:4ecaf2763c216929"
+   ],
+   "description": "RSA [op:b854b435746a716e] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java -> ML-KEM-768 (hybrid X25519+ML-KEM during transition). RSA key exchange/encryption is quantum-vulnerable; move KEM use to ML-KEM, hybrid with X25519 while peers lack PQC support. Priority High (replacement_score 0.830). Effort M; latency/cost medium; compatibility medium. Blockers: peer PQC support (hybrid negotiation); certificate/key inventory for KEM migration; library ML-KEM support in deployed stack.",
+   "pqc_target": "ML-KEM-768",
+   "priority": "High",
+   "recommendation_id": "rec:3821298bb50e7fd1",
+   "title": "Migrate RSA [op:b854b435746a716e] to ML-KEM-768 (hybrid X25519+ML-KEM during transition)"
+  },
+  {
+   "asset_ids": [
+    "ast:4ecaf2763c216929"
+   ],
+   "description": "RSA [op:fc9ed04f54651d3c] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\RsaRawEncryptor.java -> ML-KEM-768 (hybrid X25519+ML-KEM during transition). RSA key exchange/encryption is quantum-vulnerable; move KEM use to ML-KEM, hybrid with X25519 while peers lack PQC support. Priority High (replacement_score 0.830). Effort M; latency/cost medium; compatibility medium. Blockers: peer PQC support (hybrid negotiation); certificate/key inventory for KEM migration; library ML-KEM support in deployed stack.",
+   "pqc_target": "ML-KEM-768",
+   "priority": "High",
+   "recommendation_id": "rec:29f237ec0c316342",
+   "title": "Migrate RSA [op:fc9ed04f54651d3c] to ML-KEM-768 (hybrid X25519+ML-KEM during transition)"
+  },
+  {
+   "asset_ids": [
+    "ast:3ceb319457f9e8a9"
+   ],
+   "description": "RANDOM [op:c013b9c33bacddcf] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Medium (replacement_score 0.507). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Medium",
+   "recommendation_id": "rec:9322389fee42acf7",
+   "title": "Migrate RANDOM [op:c013b9c33bacddcf] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:6d200940ad636776"
+   ],
+   "description": "RANDOM [op:e97206f54da89d42] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\SecureRandomBytesKeyGenerator.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Medium (replacement_score 0.507). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Medium",
+   "recommendation_id": "rec:873f72fc65f98686",
+   "title": "Migrate RANDOM [op:e97206f54da89d42] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:b3dff41e53dc60d4"
+   ],
+   "description": "AES [op:3022483cd5aefbab] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java -> AES-256-GCM (alt: ChaCha20-Poly1305). Unauthenticated CBC/CTR needs random IV plus a MAC; an AEAD simplifies the design -- prefer AES-GCM or ChaCha20-Poly1305. Priority Low (replacement_score 0.734). Effort S; latency/cost low; compatibility high. Blockers: protocol message-format change window; interoperability testing with peers.",
+   "pqc_target": "AES-256-GCM",
+   "priority": "Low",
+   "recommendation_id": "rec:8ff96706c216cee6",
+   "title": "Migrate AES [op:3022483cd5aefbab] to AES-256-GCM (alt: ChaCha20-Poly1305)"
+  },
+  {
+   "asset_ids": [
+    "ast:b3dff41e53dc60d4"
+   ],
+   "description": "AES [op:68143c6b8205bd8d] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java -> AES-256-GCM (alt: ChaCha20-Poly1305). Unauthenticated CBC/CTR needs random IV plus a MAC; an AEAD simplifies the design -- prefer AES-GCM or ChaCha20-Poly1305. Priority Low (replacement_score 0.734). Effort S; latency/cost low; compatibility high. Blockers: protocol message-format change window; interoperability testing with peers.",
+   "pqc_target": "AES-256-GCM",
+   "priority": "Low",
+   "recommendation_id": "rec:b9db75d657c8636e",
+   "title": "Migrate AES [op:68143c6b8205bd8d] to AES-256-GCM (alt: ChaCha20-Poly1305)"
+  },
+  {
+   "asset_ids": [
+    "ast:b3dff41e53dc60d4"
+   ],
+   "description": "AES [op:b1790b447e60fd21] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java -> AES-256-GCM (alt: ChaCha20-Poly1305). Unauthenticated CBC/CTR needs random IV plus a MAC; an AEAD simplifies the design -- prefer AES-GCM or ChaCha20-Poly1305. Priority Low (replacement_score 0.734). Effort S; latency/cost low; compatibility high. Blockers: protocol message-format change window; interoperability testing with peers.",
+   "pqc_target": "AES-256-GCM",
+   "priority": "Low",
+   "recommendation_id": "rec:3bcfbb4f30dfdf22",
+   "title": "Migrate AES [op:b1790b447e60fd21] to AES-256-GCM (alt: ChaCha20-Poly1305)"
+  },
+  {
+   "asset_ids": [
+    "ast:8f168df3a97e6240"
+   ],
+   "description": "PBKDF2 [op:70b985a61e43bf54] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.686). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:da929f5fdef395c6",
+   "title": "Migrate PBKDF2 [op:70b985a61e43bf54] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:72177ccbe35bcd41"
+   ],
+   "description": "PBKDF2 [op:c6c3df1519e846eb] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.686). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:ce8e7c5853575f0a",
+   "title": "Migrate PBKDF2 [op:c6c3df1519e846eb] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:23940367517274a9"
+   ],
+   "description": "AES [op:69a0a09e6d38507f] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.664). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:c1107158e08ad840",
+   "title": "Migrate AES [op:69a0a09e6d38507f] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:23940367517274a9"
+   ],
+   "description": "AES [op:beb217ff7097e79e] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.664). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:47fe9b319098abd4",
+   "title": "Migrate AES [op:beb217ff7097e79e] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:23940367517274a9"
+   ],
+   "description": "AES [op:d47dc3322e944a2e] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.664). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:79c8280d93c0b0af",
+   "title": "Migrate AES [op:d47dc3322e944a2e] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:9ea40cb4eb839e0b"
+   ],
+   "description": "bcrypt [op:88918b40ab0d06ee] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.661). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:10f43ec0c07e62af",
+   "title": "Migrate bcrypt [op:88918b40ab0d06ee] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:9ea40cb4eb839e0b"
+   ],
+   "description": "bcrypt [op:d838bf0ba3d9a26f] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\BCryptPasswordEncoder.java -> keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor). Strong classical primitive with correct parameters; monitor inventory, no migration required. Priority Low (replacement_score 0.661). Effort S; latency/cost low; compatibility high. Blockers: none; monitor inventory.",
+   "pqc_target": "keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+",
+   "priority": "Low",
+   "recommendation_id": "rec:3829fd72c169a828",
+   "title": "Migrate bcrypt [op:d838bf0ba3d9a26f] to keep AES-256-GCM / ChaCha20-Poly1305 / SHA-256+ (monitor)"
+  },
+  {
+   "asset_ids": [
+    "ast:526c433bde84e90a"
+   ],
+   "description": "PBKDF2 [op:2cdfd94f9cc22cd2] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.657). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:4415eb6c65f4993f",
+   "title": "Migrate PBKDF2 [op:2cdfd94f9cc22cd2] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:1c8815220a5f4364"
+   ],
+   "description": "PBKDF2 [op:462f9472b6889b36] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.657). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:f44d757d4ef3feac",
+   "title": "Migrate PBKDF2 [op:462f9472b6889b36] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:526c433bde84e90a"
+   ],
+   "description": "PBKDF2 [op:6a5948a99a3facce] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.657). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:70247fad8268d466",
+   "title": "Migrate PBKDF2 [op:6a5948a99a3facce] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:526c433bde84e90a"
+   ],
+   "description": "PBKDF2 [op:308e6909ae7c41f8] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.652). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:9520aa750d0d520f",
+   "title": "Migrate PBKDF2 [op:308e6909ae7c41f8] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:526c433bde84e90a"
+   ],
+   "description": "PBKDF2 [op:33ea18bac6e69c1c] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.652). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:9fc2fc10caaf0436",
+   "title": "Migrate PBKDF2 [op:33ea18bac6e69c1c] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:adff82177371fbb8"
+   ],
+   "description": "PBKDF2 [op:68b475289f806f3a] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.652). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:4dc5d4e31b4b56ec",
+   "title": "Migrate PBKDF2 [op:68b475289f806f3a] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:526c433bde84e90a"
+   ],
+   "description": "PBKDF2 [op:f35a92aade9dd5bb] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Pbkdf2PasswordEncoder.java -> Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy). Weak PBKDF2 iteration/salt policy risks passwords; prefer Argon2id (scrypt/bcrypt where stack-constrained) or a stronger PBKDF2 policy. Priority Low (replacement_score 0.652). Effort S; latency/cost low; compatibility medium. Blockers: password-hash migration strategy (no plaintext); KDF library availability (Argon2id/scrypt).",
+   "pqc_target": "Argon2id",
+   "priority": "Low",
+   "recommendation_id": "rec:4e89259cd4911de2",
+   "title": "Migrate PBKDF2 [op:f35a92aade9dd5bb] to Argon2id (alt: scrypt, bcrypt, or stronger PBKDF2 policy)"
+  },
+  {
+   "asset_ids": [
+    "ast:d685eea8880cccfe"
+   ],
+   "description": "AES [op:6df28b00695a1cda] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.498). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:612fcdfef495e185",
+   "title": "Migrate AES [op:6df28b00695a1cda] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:4d1bf776c017de44"
+   ],
+   "description": "AES [op:6faad2f6f1d2949f] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.498). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:9e220a1c28b156fb",
+   "title": "Migrate AES [op:6faad2f6f1d2949f] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:1a28f29b6038b7f2"
+   ],
+   "description": "AES [op:9283aa09b1873e12] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\CipherUtils.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.498). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:e64a0ed175d18026",
+   "title": "Migrate AES [op:9283aa09b1873e12] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:b6950886832a72c1"
+   ],
+   "description": "AES [op:feb8ae4b707d7455] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.498). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:8936dd15b150fd07",
+   "title": "Migrate AES [op:feb8ae4b707d7455] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:f502db98eba71b99"
+   ],
+   "description": "AES [op:20aeb1fa677e7819] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.497). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:0dc9b5a277cd244f",
+   "title": "Migrate AES [op:20aeb1fa677e7819] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:f502db98eba71b99"
+   ],
+   "description": "AES [op:48e302e101e4e125] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\Encryptors.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.497). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:7ab73b6b026ef453",
+   "title": "Migrate AES [op:48e302e101e4e125] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:d685eea8880cccfe"
+   ],
+   "description": "AES [op:745708fecec2a98f] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesCbcBytesEncryptor.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.497). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:52824e2e4983fb52",
+   "title": "Migrate AES [op:745708fecec2a98f] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:4d1bf776c017de44"
+   ],
+   "description": "AES [op:9042dc4a8d0db9a7] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesBytesEncryptor.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.497). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:ce885eb6266aba8b",
+   "title": "Migrate AES [op:9042dc4a8d0db9a7] to confirm usage, then map to catalogue path"
+  },
+  {
+   "asset_ids": [
+    "ast:b6950886832a72c1"
+   ],
+   "description": "AES [op:a159c4df983216ec] at D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring\\AesGcmBytesEncryptor.java -> confirm usage, then map to catalogue path. Unmapped or ProvidedOnly finding; confirm real use before planning migration to avoid noisy roadmaps. Priority Low (replacement_score 0.497). Effort S; latency/cost low; compatibility medium. Blockers: usage confirmation before migration planning.",
+   "pqc_target": "confirm usage, then map to catalogue path",
+   "priority": "Low",
+   "recommendation_id": "rec:0fae0b208c8b5718",
+   "title": "Migrate AES [op:a159c4df983216ec] to confirm usage, then map to catalogue path"
+  }
+ ],
+ "registry_version": "2026.09.11",
+ "risks": [
+  {
+   "asset_id": "ast:4ecaf2763c216929",
+   "class": "High",
+   "confidence": 0.9,
+   "description": "RSA [op:b854b435746a716e] (Confirmed): Q=1.00 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.70 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.630 -> High.",
+   "operation_id": "op:b854b435746a716e",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:3833e3eed8d710e5",
+   "score": 6.3,
+   "title": "RSA [op:b854b435746a716e]"
+  },
+  {
+   "asset_id": "ast:4ecaf2763c216929",
+   "class": "High",
+   "confidence": 0.9,
+   "description": "RSA [op:fc9ed04f54651d3c] (Confirmed): Q=1.00 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.70 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.630 -> High.",
+   "operation_id": "op:fc9ed04f54651d3c",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:dcc880a37c9099c6",
+   "score": 6.3,
+   "title": "RSA [op:fc9ed04f54651d3c]"
+  },
+  {
+   "asset_id": "ast:4ecaf2763c216929",
+   "class": "High",
+   "confidence": 0.7,
+   "description": "RSA [op:ab3e7e39de35699e] (Probable): Q=1.00 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.615 -> High.",
+   "operation_id": "op:ab3e7e39de35699e",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:ab398912944ae049",
+   "score": 6.15,
+   "title": "RSA [op:ab3e7e39de35699e]"
+  },
+  {
+   "asset_id": "ast:3ceb319457f9e8a9",
+   "class": "Medium",
+   "confidence": 0.8,
+   "description": "RANDOM [op:c013b9c33bacddcf] (Probable): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.65 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.448 -> Medium.",
+   "operation_id": "op:c013b9c33bacddcf",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'RANDOM' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:ea4ea6fdde015eac",
+   "score": 4.48,
+   "title": "RANDOM [op:c013b9c33bacddcf]"
+  },
+  {
+   "asset_id": "ast:6d200940ad636776",
+   "class": "Medium",
+   "confidence": 0.8,
+   "description": "RANDOM [op:e97206f54da89d42] (Probable): Q=0.50 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.65 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Q includes the classical-weakness floor. Score 0.448 -> Medium.",
+   "operation_id": "op:e97206f54da89d42",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); algorithm 'RANDOM' unmapped -> Q=0.5 conservative; criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:4a1489345aabf4e7",
+   "score": 4.48,
+   "title": "RANDOM [op:e97206f54da89d42]"
+  },
+  {
+   "asset_id": "ast:8f168df3a97e6240",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "PBKDF2 [op:70b985a61e43bf54] (Probable): Q=0.30 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.370 -> Low.",
+   "operation_id": "op:70b985a61e43bf54",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:454154a0fde44142",
+   "score": 3.7,
+   "title": "PBKDF2 [op:70b985a61e43bf54]"
+  },
+  {
+   "asset_id": "ast:72177ccbe35bcd41",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "PBKDF2 [op:c6c3df1519e846eb] (Probable): Q=0.30 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.370 -> Low.",
+   "operation_id": "op:c6c3df1519e846eb",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:73612bb5e4e9220e",
+   "score": 3.7,
+   "title": "PBKDF2 [op:c6c3df1519e846eb]"
+  },
+  {
+   "asset_id": "ast:1a28f29b6038b7f2",
+   "class": "Low",
+   "confidence": 0.9,
+   "description": "AES [op:9283aa09b1873e12] (Confirmed): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.70 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.332 -> Low.",
+   "operation_id": "op:9283aa09b1873e12",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:bc8562a185f1ae3b",
+   "score": 3.32,
+   "title": "AES [op:9283aa09b1873e12]"
+  },
+  {
+   "asset_id": "ast:d685eea8880cccfe",
+   "class": "Low",
+   "confidence": 0.8,
+   "description": "AES [op:6df28b00695a1cda] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.65 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.325 -> Low.",
+   "operation_id": "op:6df28b00695a1cda",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:b00d1deed42ef5c9",
+   "score": 3.25,
+   "title": "AES [op:6df28b00695a1cda]"
+  },
+  {
+   "asset_id": "ast:4d1bf776c017de44",
+   "class": "Low",
+   "confidence": 0.8,
+   "description": "AES [op:6faad2f6f1d2949f] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.65 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.325 -> Low.",
+   "operation_id": "op:6faad2f6f1d2949f",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:93c467c904bd2b06",
+   "score": 3.25,
+   "title": "AES [op:6faad2f6f1d2949f]"
+  },
+  {
+   "asset_id": "ast:b6950886832a72c1",
+   "class": "Low",
+   "confidence": 0.8,
+   "description": "AES [op:feb8ae4b707d7455] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.65 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.325 -> Low.",
+   "operation_id": "op:feb8ae4b707d7455",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:b11bbcad7fcc6ebb",
+   "score": 3.25,
+   "title": "AES [op:feb8ae4b707d7455]"
+  },
+  {
+   "asset_id": "ast:b3dff41e53dc60d4",
+   "class": "Low",
+   "confidence": 0.782,
+   "description": "AES [op:3022483cd5aefbab] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.64 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.324 -> Low.",
+   "operation_id": "op:3022483cd5aefbab",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:4408e6d635b3e94a",
+   "score": 3.24,
+   "title": "AES [op:3022483cd5aefbab]"
+  },
+  {
+   "asset_id": "ast:b3dff41e53dc60d4",
+   "class": "Low",
+   "confidence": 0.782,
+   "description": "AES [op:68143c6b8205bd8d] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.64 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.324 -> Low.",
+   "operation_id": "op:68143c6b8205bd8d",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:7f915897e95cffed",
+   "score": 3.24,
+   "title": "AES [op:68143c6b8205bd8d]"
+  },
+  {
+   "asset_id": "ast:23940367517274a9",
+   "class": "Low",
+   "confidence": 0.782,
+   "description": "AES [op:69a0a09e6d38507f] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.64 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.324 -> Low.",
+   "operation_id": "op:69a0a09e6d38507f",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:5f4811cf37d7e114",
+   "score": 3.24,
+   "title": "AES [op:69a0a09e6d38507f]"
+  },
+  {
+   "asset_id": "ast:b3dff41e53dc60d4",
+   "class": "Low",
+   "confidence": 0.782,
+   "description": "AES [op:b1790b447e60fd21] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.64 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.324 -> Low.",
+   "operation_id": "op:b1790b447e60fd21",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:e9c2c64480b2ba1c",
+   "score": 3.24,
+   "title": "AES [op:b1790b447e60fd21]"
+  },
+  {
+   "asset_id": "ast:23940367517274a9",
+   "class": "Low",
+   "confidence": 0.782,
+   "description": "AES [op:beb217ff7097e79e] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.64 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.324 -> Low.",
+   "operation_id": "op:beb217ff7097e79e",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:df0cdfc57dd19f7a",
+   "score": 3.24,
+   "title": "AES [op:beb217ff7097e79e]"
+  },
+  {
+   "asset_id": "ast:23940367517274a9",
+   "class": "Low",
+   "confidence": 0.782,
+   "description": "AES [op:d47dc3322e944a2e] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.64 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.324 -> Low.",
+   "operation_id": "op:d47dc3322e944a2e",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:a8cac4721dbda987",
+   "score": 3.24,
+   "title": "AES [op:d47dc3322e944a2e]"
+  },
+  {
+   "asset_id": "ast:d685eea8880cccfe",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "AES [op:745708fecec2a98f] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.318 -> Low.",
+   "operation_id": "op:745708fecec2a98f",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:cbdfab66fdafaf92",
+   "score": 3.18,
+   "title": "AES [op:745708fecec2a98f]"
+  },
+  {
+   "asset_id": "ast:b6950886832a72c1",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "AES [op:a159c4df983216ec] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.318 -> Low.",
+   "operation_id": "op:a159c4df983216ec",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:e3324c4e3cd960dd",
+   "score": 3.18,
+   "title": "AES [op:a159c4df983216ec]"
+  },
+  {
+   "asset_id": "ast:f502db98eba71b99",
+   "class": "Low",
+   "confidence": 0.69,
+   "description": "AES [op:20aeb1fa677e7819] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.59 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.317 -> Low.",
+   "operation_id": "op:20aeb1fa677e7819",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:2845def4a8714d89",
+   "score": 3.17,
+   "title": "AES [op:20aeb1fa677e7819]"
+  },
+  {
+   "asset_id": "ast:f502db98eba71b99",
+   "class": "Low",
+   "confidence": 0.69,
+   "description": "AES [op:48e302e101e4e125] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.59 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.317 -> Low.",
+   "operation_id": "op:48e302e101e4e125",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:2ce1c016f46cb378",
+   "score": 3.17,
+   "title": "AES [op:48e302e101e4e125]"
+  },
+  {
+   "asset_id": "ast:4d1bf776c017de44",
+   "class": "Low",
+   "confidence": 0.69,
+   "description": "AES [op:9042dc4a8d0db9a7] (Probable): Q=0.15 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.59 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.317 -> Low.",
+   "operation_id": "op:9042dc4a8d0db9a7",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:a67f166deb86ccd7",
+   "score": 3.17,
+   "title": "AES [op:9042dc4a8d0db9a7]"
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "class": "Low",
+   "confidence": 0.85,
+   "description": "PBKDF2 [op:2cdfd94f9cc22cd2] (Confirmed): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.311 -> Low.",
+   "operation_id": "op:2cdfd94f9cc22cd2",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:9da08fca55117b97",
+   "score": 3.11,
+   "title": "PBKDF2 [op:2cdfd94f9cc22cd2]"
+  },
+  {
+   "asset_id": "ast:1c8815220a5f4364",
+   "class": "Low",
+   "confidence": 0.85,
+   "description": "PBKDF2 [op:462f9472b6889b36] (Confirmed): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.311 -> Low.",
+   "operation_id": "op:462f9472b6889b36",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:cc8968ef97626648",
+   "score": 3.11,
+   "title": "PBKDF2 [op:462f9472b6889b36]"
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "class": "Low",
+   "confidence": 0.85,
+   "description": "PBKDF2 [op:6a5948a99a3facce] (Confirmed): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.68 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.311 -> Low.",
+   "operation_id": "op:6a5948a99a3facce",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:247e3dea69c0a83f",
+   "score": 3.11,
+   "title": "PBKDF2 [op:6a5948a99a3facce]"
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "PBKDF2 [op:308e6909ae7c41f8] (Probable): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.300 -> Low.",
+   "operation_id": "op:308e6909ae7c41f8",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:9aa97eefa5f10666",
+   "score": 3.0,
+   "title": "PBKDF2 [op:308e6909ae7c41f8]"
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "PBKDF2 [op:33ea18bac6e69c1c] (Probable): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.300 -> Low.",
+   "operation_id": "op:33ea18bac6e69c1c",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:0b028c8a4e28716e",
+   "score": 3.0,
+   "title": "PBKDF2 [op:33ea18bac6e69c1c]"
+  },
+  {
+   "asset_id": "ast:adff82177371fbb8",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "PBKDF2 [op:68b475289f806f3a] (Probable): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.300 -> Low.",
+   "operation_id": "op:68b475289f806f3a",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:528c55106405a419",
+   "score": 3.0,
+   "title": "PBKDF2 [op:68b475289f806f3a]"
+  },
+  {
+   "asset_id": "ast:526c433bde84e90a",
+   "class": "Low",
+   "confidence": 0.7,
+   "description": "PBKDF2 [op:f35a92aade9dd5bb] (Probable): Q=0.10 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.60 (Probable), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.300 -> Low.",
+   "operation_id": "op:f35a92aade9dd5bb",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:b5f829c634aae7d9",
+   "score": 3.0,
+   "title": "PBKDF2 [op:f35a92aade9dd5bb]"
+  },
+  {
+   "asset_id": "ast:9ea40cb4eb839e0b",
+   "class": "Low",
+   "confidence": 0.88,
+   "description": "bcrypt [op:88918b40ab0d06ee] (Confirmed): Q=0.05 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.296 -> Low.",
+   "operation_id": "op:88918b40ab0d06ee",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:60a2e135f2b4fa1f",
+   "score": 2.96,
+   "title": "bcrypt [op:88918b40ab0d06ee]"
+  },
+  {
+   "asset_id": "ast:9ea40cb4eb839e0b",
+   "class": "Low",
+   "confidence": 0.88,
+   "description": "bcrypt [op:d838bf0ba3d9a26f] (Confirmed): Q=0.05 quantum vuln, E=0.50 (internal), B=0.50 (medium), C=0.69 (Confirmed), Mosca X+Y=5+3 <= Z=10 -> boost=0. Score 0.296 -> Low.",
+   "operation_id": "op:d838bf0ba3d9a26f",
+   "rationale": "data lifetime X assumed 5y (undeclared); migration lead time Y assumed 3y (undeclared); QC timeline Z assumed 10y (caller default); criticality unmapped -> medium (0.5); confidence blended 50/50 usage_state x declared confidence",
+   "risk_id": "risk:4b1d13ff5af50222",
+   "score": 2.96,
+   "title": "bcrypt [op:d838bf0ba3d9a26f]"
+  }
+ ],
+ "scan_id": "scan:69d7fcc694f7e0f0",
+ "started_at": "2026-09-24T16:22:58Z",
+ "stats": {
+  "asset_count": 16,
+  "edge_count": 156,
+  "node_count": 57,
+  "operation_count": 31,
+  "recommendation_count": 31,
+  "risk_count": 31
+ },
+ "target": "D:\\Coding\\Websites\\ECDAT\\ECDAT_Benchmark_Suite\\benchmarks\\repo_eval\\slices\\spring",
+ "tool_versions": {
+  "binary": "binary-v0.2.0(strings-builtin)",
+  "certificate": "certificate-v0.1.0",
+  "config": "config-v0.1.0",
+  "dependency": "0.2.0",
+  "source": "0.2.0"
+ }
+}
