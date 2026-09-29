@@ -1,5 +1,5 @@
 # Netlify: proxy API to the Render backend (invisible to the browser,
 # so the app stays same-origin), then SPA fallback. Order matters.
 # Replace ecdat-api.onrender.com with your actual Render service URL.
-/api/*  https://deepseekpadukone.onrender.com/:splat  200
+/api/*  https://deepseekpadukone.onrender.com/api/:splat  200
 /*      /index.html                             200
