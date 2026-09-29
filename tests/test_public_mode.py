@@ -115,6 +115,50 @@ def _get(port, path, token=None):
         return exc.code
 
 
+def test_rate_limit_allows_then_blocks():
+    import threading
+    from collections import deque
+    from types import SimpleNamespace
+
+    state = SimpleNamespace(lock=threading.RLock(), rate_hits={})
+    path = "/api/scan-jobs"
+    limit, _window = web._RATE_LIMITS[path]
+    for _ in range(limit):
+        assert web._check_rate_limit(state, path, "1.2.3.4") is True
+    assert web._check_rate_limit(state, path, "1.2.3.4") is False
+    # Other IPs and unlisted paths are unaffected.
+    assert web._check_rate_limit(state, path, "5.6.7.8") is True
+    assert web._check_rate_limit(state, "/api/health", "1.2.3.4") is True
+
+
+def test_rate_limit_window_expiry():
+    import threading
+    import time
+    from collections import deque
+    from types import SimpleNamespace
+
+    state = SimpleNamespace(lock=threading.RLock(), rate_hits={})
+    path = "/api/uploads"
+    limit, window = web._RATE_LIMITS[path]
+    old = time.monotonic() - window - 1
+    state.rate_hits[("9.9.9.9", path)] = deque([old] * limit)
+    assert web._check_rate_limit(state, path, "9.9.9.9") is True
+
+
+def test_client_ip_prefers_forwarded_for():
+    class Fake:
+        headers = {"X-Forwarded-For": "203.0.113.7, 10.0.0.1"}
+        client_address = ("10.0.0.9", 1234)
+
+    assert web._client_ip(Fake()) == "203.0.113.7"
+
+    class Direct:
+        headers = {}
+        client_address = ("10.0.0.9", 1234)
+
+    assert web._client_ip(Direct()) == "10.0.0.9"
+
+
 def test_live_public_auth_flow(tmp_path, monkeypatch):
     import urllib.error  # noqa: F401  (kept local to the live test)
 

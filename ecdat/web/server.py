@@ -18,8 +18,10 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 import uuid
 import zipfile
+from collections import deque
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -96,6 +98,51 @@ def _session_cookie_attrs(*, max_age: int) -> str:
     if _is_public():
         return f"; HttpOnly; SameSite=None; Secure; Path=/; Max-Age={max_age}"
     return f"; HttpOnly; SameSite=Lax; Path=/; Max-Age={max_age}"
+
+
+# Frictionless abuse guard for open (token-less) public deployments:
+# per-IP sliding-window caps on the expensive mutating endpoints.
+# (limit, window_seconds) per path; tuned for demo traffic on free tier.
+_RATE_LIMITS: dict[str, tuple[int, int]] = {
+    "/api/scan-jobs": (20, 3600),
+    "/api/uploads": (30, 3600),
+    "/api/scan-plan": (60, 3600),
+    "/api/inputs/inspect": (60, 3600),
+    "/api/github/repos/select": (30, 3600),
+}
+
+
+def _client_ip(handler: Any) -> str:
+    try:
+        forwarded = handler.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip() or "unknown"
+    except Exception:
+        pass
+    try:
+        return handler.client_address[0]
+    except Exception:
+        return "unknown"
+
+
+def _check_rate_limit(state: Any, path: str, ip: str) -> bool:
+    """True when the request is within its per-IP budget."""
+    rule = _RATE_LIMITS.get(path)
+    if rule is None:
+        return True
+    limit, window = rule
+    now = time.monotonic()
+    key = (ip, path)
+    with state.lock:
+        hits = state.rate_hits.get(key)
+        if hits is None:
+            hits = state.rate_hits[key] = deque()
+        while hits and hits[0] <= now - window:
+            hits.popleft()
+        if len(hits) >= limit:
+            return False
+        hits.append(now)
+        return True
 SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
 GITHUB_API = "https://api.github.com"
 GITHUB_TOKEN_COOKIE = "ecdat_github_session"
@@ -234,6 +281,7 @@ class AppState:
         self.results: dict[str, dict[str, Any]] = {}
         self.oauth_states: dict[str, dict[str, Any]] = {}
         self.github_sessions: dict[str, dict[str, Any]] = {}
+        self.rate_hits: dict[tuple[str, str], deque] = {}
         # Phase 11: durable scan model shared with CLI/CI. Same default
         # DB file as the CLI so GUI and CLI histories unify; override
         # with --db / ECDAT_DB (tests use a temp file).
@@ -654,6 +702,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         path = urlparse(self.path).path
         if not self._check_auth(path):
+            return
+        if not _check_rate_limit(STATE, path, _client_ip(self)):
+            self._json(429, {"error": "rate limit exceeded: try again later"})
             return
         try:
             if path == "/api/uploads":
