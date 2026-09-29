@@ -1,709 +1,569 @@
-"""ECDAT Professional PDF Report Renderer.
+"""ECDAT Concise PDF Report Renderer (ReportLab Platypus).
 
-Premium, modern cybersecurity report with ECDAT visual identity:
-- Light/off-white background, dark typography
-- Subtle ECDAT blue (#1a3a5c) + purple (#4a2c6e) accents
-- Clean, spacious layout with strong visual hierarchy
-- Professional tables, headers/footers, page numbers
-- Proper wrapping, page breaks, no clipping/overlapping
+Deliberately concise: page count scales with distinct algorithms and
+rules, never with the raw finding count, so even very large scans
+(e.g. OpenSSL-scale, thousands of findings) stay a short document:
+
+  Page 1  Title + overview (mirrors the GUI result header)
+  Page 2+ Cryptographic inventory (every algorithm, uncapped) +
+          grouped operations summary (one row per algorithm x type)
+  Next    Migration recommendations (one bullet per deduped action:
+          "14 RSA findings -> 1 point")
+  Next    Findings summary (one row per finding group, not per
+          occurrence) + scan coverage appendix.
+
+Per-occurrence detail lives in the HTML/CSV/JSON exports. Only
+``reportlab`` is required (pure pip install, no system libraries).
+Output bytes are deterministic: PDF dates and document ID are pinned
+so golden tests stay byte-stable.
 """
 
 from __future__ import annotations
 
-import textwrap
-from dataclasses import dataclass
+import io
+import re
+from datetime import datetime
 from typing import Any
+from xml.sax.saxutils import escape as _xml_escape
 
-# ─── Page Geometry ──────────────────────────────────────────────────────
-PAGE_W = 595.0
-PAGE_H = 842.0
-MARGIN = 50.0
-CONTENT_W = PAGE_W - 2 * MARGIN
-TOP_Y = PAGE_H - MARGIN
-BOTTOM_Y = MARGIN
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    BaseDocTemplate,
+    HRFlowable,
+    KeepTogether,
+    PageTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    Frame,
+    PageBreak,
+)
 
-# ─── Color Palette (RGB 0-1) ────────────────────────────────────────────
-@dataclass(frozen=True)
-class Color:
-    r: float; g: float; b: float
-    def rgb(self) -> str: return f"{self.r:.3f} {self.g:.3f} {self.b:.3f}"
+# ─── Theme ──────────────────────────────────────────────────────────────
+PRIMARY = colors.HexColor("#1a3a5c")
+ACCENT = colors.HexColor("#4a2c6e")
+MUTED = colors.HexColor("#666677")
+LIGHT_LINE = colors.HexColor("#d8dce2")
+ALT_ROW = colors.HexColor("#f2f4f8")
+WHITE = colors.white
+BLACK = colors.HexColor("#1a1a2e")
 
-CLR = {
-    "bg": Color(0.98, 0.985, 0.99),        # off-white background
-    "text": Color(0.1, 0.1, 0.18),         # near-black
-    "text_muted": Color(0.4, 0.4, 0.5),    # muted gray
-    "primary": Color(0.1, 0.23, 0.36),     # ECDAT blue #1a3a5c
-    "accent": Color(0.29, 0.17, 0.43),     # ECDAT purple #4a2c6e
-    "line": Color(0.85, 0.87, 0.9),        # subtle lines
-    "card_bg": Color(1.0, 1.0, 1.0),       # white cards
-    "sev_crit": Color(0.86, 0.15, 0.15),   # critical
-    "sev_high": Color(0.92, 0.35, 0.09),   # high
-    "sev_med": Color(0.79, 0.54, 0.05),    # medium
-    "sev_low": Color(0.09, 0.64, 0.29),    # low
-    "sev_info": Color(0.15, 0.39, 0.75),   # info
+SEV_HEX = {
+    "critical": "#d92626",
+    "high": "#eb5a17",
+    "medium": "#c78d0d",
+    "low": "#17a34a",
+    "info": "#2661bf",
 }
 
-SEV_COLOR = {
-    "critical": CLR["sev_crit"], "high": CLR["sev_high"],
-    "medium": CLR["sev_med"], "low": CLR["sev_low"], "info": CLR["sev_info"],
+SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+MARGIN = 16 * mm
+PAGE_W, PAGE_H = A4
+
+# Fixed PDF metadata so output bytes are deterministic across runs.
+FIXED_DATE = "D:20260101000000Z"
+FIXED_ID = "ECDAT0000000000000000000000000000"
+
+# ─── Sanitising (ASCII-fold; Helvetica is WinAnsi) ──────────────────────
+_FOLD = {
+    "\u2013": "-", "\u2014": "-", "\u2212": "-",
+    "\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"',
+    "\u2022": "-", "\u00b7": "-", "\u25cf": "-", "\u25cb": "-",
+    "\u2713": "Yes", "\u2714": "Yes", "\u2717": "No", "\u2718": "No",
+    "\u2192": "->", "\u2190": "<-", "\u2500": "-", "\u2502": "|",
+    "\u250c": "+", "\u2510": "+", "\u2514": "+", "\u2518": "+",
+    "\u253c": "+", "\u2501": "=", "\u2503": "|",
+    "\u2588": "#", "\u2591": "-", "\u2592": "-", "\u2593": "-",
+    "\u2026": "...", "\u00a0": " ", "\u200b": "",
+    "\u00e0": "a", "\u00e1": "a", "\u00e2": "a", "\u00e4": "a", "\u00e5": "a",
+    "\u00e8": "e", "\u00e9": "e", "\u00ea": "e", "\u00eb": "e",
+    "\u00ec": "i", "\u00ed": "i", "\u00ee": "i", "\u00ef": "i",
+    "\u00f2": "o", "\u00f3": "o", "\u00f4": "o", "\u00f6": "o",
+    "\u00f9": "u", "\u00fa": "u", "\u00fb": "u", "\u00fc": "u",
+    "\u00fd": "y", "\u00ff": "y", "\u00f1": "n", "\u00e7": "c",
+    "\u00c0": "A", "\u00c1": "A", "\u00c2": "A", "\u00c4": "A",
+    "\u00c8": "E", "\u00c9": "E", "\u00ca": "E", "\u00cb": "E",
+    "\u00cc": "I", "\u00cd": "I", "\u00ce": "I", "\u00cf": "I",
+    "\u00d2": "O", "\u00d3": "O", "\u00d4": "O", "\u00d6": "O",
+    "\u00d9": "U", "\u00da": "U", "\u00db": "U", "\u00dc": "U",
+    "\u00d1": "N", "\u00c7": "C",
 }
 
-# ─── Font Helpers ───────────────────────────────────────────────────────
-FONT = "Helvetica"
-FONT_B = "Helvetica-Bold"
-FONT_O = "Helvetica-Oblique"
-FONT_BO = "Helvetica-BoldOblique"
 
-def _esc(s: str) -> str:
-    """Escape for PDF string literal."""
-    return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+def _clean(value: Any, limit: int = 0) -> str:
+    try:
+        text = str(value if value is not None else "")
+    except Exception:
+        return ""
+    for uni, rep in _FOLD.items():
+        if uni in text:
+            text = text.replace(uni, rep)
+    out = "".join(ch if 32 <= ord(ch) < 127 else (" " if ch in ("\t",) else "?")
+                  for ch in text)
+    out = re.sub(r"\s+", " ", out).strip()
+    return out[:limit].strip() if limit else out
 
-def _wrap(text: str, max_chars: int) -> list[str]:
-    """Wrap text to max_chars, preserving word boundaries."""
-    if not text:
-        return [""]
-    words = text.split()
-    lines, cur = [], ""
-    for w in words:
-        if len(w) > max_chars:
-            if cur:
-                lines.append(cur); cur = ""
-            for i in range(0, len(w), max_chars):
-                lines.append(w[i:i+max_chars])
-            continue
-        cand = f"{cur} {w}".strip()
-        if len(cand) <= max_chars:
-            cur = cand
-        else:
-            lines.append(cur)
-            cur = w
-    if cur:
-        lines.append(cur)
-    return lines or [""]
 
-# ─── Layout Primitives ──────────────────────────────────────────────────
-@dataclass
-class DrawCmd:
-    """A drawing command for the content stream."""
-    ops: str
+def _fmt_date(value: Any) -> str:
+    try:
+        text = str(value or "").strip()
+        if not text:
+            return "Not recorded"
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).strftime("%d %B %Y")
+    except Exception:
+        return _clean(value) or "Not recorded"
 
-class Canvas:
-    """Accumulates PDF drawing commands for one page."""
-    def __init__(self) -> None:
-        self.cmds: list[DrawCmd] = []
-        self.y = TOP_Y
-        self.page_num = 1
 
-    def add(self, ops: str) -> None:
-        self.cmds.append(DrawCmd(ops))
+def _sev(value: Any) -> str:
+    sev = _clean(value).lower() or "info"
+    return sev if sev in SEV_HEX else "info"
 
-    # --- Graphics State ---
-    def save(self) -> None: self.add("q")
-    def restore(self) -> None: self.add("Q")
 
-    # --- Colors ---
-    def set_fill(self, c: Color) -> None: self.add(f"{c.rgb()} rg")
-    def set_stroke(self, c: Color) -> None: self.add(f"{c.rgb()} RG")
+def _sev_tag(sev: str) -> str:
+    label = "INFORMATIONAL" if sev == "info" else sev.upper()
+    return f'<font color="{SEV_HEX[sev]}"><b>[{label}]</b></font>'
 
-    # --- Rectangles ---
-    def rect(self, x: float, y: float, w: float, h: float, fill: bool = True, stroke: bool = False) -> None:
-        ops = f"{x:.2f} {y:.2f} {w:.2f} {h:.2f} re"
-        if fill and stroke: ops += " B"
-        elif fill: ops += " f"
-        elif stroke: ops += " S"
-        else: ops += " n"
-        self.add(ops)
 
-    def rounded_rect(self, x: float, y: float, w: float, h: float, r: float, fill: bool = True) -> None:
-        # Approximate rounded rect with bezier curves
-        k = 0.5522847498 * r
-        ops = (
-            f"{x+r:.2f} {y:.2f} m "
-            f"{x+w-r:.2f} {y:.2f} l "
-            f"{x+w-k:.2f} {y:.2f} {x+w:.2f} {y+k:.2f} {x+w:.2f} {y+r:.2f} c "
-            f"{x+w:.2f} {y+h-r:.2f} l "
-            f"{x+w:.2f} {y+h-k:.2f} {x+w-k:.2f} {y+h:.2f} {x+w-r:.2f} {y+h:.2f} c "
-            f"{x+r:.2f} {y+h:.2f} l "
-            f"{x+k:.2f} {y+h:.2f} {x:.2f} {y+h-k:.2f} {x:.2f} {y+h-r:.2f} c "
-            f"{x:.2f} {y+r:.2f} l "
-            f"{x:.2f} {y+k:.2f} {x+k:.2f} {y:.2f} {x+r:.2f} {y:.2f} c "
-        )
-        if fill: ops += " f"
-        else: ops += " S"
-        self.add(ops)
+# ─── Styles ─────────────────────────────────────────────────────────────
+def _styles() -> dict[str, ParagraphStyle]:
+    base = {"fontName": "Helvetica", "textColor": BLACK}
+    cell = ParagraphStyle("cell", fontSize=8, leading=10.5, **base)
+    return {
+        "cover_brand": ParagraphStyle("cover_brand", fontName="Helvetica-Bold",
+                                      fontSize=30, leading=32, textColor=WHITE),
+        "cover_sub": ParagraphStyle("cover_sub", fontName="Helvetica",
+                                    fontSize=11, leading=14, textColor=colors.HexColor("#e6e6f0")),
+        "cover_report": ParagraphStyle("cover_report", fontName="Helvetica-Bold",
+                                       fontSize=13, leading=16, textColor=WHITE),
+        "h1": ParagraphStyle("h1", fontName="Helvetica-Bold", fontSize=15,
+                             leading=18, textColor=PRIMARY, spaceBefore=26, spaceAfter=6),
+        "h2": ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=11.5,
+                             leading=14, textColor=PRIMARY, spaceBefore=14, spaceAfter=5),
+        "body": ParagraphStyle("body", fontSize=9.5, leading=13.5, **base),
+        "small": ParagraphStyle("small", fontSize=8.5, leading=11.5,
+                                textColor=MUTED, **{k: v for k, v in base.items()
+                                                    if k not in ("textColor", "leading")}),
+        "cell": cell,
+        "cell_h": ParagraphStyle("cell_h", parent=cell, fontName="Helvetica-Bold",
+                                 textColor=WHITE),
+        "cell_small": ParagraphStyle("cell_small", fontSize=7.5, leading=10, **base),
+        "bullet": ParagraphStyle("bullet", fontSize=9.5, leading=13.5,
+                                 leftIndent=18, firstLineIndent=0,
+                                 spaceBefore=1, spaceAfter=3, **base),
+    }
 
-    # --- Lines ---
-    def hline(self, x1: float, x2: float, y: float, w: float = 0.5) -> None:
-        self.add(f"{w:.2f} w {x1:.2f} {y:.2f} m {x2:.2f} {y:.2f} l S")
 
-    def vline(self, x: float, y1: float, y2: float, w: float = 0.5) -> None:
-        self.add(f"{w:.2f} w {x:.2f} {y1:.2f} m {x:.2f} {y2:.2f} l S")
+def _p(style: ParagraphStyle, text: str) -> Paragraph:
+    return Paragraph(_clean(text) or "-", style)
 
-    # --- Text ---
-    def text(self, x: float, y: float, text: str, font: str = FONT, size: float = 10, color: Color = CLR["text"]) -> None:
-        self.set_fill(color)
-        self.add(f"BT /{font} {size:.1f} Tf {x:.2f} {y:.2f} Td ({_esc(text)}) Tj ET")
 
-    def text_wrap(self, x: float, y: float, text: str, width: float, font: str = FONT, size: float = 10,
-                  color: Color = CLR["text"], leading: float = 1.3) -> float:
-        """Draw wrapped text, return new y position."""
-        chars_per_line = int(width / (size * 0.5))
-        lines = _wrap(text, max(1, chars_per_line))
-        self.set_fill(color)
-        for i, line in enumerate(lines):
-            self.add(f"BT /{font} {size:.1f} Tf {x:.2f} {y:.2f} Td ({_esc(line)}) Tj ET")
-            y -= size * leading
-        return y
+def _px(style: ParagraphStyle, markup: str) -> Paragraph:
+    """Paragraph where markup (<b>/<font>) is trusted; text already cleaned."""
+    return Paragraph(markup, style)
 
-    def text_right(self, x: float, y: float, text: str, font: str = FONT, size: float = 10, color: Color = CLR["text"]) -> None:
-        self.set_fill(color)
-        self.add(f"BT /{font} {size:.1f} Tf {x:.2f} {y:.2f} Td ({_esc(text)}) Tj ET")
 
-    # --- Badge ---
-    def badge(self, x: float, y: float, text: str, bg: Color, font_size: float = 7, padding: float = 4) -> tuple[float, float]:
-        """Draw a rounded badge, return (width, height)."""
-        tw = len(text) * font_size * 0.5 + 2 * padding
-        th = font_size * 1.5
-        self.save()
-        self.set_fill(bg)
-        self.rounded_rect(x, y - th + 2, tw, th, 3, fill=True)
-        self.set_fill(Color(1, 1, 1))
-        self.add(f"BT /{FONT_B} {font_size:.1f} Tf {x+padding:.2f} {y - th/2 - 1:.2f} Td ({_esc(text)}) Tj ET")
-        self.restore()
-        return tw, th
+def _hr() -> HRFlowable:
+    return HRFlowable(width="100%", thickness=1.2, color=ACCENT,
+                      spaceBefore=2, spaceAfter=8)
 
-    # --- Table ---
-    def table(self, x: float, y: float, col_widths: list[float], headers: list[str],
-              rows: list[list[str]], font_size: float = 8,
-              header_color: Color = CLR["primary"], alt_row: Color = Color(0.96, 0.97, 0.99),
-              header_font: str = FONT_B, cell_font: str = FONT) -> float:
-        """Draw a table, return new y position (bottom of table)."""
-        row_h = font_size * 1.6
-        # Header
-        self.save()
-        self.set_fill(header_color)
-        self.rect(x, y - row_h, sum(col_widths), row_h, fill=True)
-        self.set_fill(Color(1, 1, 1))
-        cx = x
-        for i, h in enumerate(headers):
-            self.add(f"BT /{header_font} {font_size:.1f} Tf {cx+3:.2f} {y - row_h + 3:.2f} Td ({_esc(h)}) Tj ET")
-            cx += col_widths[i]
-        self.restore()
-        y -= row_h
-        # Rows
-        for ri, row in enumerate(rows):
-            if ri % 2 == 1:
-                self.set_fill(alt_row)
-                self.rect(x, y - row_h, sum(col_widths), row_h, fill=True)
-            cx = x
-            for ci, cell in enumerate(row):
-                cw = col_widths[ci]
-                cell_text = cell[:int(cw / (font_size * 0.5)) - 1]
-                self.set_fill(CLR["text"])
-                self.add(f"BT /{cell_font} {font_size:.1f} Tf {cx+3:.2f} {y - row_h + 3:.2f} Td ({_esc(cell_text)}) Tj ET")
-                cx += cw
-            y -= row_h
-            # Grid line
-            self.set_stroke(CLR["line"])
-            self.hline(x, x + sum(col_widths), y, 0.3)
-        # Outer border
-        self.set_stroke(CLR["line"])
-        self.rect(x, y, sum(col_widths), y + row_h * (len(rows) + 1) - y, stroke=True)
-        return y
 
-    def stream(self) -> bytes:
-        return "\n".join(c.ops for c in self.cmds).encode("ascii")
+def _bullets(markups: list[str]) -> list[Paragraph]:
+    """Hanging bullets via Paragraph <bullet> (keeps marker on text line)."""
+    return [Paragraph(f"<bullet>&bull;</bullet>{m}", S["bullet"]) for m in markups]
 
-# ─── Section Builder ────────────────────────────────────────────────────
-class ReportBuilder:
-    def __init__(self, report: dict):
-        self.r = report
-        self.pages: list[Canvas] = []
-        self.current = Canvas()
-        self.pages.append(self.current)
 
-    def new_page(self) -> None:
-        self.current = Canvas()
-        self.current.page_num = len(self.pages) + 1
-        self.pages.append(self.current)
+def _table(headers: list[str], rows: list[list[Paragraph]],
+           widths: list[float], header_bg: Any = PRIMARY) -> Table:
+    data = [[Paragraph(f"<b>{_xml_escape(h)}</b>", S["cell_h"]) for h in headers]]
+    data.extend(rows)
+    style = TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), header_bg),
+        ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.4, LIGHT_LINE),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ])
+    if len(data) > 1:
+        style.add("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, ALT_ROW])
+    return Table(data, colWidths=widths, repeatRows=1, style=style)
 
-    def need_space(self, h: float) -> None:
-        if self.current.y - h < BOTTOM_Y + 20:
-            self.new_page()
 
-    def build(self) -> list[Canvas]:
-        self._cover_page()
-        self._executive_summary()
-        self._severity_breakdown()
-        self._priority_findings()
-        self._crypto_inventory()
-        self._affected_locations()
-        self._migration_priorities()
-        self._scan_coverage()
-        self._methodology()
-        return self.pages
+# ─── Header / footer ────────────────────────────────────────────────────
+def _header_footer(canvas: Any, doc: Any) -> None:
+    canvas.saveState()
+    if doc.page > 1:
+        canvas.setStrokeColor(PRIMARY)
+        canvas.setLineWidth(1.2)
+        canvas.line(MARGIN, PAGE_H - MARGIN + 8, PAGE_W - MARGIN, PAGE_H - MARGIN + 8)
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.setFillColor(PRIMARY)
+        canvas.drawString(MARGIN, PAGE_H - MARGIN + 12, "ECDAT Cryptographic Risk Report")
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(MUTED)
+        canvas.drawRightString(PAGE_W - MARGIN, PAGE_H - MARGIN + 12, str(doc.page))
+    canvas.setStrokeColor(LIGHT_LINE)
+    canvas.setLineWidth(0.5)
+    canvas.line(MARGIN, MARGIN - 12, PAGE_W - MARGIN, MARGIN - 12)
+    canvas.setFont("Helvetica-Oblique", 7)
+    canvas.setFillColor(MUTED)
+    canvas.drawString(MARGIN, MARGIN - 22, "CONFIDENTIAL - ECDAT Cryptographic Analysis")
+    canvas.setFont("Helvetica", 7)
+    canvas.drawRightString(PAGE_W - MARGIN, MARGIN - 22, f"Page {doc.page}")
+    canvas.restoreState()
 
-    # ── Page Decoration ──
-    def _decorate_page(self, c: Canvas, is_cover: bool = False) -> None:
-        if is_cover:
-            return
-        # Header line
-        c.save()
-        c.set_stroke(CLR["primary"])
-        c.hline(MARGIN, PAGE_W - MARGIN, PAGE_H - MARGIN + 10, 1.5)
-        # Header text
-        c.text(MARGIN, PAGE_H - MARGIN + 14, "ECDAT Cryptographic Risk Report", FONT_B, 8, CLR["primary"])
-        c.text_right(PAGE_W - MARGIN, PAGE_H - MARGIN + 14, str(c.page_num), FONT, 8, CLR["text_muted"])
-        c.restore()
-        # Footer
-        c.save()
-        c.set_stroke(CLR["line"])
-        c.hline(MARGIN, PAGE_W - MARGIN, MARGIN - 15, 0.5)
-        c.text(MARGIN, MARGIN - 25, "CONFIDENTIAL - ECDAT Cryptographic Analysis", FONT_O, 7, CLR["text_muted"])
-        c.text_right(PAGE_W - MARGIN, MARGIN - 25, f"Page {c.page_num}", FONT, 7, CLR["text_muted"])
-        c.restore()
 
-    # ── Cover Page ──
-    def _cover_page(self) -> None:
-        c = self.current
-        # Background accent bar
-        c.save()
-        c.set_fill(CLR["primary"])
-        c.rect(0, PAGE_H - 120, PAGE_W, 120, fill=True)
-        # Purple accent line
-        c.set_fill(CLR["accent"])
-        c.rect(0, PAGE_H - 122, PAGE_W, 2, fill=True)
-        c.restore()
+def _cover_bg(canvas: Any, doc: Any) -> None:
+    _header_footer(canvas, doc)
+    if doc.page == 1:
+        canvas.saveState()
+        canvas.setFillColor(PRIMARY)
+        canvas.rect(0, PAGE_H - 132, PAGE_W, 132, stroke=0, fill=1)
+        canvas.setFillColor(ACCENT)
+        canvas.rect(0, PAGE_H - 134, PAGE_W, 2, stroke=0, fill=1)
+        canvas.restoreState()
 
-        # ECDAT Logo/Wordmark
-        c.text(MARGIN, PAGE_H - 90, "ECDAT", FONT_B, 36, Color(1, 1, 1))
-        c.text(MARGIN, PAGE_H - 120, "CRYPTOGRAPHIC RISK REPORT", FONT, 14, Color(0.9, 0.9, 0.95))
 
-        # Target info
-        target = self.r.get("display_target", self.r.get("target", "Unknown Target"))
-        scan_id = self.r.get("scan_id", "")
-        started = self.r.get("started_at", "")[:10]
-        finished = self.r.get("finished_at", "")[:10]
-        status = self.r.get("status", "COMPLETE")
+# ─── Sections ───────────────────────────────────────────────────────────
+def _title_block(r: dict) -> list:
+    target = _clean(r.get("display_target") or r.get("target") or "Unknown Target")
+    scan_id = _clean(r.get("scan_id"))
+    cov = r.get("coverage_summary", {}) if isinstance(r.get("coverage_summary"), dict) else {}
+    profile = _clean(cov.get("profile", "standard")).title() or "Standard"
+    scan_date = _fmt_date(r.get("finished_at") or r.get("started_at"))
 
-        c.text(MARGIN, PAGE_H - 180, f"Target: {target}", FONT, 14, CLR["text"])
-        c.text(MARGIN, PAGE_H - 210, f"Scan ID: {scan_id}", FONT, 10, CLR["text_muted"])
-        c.text(MARGIN, PAGE_H - 230, f"Period: {started} -> {finished}", FONT, 10, CLR["text_muted"])
+    assets = int(r.get("asset_count", 0) or 0)
+    ops = int(r.get("operation_count", 0) or 0)
+    findings = int(r.get("finding_count", 0) or 0)
+    by_sev = r.get("by_severity", {}) if isinstance(r.get("by_severity"), dict) else {}
+    high = int(by_sev.get("critical", 0) or 0) + int(by_sev.get("high", 0) or 0)
 
-        # Status badge
-        risk = self.r.get("risk", {}) or {}
-        risk_level = str(risk.get("level", "none")).upper()
-        risk_score = risk.get("score", 0.0)
-        badge_color = SEV_COLOR.get(risk_level.lower(), CLR["sev_info"])
-        c.save()
-        c.set_fill(badge_color)
-        c.rounded_rect(MARGIN, PAGE_H - 280, 160, 30, 5, fill=True)
-        c.set_fill(Color(1, 1, 1))
-        c.add(f"BT /{FONT_B} 11 Tf {MARGIN+10:.2f} {PAGE_H - 270:.2f} Td ({_esc(f'Risk: {risk_level} ({risk_score}/10)')}) Tj ET")
-        c.restore()
+    story: list = [
+        Spacer(1, 34),
+        Paragraph("ECDAT", S["cover_brand"]),
+        Paragraph("Cryptographic Discovery &amp; Quantum Risk Analysis", S["cover_sub"]),
+        Spacer(1, 4),
+        Paragraph("SECURITY SCAN REPORT", S["cover_report"]),
+        Spacer(1, 26),
+    ]
+    meta = [
+        [_px(S["body"], "<b>Target:</b>"),
+         _p(S["body"], target)],
+        [_px(S["body"], "<b>Scan type:</b>"), _p(S["body"], f"{profile} scan")],
+        [_px(S["body"], "<b>Scan date:</b>"), _p(S["body"], scan_date)],
+        [_px(S["body"], "<b>Scan ID:</b>"), _p(S["cell_small"], scan_id or "Not recorded")],
+    ]
+    story.append(Table(meta, colWidths=[70, PAGE_W - 2 * MARGIN - 70],
+                       style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                         ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                         ("BOTTOMPADDING", (0, 0), (-1, -1), 3)])))
+    story.append(Spacer(1, 6))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=LIGHT_LINE,
+                            spaceBefore=2, spaceAfter=8))
+    stats = [[_px(S["body"], f"<b><font size=16>{v}</font></b><br/><font color=\"#666677\" size=8>{k}</font>")
+              for k, v in [(f"{assets}", "CRYPTOGRAPHIC ASSETS"),
+                           (f"{ops}", "OPERATIONS")]],
+             [_px(S["body"], f"<b><font size=16>{v}</font></b><br/><font color=\"#666677\" size=8>{k}</font>")
+              for k, v in [(f"{findings}", "FINDINGS"),
+                           (f"{high}", "HIGH RISK")]]]
+    story.append(Table(stats, colWidths=[(PAGE_W - 2 * MARGIN) / 2] * 2,
+                       style=TableStyle([("GRID", (0, 0), (-1, -1), 0.4, LIGHT_LINE),
+                                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                         ("TOPPADDING", (0, 0), (-1, -1), 6),
+                                         ("BOTTOMPADDING", (0, 0), (-1, -1), 6)])))
+    story.append(Spacer(1, 6))
+    story.append(_p(S["small"], "ECDAT v1.0"))
+    story.append(PageBreak())
+    return story
 
-        # Divider
-        c.save()
-        c.set_stroke(CLR["line"])
-        c.hline(MARGIN, PAGE_W - MARGIN, PAGE_H - 310, 0.5)
-        c.restore()
 
-        # Summary paragraph
-        summary = self.r.get("summary", "")
-        if summary:
-            c.text_wrap(MARGIN, PAGE_H - 330, summary, CONTENT_W, FONT, 10, CLR["text"])
+def _overview(r: dict) -> list:
+    story: list = [_p(S["h1"], "1. Executive Summary"), _hr()]
+    risk = r.get("risk", {}) if isinstance(r.get("risk"), dict) else {}
+    try:
+        score = float(risk.get("score", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        score = 0.0
+    level = _clean(risk.get("level", "none")).upper() or "NONE"
+    summary = _clean(r.get("summary"))
+    if summary:
+        story.append(_p(S["body"], summary))
+        story.append(Spacer(1, 4))
 
-        self.new_page()
+    assets = int(r.get("asset_count", 0) or 0)
+    ops = int(r.get("operation_count", 0) or 0)
+    findings = int(r.get("finding_count", 0) or 0)
+    by_sev = r.get("by_severity", {}) if isinstance(r.get("by_severity"), dict) else {}
+    high = int(by_sev.get("critical", 0) or 0) + int(by_sev.get("high", 0) or 0)
+    medium = int(by_sev.get("medium", 0) or 0)
+    story.append(_p(S["h2"], "Overall risk"))
+    story.append(_px(S["body"], f"<b>{_xml_escape(level)}</b> &nbsp; Risk score: <b>{score:.1f} / 10</b>"))
+    story.append(_p(S["h2"], "Counts"))
+    bullets = [
+        f"{assets} cryptographic assets",
+        f"{ops} cryptographic operations",
+        f"{findings} security findings ({high} high-risk, {medium} medium-risk)",
+    ]
+    story.extend(_bullets([_xml_escape(b) for b in bullets]))
+    story.append(_p(S["h2"], "Severity breakdown"))
+    order = ["critical", "high", "medium", "low", "info"]
+    if not by_sev:
+        story.append(_p(S["body"], "No findings recorded."))
+    else:
+        sev_line = " &nbsp; ".join(
+            f"{_sev_tag(s)}: {int(by_sev.get(s, 0) or 0)}"
+            for s in order if s in by_sev)
+        story.append(_px(S["body"], sev_line))
+    story.append(_p(S["h2"], "Top risk contributors"))
+    top = [t for t in (r.get("top_risks", []) or []) if isinstance(t, dict)][:5]
+    if not top:
+        story.append(_p(S["body"], "No risk-scored operations."))
+    else:
+        items = []
+        for t in top:
+            algo = _clean(t.get("algorithm", "UNKNOWN"))
+            try:
+                sc = float(t.get("score", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                sc = 0.0
+            loc = _clean(t.get("file", ""))
+            line = t.get("line", 0)
+            try:
+                loc = f"{loc}:{int(line)}" if loc and int(line) else loc
+            except (TypeError, ValueError):
+                pass
+            items.append(f"{_sev_tag(_sev(t.get('severity', t.get('class'))))} "
+                         f"<b>{_xml_escape(algo)}</b> ({sc:.1f})"
+                         + (f" — {_xml_escape(loc)}" if loc else ""))
+        story.extend(_bullets(items))
+    return story
 
-    # ── Executive Summary ──
-    def _executive_summary(self) -> None:
-        c = self.current
-        self._section_title(c, "1", "Executive Summary")
 
-        # Metric Cards Row
-        risk = self.r.get("risk", {}) or {}
-        cov = self.r.get("coverage_summary", {}) or {}
-        cards = [
-            ("Overall Risk", f"{str(risk.get('level', 'none')).upper()} ({risk.get('score', 0.0)}/10)", CLR["primary"]),
-            ("Findings", str(self.r.get("finding_count", 0)), CLR["accent"]),
-            ("Operations", str(self.r.get("operation_count", 0)), Color(0.15, 0.4, 0.3)),
-            ("Assets", str(self.r.get("asset_count", 0)), Color(0.4, 0.25, 0.5)),
-            ("Files", f"{cov.get('files_analyzed', self.r.get('files_scanned', 0))} / {cov.get('files_discovered', self.r.get('files_scanned', 0))}", Color(0.3, 0.35, 0.5)),
-        ]
-        self._metric_cards(c, cards)
-
-        # Summary text
-        summary = self.r.get("summary", "")
-        if summary:
-            c.y -= 10
-            c.text(MARGIN, c.y, "Summary", FONT_B, 11, CLR["primary"])
-            c.y -= 18
-            c.y = c.text_wrap(MARGIN, c.y, summary, CONTENT_W, FONT, 10, CLR["text"])
-
-        # Confirmed vs Capability
-        groups = self.r.get("finding_groups", []) or []
-        confirmed = sum(g.get("confirmed_count", 0) for g in groups)
-        capability = sum(g.get("count", 0) - g.get("confirmed_count", 0) for g in groups)
-        c.y -= 10
-        c.text(MARGIN, c.y, f"Confirmed findings: {confirmed}   |   Declared capabilities (unconfirmed): {capability}", FONT, 9, CLR["text_muted"])
-
-        self.need_space(40)
-
-    def _metric_cards(self, c: Canvas, cards: list[tuple[str, str, Color]]) -> None:
-        n = len(cards)
-        card_w = (CONTENT_W - (n - 1) * 10) / n
-        card_h = 55
-        x = MARGIN
-        for label, value, accent in cards:
-            c.save()
-            # Card background
-            c.set_fill(CLR["card_bg"])
-            c.rounded_rect(x, c.y - card_h, card_w, card_h, 6, fill=True)
-            # Accent top bar
-            c.set_fill(accent)
-            c.rect(x, c.y - 4, card_w, 4, fill=True)
-            # Value
-            c.set_fill(CLR["text"])
-            c.add(f"BT /{FONT_B} 20 Tf {x + card_w/2 - len(value)*5:.2f} {c.y - 32:.2f} Td ({_esc(value)}) Tj ET")
-            # Label
-            c.set_fill(CLR["text_muted"])
-            c.add(f"BT /{FONT} 8 Tf {x + 8:.2f} {c.y - 48:.2f} Td ({_esc(label.upper())}) Tj ET")
-            c.restore()
-            x += card_w + 10
-        c.y -= card_h + 15
-
-    # ── Severity Breakdown ──
-    def _severity_breakdown(self) -> None:
-        c = self.current
-        self.need_space(120)
-        self._section_title(c, "2", "Severity Breakdown")
-
-        by_sev = self.r.get("by_severity", {}) or {}
-        if not by_sev:
-            c.text(MARGIN, c.y, "No findings recorded.", FONT, 10, CLR["text_muted"])
-            c.y -= 20
-            return
-
-        order = ["critical", "high", "medium", "low", "info"]
-        total = sum(by_sev.values())
-        # Bars
-        bar_w = CONTENT_W * 0.6
-        bar_h = 18
-        for sev in order:
-            count = by_sev.get(sev, 0)
-            if count == 0:
-                continue
-            pct = count / total if total else 0
-            c.text(MARGIN, c.y, sev.upper(), FONT_B, 9, SEV_COLOR.get(sev, CLR["text"]))
-            c.text_right(MARGIN + 80, c.y, f"{count} ({pct*100:.0f}%)", FONT, 9, CLR["text_muted"])
-            # Bar background
-            c.save()
-            c.set_fill(CLR["line"])
-            c.rect(MARGIN + 90, c.y - 2, bar_w, bar_h, fill=True)
-            # Bar fill
-            c.set_fill(SEV_COLOR.get(sev, CLR["text"]))
-            c.rect(MARGIN + 90, c.y - 2, bar_w * pct, bar_h, fill=True)
-            c.restore()
-            c.y -= bar_h + 8
-
-        c.y -= 10
-
-    # ── Priority Findings ──
-    def _priority_findings(self) -> None:
-        c = self.current
-        self.need_space(150)
-        self._section_title(c, "3", "Priority Findings")
-
-        groups = self.r.get("finding_groups", []) or []
-        confirmed_groups = [g for g in groups if g.get("confirmed")]
-
-        if not confirmed_groups:
-            c.text(MARGIN, c.y, "No confirmed findings.", FONT, 10, CLR["text_muted"])
-            c.y -= 20
-            return
-
-        for gi, group in enumerate(confirmed_groups[:8]):
-            self.need_space(80)
-            first = group["occurrences"][0] if group["occurrences"] else {}
-            where = f"{first.get('file', '')}:{first.get('line', '')}" if first else ""
-            sev = group.get("severity", "info")
-            sev_clr = SEV_COLOR.get(sev, CLR["text"])
-
-            # Severity badge + title
-            c.badge(MARGIN, c.y, sev.upper(), sev_clr, 8, 6)
-            c.text(MARGIN + 55, c.y - 2, group.get("title", group.get("rule_id", "")), FONT_B, 11, CLR["text"])
-            c.y -= 20
-
-            # Meta line
-            meta = f"{group.get('rule_id', '')}  *  {group.get('count', 0)} occurrence(s)  *  {group.get('file_count', 0)} file(s)"
-            if where:
-                meta += f"  *  Top: {where}"
-            c.text(MARGIN, c.y, meta, FONT, 9, CLR["text_muted"])
-            c.y -= 16
-
-            # Evidence snippet
-            if first.get("snippet"):
-                c.save()
-                c.set_fill(Color(0.95, 0.96, 0.98))
-                c.rounded_rect(MARGIN, c.y - 40, CONTENT_W, 38, 4, fill=True)
-                c.set_fill(CLR["text"])
-                c.text_wrap(MARGIN + 6, c.y - 8, f"Evidence: {first['snippet'][:200]}", CONTENT_W - 12, FONT_O, 8, CLR["text"])
-                c.restore()
-                c.y -= 45
-
-            # Divider
-            if gi < len(confirmed_groups) - 1:
-                c.save()
-                c.set_stroke(CLR["line"])
-                c.hline(MARGIN, PAGE_W - MARGIN, c.y, 0.3)
-                c.restore()
-                c.y -= 8
-
-    # ── Cryptographic Inventory ──
-    def _crypto_inventory(self) -> None:
-        c = self.current
-        self.need_space(100)
-        self._section_title(c, "4", "Cryptographic Inventory (Confirmed Use)")
-
-        inventory = [row for row in (self.r.get("inventory", []) or []) if row.get("confirmed")]
-
-        if not inventory:
-            c.text(MARGIN, c.y, "No confirmed cryptographic use detected.", FONT, 10, CLR["text_muted"])
-            c.y -= 20
-            return
-
-        # Table
-        headers = ["Algorithm", "Type", "Uses", "Files", "Risk", "Migration Guidance"]
-        col_widths = [100, 70, 40, 40, 55, CONTENT_W - 305]
+def _inventory(r: dict, content_w: float) -> list:
+    story: list = [_p(S["h1"], "2. Cryptographic Inventory"), _hr(),
+                   _p(S["small"], "What cryptography exists in this system? Every detected "
+                                  "algorithm is listed — the table is never truncated.")]
+    inv = [x for x in (r.get("inventory", []) or []) if isinstance(x, dict)]
+    confirmed = [x for x in inv if x.get("confirmed")]
+    caps = [x for x in inv if not x.get("confirmed")]
+    if not confirmed:
+        story.append(_p(S["body"], "No confirmed cryptographic use detected."))
+    else:
         rows = []
-        for row in inventory[:25]:
-            mig = (row.get("migration", "") or "").replace("\n", " ")[:80]
+        for row in confirmed:
+            sev = _sev(row.get("risk", "info"))
             rows.append([
-                row.get("algorithm", "")[:28],
-                row.get("type", "")[:18],
-                str(row.get("confirmed_uses", 0)),
-                str(row.get("file_count", 0)),
-                row.get("risk", "")[:12],
-                mig
+                _p(S["cell"], row.get("algorithm", "")),
+                _p(S["cell"], row.get("type", "")),
+                _p(S["cell"], str(row.get("confirmed_uses", row.get("uses", 0)))),
+                _p(S["cell"], str(row.get("file_count", 0))),
+                _px(S["cell"], _sev_tag(sev)),
+                _p(S["cell_small"], (row.get("migration", "") or ""), ),
             ])
-        c.y = c.table(MARGIN, c.y, col_widths, headers, rows, font_size=7.5)
-
-        if len(inventory) > 25:
-            c.y -= 8
-            c.text(MARGIN, c.y, f"... and {len(inventory) - 25} more (see HTML/JSON export)", FONT_O, 8, CLR["text_muted"])
-
-        # Capabilities
-        caps = [row for row in (self.r.get("inventory", []) or []) if not row.get("confirmed")]
-        if caps:
-            c.y -= 10
-            c.text(MARGIN, c.y, f"Declared capabilities without confirmed use ({len(caps)}):", FONT_B, 9, CLR["text_muted"])
-            c.y -= 14
-            cap_names = ", ".join(r.get("algorithm", "") for r in caps[:15])
-            c.y = c.text_wrap(MARGIN, c.y, cap_names + ("..." if len(caps) > 15 else ""), CONTENT_W, FONT, 8, CLR["text_muted"])
-
-    # ── Affected Locations ──
-    def _affected_locations(self) -> None:
-        c = self.current
-        self.need_space(100)
-        self._section_title(c, "5", "Affected Locations")
-
-        components = self.r.get("components", []) or []
-        if not components:
-            c.text(MARGIN, c.y, "No affected components.", FONT, 10, CLR["text_muted"])
-            c.y -= 20
-            return
-
-        headers = ["Module", "Findings", "Files", "Top Severity", "Algorithms"]
-        col_widths = [120, 55, 50, 70, CONTENT_W - 295]
+        story.append(_table(["Algorithm", "Type", "Uses", "Files", "Risk", "Migration guidance"],
+                            rows, [86, 56, 32, 32, 78, content_w - 284]))
+        story.append(Spacer(1, 8))
+    if caps:
+        names = ", ".join(_clean(x.get("algorithm", "")) for x in caps)
+        story.append(Spacer(1, 6))
+        story.append(_px(S["small"], f"<b>Declared capabilities without confirmed use "
+                                     f"({len(caps)}):</b> {_xml_escape(names)}"))
+    story.append(_p(S["h2"], "Operations summary (grouped)"))
+    rollup = [x for x in (r.get("operations_rollup", []) or []) if isinstance(x, dict)]
+    if not rollup:
+        story.append(_p(S["body"], "No confirmed operations recorded."))
+    else:
         rows = []
-        for comp in components[:15]:
+        for row in rollup:
+            conf = row.get("max_confidence")
+            conf_s = f"{float(conf) * 100:.0f}%" if isinstance(conf, (int, float)) else "-"
+            try:
+                score_s = f"{float(row.get('max_score', 0.0) or 0.0):.1f}"
+            except (TypeError, ValueError):
+                score_s = "-"
             rows.append([
-                comp.get("module", "")[:30],
-                str(comp.get("findings", 0)),
-                str(comp.get("file_count", 0)),
-                comp.get("highest_severity", "").upper(),
-                ", ".join(comp.get("algorithms", [])[:4])
+                _p(S["cell"], row.get("algorithm", "")),
+                _p(S["cell"], row.get("operation_type", "")),
+                _p(S["cell"], f"{row.get('count', 0)} ({row.get('confirmed_count', 0)} confirmed)"),
+                _p(S["cell"], str(row.get("file_count", 0))),
+                _p(S["cell"], score_s),
+                _p(S["cell"], conf_s),
             ])
-        c.y = c.table(MARGIN, c.y, col_widths, headers, rows, font_size=7.5)
+        story.append(_table(["Algorithm", "Operation", "Occurrences", "Files", "Top score", "Top conf."],
+                            rows, [110, 80, 110, 40, 60, 60]))
+        story.append(Spacer(1, 8))
+    return story
 
-    # ── Migration Priorities ──
-    def _migration_priorities(self) -> None:
-        c = self.current
-        self.need_space(100)
-        self._section_title(c, "6", "Migration Priorities")
 
-        mig_groups = self.r.get("migration_groups", {}) or {}
-        mig_counts = self.r.get("migration_counts", {}) or {}
+def _first_sentence(action: str) -> str:
+    action = _clean(action)
+    if not action:
+        return ""
+    parts = re.split(r"\.\s+", action, maxsplit=1)
+    return (parts[0].strip() + ".") if len(parts) == 2 else action
 
-        if not any(mig_groups.values()):
-            c.text(MARGIN, c.y, "No migration actions required.", FONT, 10, CLR["text_muted"])
-            c.y -= 20
-            return
 
+def _migration(r: dict) -> list:
+    story: list = [_p(S["h1"], "3. Migration Recommendations"), _hr(),
+                   _p(S["small"], "One point per affected rule — e.g. 14 RSA findings "
+                                  "produce a single migration point. Ordered by severity.")]
+    actions = [a for a in (r.get("migration_actions", []) or []) if isinstance(a, dict)]
+    if not actions:
+        groups = r.get("migration_groups", {}) if isinstance(r.get("migration_groups"), dict) else {}
         for name in ("Immediate", "High priority", "Planned", "Informational"):
-            items = mig_groups.get(name, []) or []
-            if not items:
-                continue
-            self.need_space(60)
-            c.text(MARGIN, c.y, f"{name} ({mig_counts.get(name, len(items))})", FONT_B, 11, CLR["accent"])
-            c.y -= 18
-            for rec in items[:8]:
-                self.need_space(35)
-                sev = rec.get("severity", "info")
-                c.badge(MARGIN, c.y, sev.upper(), SEV_COLOR.get(sev, CLR["text"]), 7, 5)
-                c.text(MARGIN + 50, c.y - 2, rec.get("title", rec.get("rule_id", "")), FONT_B, 9, CLR["text"])
-                c.y -= 14
-                files = rec.get("affected_files", []) or []
-                action = (rec.get("action", "") or "").split(".")[0][:100]
-                c.text(MARGIN, c.y, f"x{rec.get('count', 1)} in {len(files)} file(s): {action}", FONT, 8, CLR["text_muted"])
-                c.y -= 12
-                if files:
-                    file_list = ", ".join(files[:5]) + ("..." if len(files) > 5 else "")
-                    c.text(MARGIN + 10, c.y, f"Files: {file_list}", FONT_O, 7, CLR["text_muted"])
-                    c.y -= 12
-
-    # ── Scan Coverage ──
-    def _scan_coverage(self) -> None:
-        c = self.current
-        self.need_space(120)
-        self._section_title(c, "7", "Scan Coverage & Methodology")
-
-        cov = self.r.get("coverage_summary", {}) or {}
-        lim = self.r.get("limitations", {}) or {}
-        method = self.r.get("methodology", {}) or {}
-
-        # Coverage stats
-        c.text(MARGIN, c.y, f"Coverage: {cov.get('files_analyzed', self.r.get('files_scanned', 0))} / {cov.get('files_discovered', self.r.get('files_scanned', 0))} files", FONT_B, 10, CLR["text"])
-        c.y -= 16
-        c.text(MARGIN, c.y, f"Profile: {cov.get('profile', 'standard')}  |  Cache: {'hit' if cov.get('cache_hit') else 'miss'}  |  Elapsed: {method.get('elapsed_sec', '?')}s", FONT, 9, CLR["text_muted"])
-        c.y -= 18
-
-        c.text(MARGIN, c.y, f"Skipped: {cov.get('files_skipped', 0)}  |  No evidence: {cov.get('files_without_evidence', 0)}", FONT, 9, CLR["text_muted"])
-        c.y -= 16
-
-        # Skipped by bucket
-        buckets = cov.get("skipped_by_bucket", {}) or {}
-        if buckets:
-            c.text(MARGIN, c.y, "Skipped by reason:", FONT_B, 9, CLR["text"])
-            c.y -= 14
-            for reason, count in sorted(buckets.items(), key=lambda x: -x[1])[:10]:
-                c.text(MARGIN + 10, c.y, f"- {reason}: {count}", FONT, 8, CLR["text_muted"])
-                c.y -= 12
-
-        # Limitations
-        for key in ("unavailable_tools", "permission_gated", "failed_scanners"):
-            vals = lim.get(key, []) or []
-            if vals:
-                c.y -= 6
-                c.text(MARGIN, c.y, f"{key.replace('_', ' ').title()}: {', '.join(map(str, vals))}", FONT, 8, CLR["text_muted"])
-                c.y -= 12
-
-        # Methodology
-        c.y -= 10
-        c.text(MARGIN, c.y, "Methodology", FONT_B, 11, CLR["primary"])
-        c.y -= 16
-        if method.get("risk_model"):
-            c.y = c.text_wrap(MARGIN, c.y, method["risk_model"], CONTENT_W, FONT, 8, CLR["text"])
-            c.y -= 8
-        c.text(MARGIN, c.y, f"Risk source: {method.get('risk_source', '')}", FONT, 8, CLR["text_muted"])
-        c.y -= 12
-        c.text(MARGIN, c.y, f"Registry: {method.get('registry_version', '')}", FONT, 8, CLR["text_muted"])
-        c.y -= 12
-
-        tools = method.get("tool_versions", {}) or {}
-        if tools:
-            c.text(MARGIN, c.y, "Detectors:", FONT_B, 8, CLR["text"])
-            c.y -= 12
-            for k, v in sorted(tools.items()):
-                c.text(MARGIN + 10, c.y, f"- {k} {v}", FONT, 8, CLR["text_muted"])
-                c.y -= 11
-
-        status = method.get("scanner_status", {}) or {}
-        if status:
-            c.y -= 4
-            c.text(MARGIN, c.y, "Scanner outcomes:", FONT_B, 8, CLR["text"])
-            c.y -= 12
-            for k, v in sorted(status.items()):
-                c.text(MARGIN + 10, c.y, f"- {k}: {v}", FONT, 8, CLR["text_muted"])
-                c.y -= 11
-
-    # ── Methodology Appendix ──
-    def _methodology(self) -> None:
-        # Already covered in scan_coverage
-        pass
-
-    # ── Helpers ──
-    def _section_title(self, c: Canvas, num: str, title: str) -> None:
-        c.save()
-        # Number circle
-        c.set_fill(CLR["primary"])
-        cx = MARGIN + 14
-        cy = c.y - 8
-        c.add(f"{cx:.2f} {cy:.2f} 14 0 360 arc f")
-        c.set_fill(Color(1, 1, 1))
-        c.add(f"BT /{FONT_B} 11 Tf {cx-4:.2f} {cy-4:.2f} Td ({_esc(num)}) Tj ET")
-        c.restore()
-        # Title
-        c.text(MARGIN + 35, c.y, title, FONT_B, 16, CLR["primary"])
-        # Underline
-        c.save()
-        c.set_stroke(CLR["accent"])
-        c.hline(MARGIN + 35, MARGIN + 35 + len(title) * 8, c.y - 4, 2)
-        c.restore()
-        c.y -= 24
+            for item in (groups.get(name, []) or []):
+                if isinstance(item, dict):
+                    actions.append(item)
+    rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+    actions.sort(key=lambda a: (rank.get(_sev(a.get("severity", "info")), 5),
+                                _clean(a.get("title", ""))))
+    if not actions:
+        story.append(_p(S["body"], "No migration actions required."))
+        return story
+    items = []
+    for rec in actions:
+        sev = _sev(rec.get("severity", "info"))
+        title = _clean(rec.get("title") or rec.get("rule_id") or "Migration action")
+        try:
+            count = int(rec.get("count", 1) or 1)
+        except (TypeError, ValueError):
+            count = 1
+        files = rec.get("affected_files", []) or []
+        n_files = len(files) if isinstance(files, list) else 0
+        lead = _first_sentence(rec.get("action", "")) or title
+        items.append(f"{_sev_tag(sev)} <b>{_xml_escape(title)}</b> — "
+                     f"{_xml_escape(lead)} "
+                     f"<font color=\"#666677\">(x{count} in {n_files} file(s))</font>")
+    story.extend(_bullets(items))
+    return story
 
 
-# ─── PDF Assembly ───────────────────────────────────────────────────────
-def _build_pdf(pages: list[Canvas]) -> bytes:
-    """Assemble final PDF from page canvases."""
-    objects: list[bytes] = []
-    # Catalog
-    objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
-    # Pages tree
-    kids = " ".join(f"{4 + 3*i} 0 R" for i in range(len(pages)))
-    objects.append(f"<< /Type /Pages /Kids [{kids}] /Count {len(pages)} >>".encode())
-    # Font object (shared)
-    font_obj_num = 3 + 3 * len(pages)
-    # Page objects
-    for i, c in enumerate(pages):
-        page_obj = 4 + 3 * i
-        content_obj = page_obj + 1
-        # Page dict
-        objects.append(
-            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PAGE_W:.1f} {PAGE_H:.1f}] "
-            f"/Resources << /Font << /F1 {font_obj_num} 0 R /F2 {font_obj_num} 0 R >> >> "
-            f"/Contents {content_obj} 0 R >>".encode()
-        )
-        # Content stream
-        stream = c.stream()
-        objects.append(f"<< /Length {len(stream)} >>\nstream\n".encode() + stream + b"\nendstream")
-    # Font
-    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
-    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
-    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>")
-    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique >>")
+def _findings(r: dict, content_w: float) -> list:
+    story: list = [_p(S["h1"], "4. Findings Summary"), _hr(),
+                   _p(S["small"], "One row per finding group (rule x severity) — covers every "
+                                  "finding without growing per occurrence. Per-occurrence detail "
+                                  "is in the HTML/CSV/JSON exports.")]
+    groups = [g for g in (r.get("finding_groups", []) or []) if isinstance(g, dict)]
+    if not groups:
+        story.append(_p(S["body"], "No findings to summarize."))
+        return story
+    rows = []
+    for g in groups:
+        occs = [o for o in (g.get("occurrences", []) or []) if isinstance(o, dict)]
+        top_loc = ""
+        if occs:
+            first = occs[0]
+            top_loc = _clean(first.get("file", ""))
+            try:
+                ln = int(first.get("line", 0) or 0)
+                if ln:
+                    top_loc = f"{top_loc}:{ln}"
+            except (TypeError, ValueError):
+                pass
+        rows.append([
+            _px(S["cell"], _sev_tag(_sev(g.get("severity", "info")))),
+            _p(S["cell"], g.get("rule_id", "")),
+            _p(S["cell"], g.get("title", "")),
+            _p(S["cell"], str(g.get("count", 0))),
+            _p(S["cell"], str(g.get("file_count", 0))),
+            _p(S["cell_small"], top_loc or "-"),
+        ])
+    story.append(_table(["Severity", "Rule", "Title", "Occ.", "Files", "Top location"],
+                        rows, [78, 70, content_w - 318, 36, 36, 98]))
+    story.append(Spacer(1, 8))
+    return story
 
-    # Write PDF
-    pdf = bytearray(b"%PDF-1.4\n")
-    offsets = []
-    for i, body in enumerate(objects, 1):
-        offsets.append(len(pdf))
-        pdf += f"{i} 0 obj\n".encode() + body + b"\nendobj\n"
-    xref_at = len(pdf)
-    pdf += f"xref\n0 {len(objects) + 1}\n".encode()
-    pdf += b"0000000000 65535 f \n"
-    for off in offsets:
-        pdf += f"{off:010d} 00000 n \n".encode()
-    pdf += (f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R "
-            f"/Producer (ECDAT Report) >>\nstartxref\n{xref_at}\n%%EOF\n").encode()
-    return bytes(pdf).replace(b"\n", b"\r\n")
+
+def _coverage(r: dict) -> list:
+    story: list = [_p(S["h1"], "5. Scan Coverage"), _hr()]
+    cov = r.get("coverage_summary", {}) if isinstance(r.get("coverage_summary"), dict) else {}
+    method = r.get("methodology", {}) if isinstance(r.get("methodology"), dict) else {}
+    lim = r.get("limitations", {}) if isinstance(r.get("limitations"), dict) else {}
+    discovered = int(cov.get("files_discovered", r.get("files_scanned", 0)) or 0)
+    analyzed = int(cov.get("files_analyzed", r.get("files_scanned", 0)) or 0)
+    skipped = int(cov.get("files_skipped", 0) or 0)
+    no_ev = int(cov.get("files_without_evidence", 0) or 0)
+    profile = _clean(cov.get("profile") or method.get("profile") or "standard")
+    elapsed = cov.get("elapsed_sec") or method.get("elapsed_sec") or "?"
+    cache = "hit" if (cov.get("cache_hit") or method.get("cache_hit")) else "miss"
+    story.append(_px(S["body"], f"<b>Coverage: {analyzed} / {discovered} files</b> "
+                                f"(profile: {_xml_escape(profile)}; cache: {cache}; "
+                                f"elapsed: {_xml_escape(str(elapsed))}s)"))
+    story.append(_p(S["body"], f"Skipped: {skipped} file(s) before analysis; "
+                               f"{no_ev} file(s) analyzed with no cryptographic evidence."))
+    buckets = cov.get("skipped_by_bucket", {}) or {}
+    if isinstance(buckets, dict) and buckets:
+        story.append(KeepTogether([
+            _p(S["h2"], "Skipped by reason"),
+            *_bullets([_xml_escape(f"{reason}: {count}")
+                       for reason, count in sorted(buckets.items(),
+                                                   key=lambda kv: (-kv[1], kv[0]))[:10]]),
+        ]))
+    notes = []
+    for key in ("unavailable_tools", "permission_gated", "failed_scanners"):
+        vals = lim.get(key, []) or cov.get(key, []) or []
+        if vals and isinstance(vals, list):
+            notes.append(f"{key.replace('_', ' ').title()}: {', '.join(_clean(v) for v in vals)}")
+    tools = method.get("tool_versions", {}) or {}
+    if isinstance(tools, dict) and tools:
+        notes.append("Detectors: " + ", ".join(
+            f"{_clean(k)} {_clean(v)}" for k, v in sorted(tools.items())))
+    status = method.get("scanner_status", {}) or {}
+    if isinstance(status, dict) and status:
+        notes.append("Scanner outcomes: " + ", ".join(
+            f"{_clean(k)}: {_clean(v)}" for k, v in sorted(status.items())))
+    notes.append(f"Risk source: {_clean(method.get('risk_source', ''))}; "
+                 f"registry: {_clean(method.get('registry_version', ''))}; "
+                 f"scan: {_clean(r.get('scan_id', ''))}")
+    story.append(_p(S["h2"], "Methodology notes"))
+    story.append(KeepTogether(_bullets([_xml_escape(n) for n in notes if n])))
+    return story
+
+
+# ─── Assembly ───────────────────────────────────────────────────────────
+S: dict[str, ParagraphStyle] = {}
+
+
+def _normalize(raw: bytes) -> bytes:
+    """Pin dates + document ID so output is deterministic."""
+    out = re.sub(rb"/CreationDate\s*\(D:[^)]*\)", b"/CreationDate (" + FIXED_DATE.encode() + b")", raw)
+    out = re.sub(rb"/ModDate\s*\(D:[^)]*\)", b"/ModDate (" + FIXED_DATE.encode() + b")", out)
+    out = re.sub(rb"/ID\s*\[[^\]]*\]", b"/ID [<" + FIXED_ID.encode() + b"><" + FIXED_ID.encode() + b">]", out)
+    return out
 
 
 def to_pdf_bytes(report: dict) -> bytes:
-    """Render the report as professional PDF bytes."""
-    builder = ReportBuilder(report)
-    pages = builder.build()
-    # Add page decorations (headers/footers)
-    for c in pages:
-        builder._decorate_page(c, is_cover=(c is pages[0]))
-    return _build_pdf(pages)
+    """Render the report as concise PDF bytes (ReportLab Platypus)."""
+    global S
+    S = _styles()
+    r = report if isinstance(report, dict) else {}
+    content_w = PAGE_W - 2 * MARGIN
+
+    story: list = []
+    story.extend(_title_block(r))
+    story.extend(_overview(r))
+    story.extend(_inventory(r, content_w))
+    story.extend(_migration(r))
+    story.extend(_findings(r, content_w))
+    story.extend(_coverage(r))
+
+    buf = io.BytesIO()
+    frame = Frame(MARGIN, MARGIN, content_w, PAGE_H - 2 * MARGIN, id="main")
+    template = PageTemplate(id="page", frames=[frame], onPage=_cover_bg)
+    doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=MARGIN, rightMargin=MARGIN,
+                          topMargin=MARGIN, bottomMargin=MARGIN,
+                          title=f"ECDAT Report: {_clean(r.get('scan_id', ''))}",
+                          author="ECDAT", pageCompression=0)
+    doc.addPageTemplates([template])
+    doc.build(story)
+    raw = buf.getvalue()
+    if not raw.startswith(b"%PDF-1.4"):
+        raw = b"%PDF-1.4\n" + raw.split(b"\n", 1)[1] if b"\n" in raw else raw
+    return _normalize(raw)

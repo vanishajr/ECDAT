@@ -1,0 +1,31 @@
+# ECDAT backend on Render (free tier).
+# Dashboard: New -> Web Service -> this repo. Render reads this file for
+# build/start; secrets are set in the dashboard (Environment tab), never here.
+
+services:
+  - type: web
+    name: ecdat-api
+    runtime: python
+    plan: free
+    buildCommand: "pip install ."
+    startCommand: "ecdat-discover gui --host 0.0.0.0 --port $PORT --db /tmp/ecdat.db"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+      - key: ECDAT_PUBLIC
+        value: 1
+      - key: ECDAT_MAX_UPLOAD_MB
+        value: 50
+      # Set in the Render dashboard (sync: false = manual entry, not in git):
+      - key: ECDAT_API_TOKEN
+        sync: false
+      - key: ECDAT_FRONTEND_URL
+        sync: false
+      # GitHub OAuth (already owned env vars) - set in dashboard too:
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_OAUTH_REDIRECT_URI
+        sync: false

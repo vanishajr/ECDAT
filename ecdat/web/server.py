@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import hmac
 import io
 import json
 import os
@@ -40,6 +41,61 @@ from ecdat.scanners.path_policy import iter_project_files
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 MAX_UPLOAD_BYTES = 250 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 20_000
+
+
+def _is_public() -> bool:
+    """Public-internet mode (Render/Netlify deploy). Opt-in only.
+
+    Local default stays loopback-only with no token; setting
+    ``ECDAT_PUBLIC=1`` allows non-loopback binds and (when
+    ``ECDAT_API_TOKEN`` is also set) requires a Bearer token on the API.
+    """
+    return os.getenv("ECDAT_PUBLIC", "").strip() == "1"
+
+
+def _api_token() -> str:
+    return os.getenv("ECDAT_API_TOKEN", "").strip()
+
+
+def _max_upload_bytes() -> int:
+    try:
+        mb = float(os.getenv("ECDAT_MAX_UPLOAD_MB", "") or 0)
+        if mb > 0:
+            return int(mb * 1024 * 1024)
+    except (TypeError, ValueError):
+        pass
+    return MAX_UPLOAD_BYTES
+
+
+# API paths reachable without a Bearer token in public mode: the Render
+# health check plus the two GitHub OAuth browser navigations (top-level
+# GETs can't carry an Authorization header).
+_PUBLIC_AUTH_EXEMPT = (
+    "/api/health",
+    "/api/github/oauth/start",
+    "/api/github/oauth/callback",
+)
+
+
+def _request_authorized(path: str, headers: Any) -> bool:
+    expected = _api_token()
+    if not _is_public() or not expected:
+        return True
+    if path in _PUBLIC_AUTH_EXEMPT:
+        return True
+    try:
+        auth = str(headers.get("Authorization", ""))
+    except Exception:
+        return False
+    return hmac.compare_digest(auth, f"Bearer {expected}")
+
+
+def _session_cookie_attrs(*, max_age: int) -> str:
+    # Cross-site frontend (Netlify) -> API (Render) needs SameSite=None;
+    # Secure (Render terminates HTTPS). Local loopback keeps Lax.
+    if _is_public():
+        return f"; HttpOnly; SameSite=None; Secure; Path=/; Max-Age={max_age}"
+    return f"; HttpOnly; SameSite=Lax; Path=/; Max-Age={max_age}"
 SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
 GITHUB_API = "https://api.github.com"
 GITHUB_TOKEN_COOKIE = "ecdat_github_session"
@@ -447,7 +503,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Access-Control-Allow-Origin", self._frontend_url())
         self.send_header("Access-Control-Allow-Credentials", "true")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Input-Id, X-File-Name, X-Relative-Path")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Input-Id, X-File-Name, X-Relative-Path")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         if length is not None:
             self.send_header("Content-Length", str(length))
@@ -469,8 +525,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self._headers(HTTPStatus.NO_CONTENT)
 
+    def _check_auth(self, path: str) -> bool:
+        """401 unless the request carries the public-mode Bearer token."""
+        if _request_authorized(path, self.headers):
+            return True
+        self._json(401, {"error": "unauthorized: missing or invalid API token"})
+        return False
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path
+        if not self._check_auth(path):
+            return
         if path == "/api/github/oauth/start":
             self._github_oauth_start()
             return
@@ -588,6 +653,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if not self._check_auth(path):
+            return
         try:
             if path == "/api/uploads":
                 self._upload()
@@ -614,6 +681,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:
         path = urlparse(self.path).path
+        if not self._check_auth(path):
+            return
         if path.startswith("/api/inputs/"):
             STATE.remove_input(path.rsplit("/", 1)[-1])
             self._json(200, {"ok": True})
@@ -622,7 +691,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _upload(self) -> None:
         length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0 or length > MAX_UPLOAD_BYTES:
+        if length <= 0 or length > _max_upload_bytes():
             raise ValueError("upload must be between 1 byte and 250 MB")
         input_id = self.headers.get("X-Input-Id")
         input_data = STATE.input_for(input_id) if input_id else STATE.new_input()
@@ -800,7 +869,25 @@ class Handler(BaseHTTPRequestHandler):
         return bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))
 
     def _frontend_url(self) -> str:
-        return os.getenv("GITHUB_FRONTEND_URL", "http://127.0.0.1:5173").rstrip("/")
+        return (os.getenv("ECDAT_FRONTEND_URL")
+                or os.getenv("GITHUB_FRONTEND_URL", "http://127.0.0.1:5173")).rstrip("/")
+
+    def _frontend_allowed(self, candidate: str) -> bool:
+        """Accept loopback http(s) origins plus the configured frontend origin.
+
+        Local behavior is unchanged (loopback only unless configured);
+        public mode additionally accepts the exact configured Netlify URL.
+        """
+        try:
+            parts = urlparse(candidate)
+            if parts.scheme == "http" and parts.hostname in LOOPBACK_HOSTS:
+                return True
+            configured = urlparse(self._frontend_url())
+            return bool(configured.netloc) and (
+                (parts.scheme, parts.hostname, parts.port)
+                == (configured.scheme, configured.hostname, configured.port))
+        except Exception:
+            return False
 
     def _cookie_session(self) -> tuple[str, dict[str, Any]] | None:
         raw = self.headers.get("Cookie", "")
@@ -833,8 +920,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         state = uuid.uuid4().hex
         requested_frontend = parse_qs(urlparse(self.path).query).get("frontend", [self._frontend_url()])[0]
-        frontend_parts = urlparse(requested_frontend)
-        if frontend_parts.scheme != "http" or frontend_parts.hostname not in LOOPBACK_HOSTS:
+        if not self._frontend_allowed(requested_frontend):
             requested_frontend = self._frontend_url()
         with STATE.lock:
             STATE.oauth_states[state] = {
@@ -890,7 +976,7 @@ class Handler(BaseHTTPRequestHandler):
             STATE.github_sessions[session_id] = {"token": access_token, "login": user.get("login", "GitHub user")}
         self.send_response(302)
         self.send_header("Location", f"{state_data['frontend']}?github=connected")
-        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}={session_id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=3600")
+        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}={session_id}{_session_cookie_attrs(max_age=3600)}")
         self.end_headers()
 
     def _github_session(self) -> None:
@@ -936,7 +1022,7 @@ class Handler(BaseHTTPRequestHandler):
                 total = 0
                 while chunk := response.read(1024 * 1024):
                     total += len(chunk)
-                    if total > MAX_UPLOAD_BYTES:
+                    if total > _max_upload_bytes():
                         raise ValueError("repository archive exceeds the 250 MB limit")
                     output.write(chunk)
             target.mkdir(parents=True, exist_ok=True)
@@ -955,7 +1041,7 @@ class Handler(BaseHTTPRequestHandler):
         if current:
             STATE.remove_github_session(current[0])
         self.send_response(200)
-        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
+        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}={_session_cookie_attrs(max_age=0)}")
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", self._frontend_url())
         self.send_header("Access-Control-Allow-Credentials", "true")
@@ -965,8 +1051,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def make_server(host: str = "127.0.0.1", port: int = 8765,
                 db_path: str | Path | None = None) -> ThreadingHTTPServer:
-    if host not in LOOPBACK_HOSTS:
-        raise ValueError("ECDAT web API is localhost-only")
+    if host not in LOOPBACK_HOSTS and not _is_public():
+        raise ValueError("ECDAT web API is localhost-only (set ECDAT_PUBLIC=1 to bind publicly)")
     if db_path is not None:
         STATE.db_path = str(db_path)
     return ThreadingHTTPServer((host, port), Handler)

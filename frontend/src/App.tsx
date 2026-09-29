@@ -21,6 +21,7 @@ import heroOrbit from "../hero-orbit.png";
 import {
   ChangeEvent,
   DragEvent,
+  FormEvent,
   useEffect,
   useMemo,
   useRef,
@@ -75,6 +76,20 @@ type Demo = {
 };
 
 const API = "/api";
+const API_TOKEN_KEY = "ecdat_api_token";
+
+// Public deployments (Render) protect /api with a Bearer token. Local dev
+// sends none and the backend skips the check. Stored in sessionStorage so a
+// page reload keeps the session but closing the tab clears it.
+const getApiToken = () =>
+  typeof sessionStorage === "undefined"
+    ? ""
+    : sessionStorage.getItem(API_TOKEN_KEY) || "";
+
+let onUnauthorized: (() => void) | null = null;
+export const onApiUnauthorized = (handler: (() => void) | null) => {
+  onUnauthorized = handler;
+};
 const layers = [
   ["source", "Source code"],
   ["dependency", "Dependencies"],
@@ -106,10 +121,21 @@ const AUTO_LOCAL = [
 ];
 
 const api = async (url: string, init?: RequestInit) => {
+  const token = getApiToken();
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const response = await fetch(`${API}${url}`, {
     ...init,
+    headers,
     credentials: "include",
   });
+  if (response.status === 401) {
+    sessionStorage.removeItem(API_TOKEN_KEY);
+    onUnauthorized?.();
+    throw new Error("Unauthorized: enter the API token to continue");
+  }
   const contentType = response.headers.get("content-type") || "";
   const body = contentType.includes("application/json")
     ? await response.json()
@@ -229,6 +255,23 @@ function SectionLabel({
 export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
+  // Public-deployment API token gate. Shown only after the backend
+  // answers 401 (local dev never triggers it).
+  const [locked, setLocked] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  useEffect(() => {
+    onApiUnauthorized(() => setLocked(true));
+    return () => onApiUnauthorized(null);
+  }, []);
+  const unlock = (e?: FormEvent) => {
+    e?.preventDefault();
+    const value = tokenInput.trim();
+    if (!value) return;
+    sessionStorage.setItem(API_TOKEN_KEY, value);
+    setTokenInput("");
+    setLocked(false);
+    window.location.reload();
+  };
   const [input, setInput] = useState<InputInfo | null>(null);
   // Single default analysis mode: the backend always runs the standard
   // profile. No depth selector is exposed.
@@ -596,14 +639,59 @@ export default function App() {
     return path;
   };
 
-  const download = (format: string) => {
-    if (result)
-      window.open(
+  const download = async (format: string) => {
+    if (!result) return;
+    try {
+      // Authenticated fetch (window.open can't send the Bearer token),
+      // then open the blob. Works locally too (no token = no header).
+      const token = getApiToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const response = await fetch(
         `${API}/results/${result.scan_id}/report/${format}`,
-        "_blank",
-        "noopener,noreferrer",
+        { headers, credentials: "include" },
       );
+      if (!response.ok) throw new Error("Report download failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Report download failed");
+    }
   };
+
+  if (locked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#ebe8e1] text-[#181a19]">
+        <form
+          onSubmit={unlock}
+          className="w-[min(24rem,calc(100%-2rem))] rounded-xl border border-[#d4d0c8] bg-white p-8 shadow-sm"
+        >
+          <p className="text-xl font-semibold tracking-[.42em]">ECDAT</p>
+          <p className="mt-2 text-sm text-[#686761]">
+            This deployment is protected. Enter the API token to continue.
+          </p>
+          <input
+            type="password"
+            value={tokenInput}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setTokenInput(e.target.value)
+            }
+            placeholder="API token"
+            autoFocus
+            className="mt-4 w-full rounded-md border border-[#d4d0c8] bg-[#f6f4ef] px-3 py-2 text-sm outline-none"
+          />
+          <button
+            type="submit"
+            className="mt-3 w-full rounded-md bg-[#181a19] px-3 py-2 text-sm font-medium text-white"
+          >
+            Unlock
+          </button>
+        </form>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#ebe8e1] text-[#181a19]">

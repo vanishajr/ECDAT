@@ -176,6 +176,47 @@ def test_pdf_deterministic():
     assert pdf.to_pdf_bytes(rep) == pdf.to_pdf_bytes(rep)
 
 
+def _big_report(n_rules: int = 30, per_rule: int = 133) -> dict:
+    """Synthetic OpenSSL-scale report: thousands of findings, few dozen rules."""
+    algos = [f"ALGO-{i:02d}" for i in range(n_rules)]
+    rep = aggregate.build_report(_doc("multi"))
+    rep.update({
+        "scan_id": "scan-scale-001",
+        "finding_count": n_rules * per_rule,
+        "finding_groups": [
+            {"rule_id": a, "severity": "high" if i % 3 == 0 else "medium",
+             "title": f"{a} usage", "count": per_rule, "file_count": 10,
+             "occurrences": [{"file": f"src/f{i}.c", "line": 1}]}
+            for i, a in enumerate(algos)
+        ],
+        "inventory": [
+            {"algorithm": a, "type": "Symmetric", "uses": per_rule,
+             "confirmed_uses": per_rule, "confirmed": True, "file_count": 10,
+             "risk": "High", "migration": f"Migrate {a}."}
+            for a in algos
+        ],
+        "migration_actions": [
+            {"title": f"Migrate {a}", "action": f"Replace {a}. Reason.",
+             "severity": "high", "count": per_rule, "affected_files": ["x.c"]}
+            for a in algos
+        ],
+    })
+    return rep, algos
+
+
+def test_pdf_concise_at_scale():
+    """4k findings must stay a short PDF yet cover every algo and rule."""
+    import re
+    rep, algos = _big_report()
+    blob = pdf.to_pdf_bytes(rep)
+    pages = int(re.search(rb"/Count (\d+)", blob).group(1))
+    assert pages <= 8, f"expected concise report, got {pages} pages"
+    for a in algos:
+        assert a.encode() in blob, f"missing algorithm {a}"
+        assert f"Migrate {a}".encode() in blob, f"missing migration {a}"
+    assert blob == pdf.to_pdf_bytes(rep)  # deterministic at scale too
+
+
 # --- CLI: stdout + files ------------------------------------------------
 
 

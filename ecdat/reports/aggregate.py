@@ -260,6 +260,93 @@ def _operations_summary(cir: dict | None, risks: list[dict],
             dict(sorted(algo_counts.items(), key=lambda kv: (-kv[1], kv[0]))))
 
 
+def _operations_rollup(cir: dict | None, risks: list[dict],
+                       target: str = "") -> list[dict]:
+    """Grouped operations summary: one row per (algorithm, operation type).
+
+    Unlike ``_operations_summary`` (top-N detail rows), the rollup is
+    never truncated: row count scales with distinct algorithm/type
+    combinations (dozens at most), so concise PDF tables can cover
+    every operation without growing with the finding count. Pure;
+    never raises.
+    """
+    try:
+        if not isinstance(cir, dict):
+            return []
+        class_by_op: dict[str, str] = {}
+        score_by_op: dict[str, float] = {}
+        for record in risks or []:
+            if isinstance(record, dict) and record.get("operation_id"):
+                op_id = str(record["operation_id"])
+                class_by_op[op_id] = str(record.get("class", "Informational"))
+                try:
+                    score_by_op[op_id] = float(record.get("score", 0.0) or 0.0)
+                except (TypeError, ValueError):
+                    score_by_op[op_id] = 0.0
+        assets_by_id: dict[str, dict] = {}
+        for asset in cir.get("assets", []) or []:
+            if isinstance(asset, dict) and asset.get("asset_id"):
+                assets_by_id[str(asset["asset_id"])] = asset
+        rank = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3,
+                "Informational": 4}
+        grouped: dict[tuple, dict] = {}
+        for op in cir.get("operations", []) or []:
+            if not isinstance(op, dict):
+                continue
+            asset = assets_by_id.get(str(op.get("asset_id", "")), {})
+            canonical = str(asset.get("canonical", "UNKNOWN"))
+            otype = str(op.get("operation_type", "") or "operation")
+            key = (canonical, otype)
+            row = grouped.setdefault(key, {
+                "algorithm": canonical, "operation_type": otype,
+                "count": 0, "confirmed_count": 0, "files": set(),
+                "risk_class": "Informational", "max_score": 0.0,
+                "max_confidence": None,
+            })
+            row["count"] += 1
+            if _is_confirmed_usage(_usage_of(op)):
+                row["confirmed_count"] += 1
+            try:
+                location = op.get("location") or {}
+                raw = str(location.get("file", "") or "")
+            except Exception:
+                raw = ""
+            if raw:
+                try:
+                    row["files"].add(display_path(target, raw) if target else raw)
+                except Exception:
+                    pass
+            op_id = str(op.get("operation_id", "") or "")
+            cls = class_by_op.get(op_id, "Informational")
+            if rank.get(cls, 5) < rank.get(row["risk_class"], 5):
+                row["risk_class"] = cls
+            score = score_by_op.get(op_id, 0.0)
+            if score > row["max_score"]:
+                row["max_score"] = score
+            conf = op.get("confidence")
+            if isinstance(conf, (int, float)):
+                if row["max_confidence"] is None or conf > row["max_confidence"]:
+                    row["max_confidence"] = conf
+        rows = []
+        for row in grouped.values():
+            rows.append({
+                "algorithm": row["algorithm"],
+                "operation_type": row["operation_type"],
+                "count": row["count"],
+                "confirmed_count": row["confirmed_count"],
+                "file_count": len(row["files"]),
+                "risk_class": row["risk_class"],
+                "severity": _RISK_CLASS_TO_SEVERITY.get(row["risk_class"], "info"),
+                "max_score": row["max_score"],
+                "max_confidence": row["max_confidence"],
+            })
+        rows.sort(key=lambda r: (rank.get(r["risk_class"], 5),
+                                 -r["count"], r["algorithm"]))
+        return rows
+    except Exception:
+        return []
+
+
 def _parse_time(value: object) -> datetime | None:
     try:
         text = str(value or "").strip().replace("Z", "+00:00")
@@ -785,6 +872,7 @@ def build_report(doc: dict, real_risk: dict | None = None,
     risks = (cir.get("risks", []) or []) if isinstance(cir, dict) else []
     top_operations, usage_states, algorithms = _operations_summary(
         cir, risks, target)
+    operations_rollup = _operations_rollup(cir, risks, target)
     if real_risk is None:
         real_risk = {"score": 0.0, "level": "none", "finding_count": len(findings),
                      "risk_count": 0, "source": "no-risk-record"}
@@ -890,6 +978,7 @@ def build_report(doc: dict, real_risk: dict | None = None,
         "operation_count": operation_count,
         "asset_count": asset_count,
         "top_operations": top_operations,
+        "operations_rollup": operations_rollup,
         "top_risks": contributors,
         "top_issues": top_issues,
         "usage_states": usage_states,
