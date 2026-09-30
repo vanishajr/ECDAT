@@ -20,9 +20,17 @@ _REGISTRY_PATH = Path(__file__).with_name("signature_registry.json")
 
 @lru_cache(maxsize=1)
 def load_registry() -> dict:
-    """Load and cache the versioned signature registry JSON."""
-    with open(_REGISTRY_PATH, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+    """Load and cache the versioned signature registry JSON.
+
+    Falls back to an empty registry when the file is missing (e.g. a
+    deployment installed without package data): every accessor uses
+    .get() with safe defaults, so scans degrade instead of crashing.
+    """
+    try:
+        with open(_REGISTRY_PATH, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
 
 
 def _normalize(name: str) -> str:

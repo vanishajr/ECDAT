@@ -21,7 +21,6 @@ import heroOrbit from "../hero-orbit.png";
 import {
   ChangeEvent,
   DragEvent,
-  FormEvent,
   useEffect,
   useMemo,
   useRef,
@@ -76,20 +75,10 @@ type Demo = {
 };
 
 const API = "/api";
-const API_TOKEN_KEY = "ecdat_api_token";
 
-// Public deployments (Render) protect /api with a Bearer token. Local dev
-// sends none and the backend skips the check. Stored in sessionStorage so a
-// page reload keeps the session but closing the tab clears it.
-const getApiToken = () =>
-  typeof sessionStorage === "undefined"
-    ? ""
-    : sessionStorage.getItem(API_TOKEN_KEY) || "";
-
-let onUnauthorized: (() => void) | null = null;
-export const onApiUnauthorized = (handler: (() => void) | null) => {
-  onUnauthorized = handler;
-};
+// No API token: the backend is open and guarded only by CORS, a loose
+// Origin check, and per-IP rate limits. Auth cookies (GitHub session)
+// still ride via credentials: "include".
 const layers = [
   ["source", "Source code"],
   ["dependency", "Dependencies"],
@@ -120,34 +109,128 @@ const AUTO_LOCAL = [
   "certificate",
 ];
 
+export type BackendStatus = "loading" | "online" | "offline";
+
+let onBackendStatus: ((message: string | null) => void) | null = null;
+export const onBackendStatusChange = (
+  handler: ((message: string | null) => void) | null,
+) => {
+  onBackendStatus = handler;
+};
+
+let onBackendHealth: ((status: BackendStatus) => void) | null = null;
+export const onBackendHealthChange = (
+  handler: ((status: BackendStatus) => void) | null,
+) => {
+  onBackendHealth = handler;
+};
+
+// Render's free tier sleeps after 15 min idle and takes ~1 min to wake.
+// Retry network-level failures (connection refused/dropped mid-wake) with
+// backoff while telling the UI what's happening. HTTP responses (even
+// errors) are returned immediately — never retried.
+const WAKE_WAITS_MS = [5000, 10000, 15000, 20000, 25000];
+
+const friendlyApiError = (status: number, body: any, url: string): Error => {
+  const raw = typeof body === "string" ? body : body?.error || "Request failed";
+  if (status === 403 && /origin not allowed/i.test(raw)) {
+    return new Error("Request blocked: please use the ECDAT web app to analyse (direct API access is restricted).");
+  }
+  if (status === 429) {
+    return new Error(
+      typeof raw === "string" && raw.length > 10
+        ? raw
+        : "Too many requests: ECDAT is rate-limited on the free tier. Wait a few minutes and try again.",
+    );
+  }
+  if (status === 507 || /out of memory|ran out of resources/i.test(String(raw))) {
+    return new Error(
+      "The backend ran out of memory handling this (likely Render's free tier with a large repository). Try a smaller input, a single archive under 50 MB, or run ECDAT locally.",
+    );
+  }
+  if (status === 413 || /too large|exceeds.*limit/i.test(String(raw))) {
+    return new Error(String(raw));
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return new Error("Backend is temporarily unavailable (free hosting may be waking up). Wait a minute and try again.");
+  }
+  if (/failed to fetch|networkerror|load failed/i.test(String(raw))) {
+    return new Error("Cannot reach the backend. It may be waking up from sleep — check the Backend status above and retry.");
+  }
+  return new Error(typeof raw === "string" ? raw : "Request failed");
+};
+
 const api = async (url: string, init?: RequestInit) => {
-  const token = getApiToken();
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string> | undefined),
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const response = await fetch(`${API}${url}`, {
-    ...init,
-    headers,
-    credentials: "include",
-  });
-  if (response.status === 401) {
-    sessionStorage.removeItem(API_TOKEN_KEY);
-    onUnauthorized?.();
-    throw new Error("Unauthorized: enter the API token to continue");
-  }
-  const contentType = response.headers.get("content-type") || "";
-  const body = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
+  let attempt = 0;
+  for (;;) {
+    let response: Response;
+    try {
+      response = await fetch(`${API}${url}`, {
+        ...init,
+        headers,
+        credentials: "include",
+      });
+    } catch (e) {
+      if (!(e instanceof TypeError) || attempt >= WAKE_WAITS_MS.length) {
+        onBackendHealth?.("offline");
+        throw new Error(
+          "Cannot reach the backend. It may be waking up from sleep — check the Backend status above and retry.",
+        );
+      }
+      onBackendHealth?.("loading");
+      onBackendStatus?.(
+        `Backend is waking up (free hosting sleeps when idle) — retrying… (${attempt + 1}/${WAKE_WAITS_MS.length + 1})`,
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, WAKE_WAITS_MS[attempt]),
+      );
+      attempt += 1;
+      continue;
+    }
+    onBackendStatus?.(null);
+    if (url === "/health") {
+      if (response.ok) onBackendHealth?.("online");
+      else onBackendHealth?.("offline");
+    }
+    const contentType = response.headers.get("content-type") || "";
+    let body: any;
+    try {
+      body = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+    } catch {
+      body = "";
+    }
 
-  if (!response.ok) {
-    throw new Error(
-      typeof body === "string" ? body : body.error || "Request failed",
-    );
-  }
+    if (!response.ok) {
+      if (response.status >= 500) onBackendHealth?.("offline");
+      throw friendlyApiError(response.status, body, url);
+    }
 
-  return body;
+    return body;
+  }
+};
+
+/** Lightweight health probe used by the header status indicator. */
+export const checkBackendHealth = async (): Promise<BackendStatus> => {
+  try {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`${API}/health`, {
+        signal: controller.signal,
+        credentials: "include",
+      });
+      return response.ok ? "online" : "offline";
+    } finally {
+      window.clearTimeout(timer);
+    }
+  } catch {
+    return "offline";
+  }
 };
 
 const bytes = (value = 0) =>
@@ -255,22 +338,63 @@ function SectionLabel({
 export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
-  // Public-deployment API token gate. Shown only after the backend
-  // answers 401 (local dev never triggers it).
-  const [locked, setLocked] = useState(false);
-  const [tokenInput, setTokenInput] = useState("");
+  // Backend availability: Render's free tier sleeps when idle, so probe
+  // /api/health on load + interval and show Online/Loading/Offline.
+  const [backendStatus, setBackendStatus] =
+    useState<BackendStatus>("loading");
+  // Free-tier cold starts: human-readable status while api() retries.
+  const [backendNotice, setBackendNotice] = useState<string | null>(null);
   useEffect(() => {
-    onApiUnauthorized(() => setLocked(true));
-    return () => onApiUnauthorized(null);
+    let cancelled = false;
+    onBackendStatusChange((message) => {
+      if (!cancelled) {
+        setBackendNotice(message);
+        if (message) setBackendStatus("loading");
+      }
+    });
+    onBackendHealthChange((status) => {
+      if (!cancelled) setBackendStatus(status);
+    });
+    const probe = async () => {
+      if (cancelled) return;
+      setBackendStatus("loading");
+      const status = await checkBackendHealth();
+      if (!cancelled) {
+        setBackendStatus(status);
+        if (status === "online") setBackendNotice(null);
+      }
+    };
+    void probe();
+    const timer = window.setInterval(() => void probe(), 25000);
+    const markOnline = () => {
+      if (!cancelled) {
+        setBackendStatus("online");
+        setBackendNotice(null);
+      }
+    };
+    const markOffline = () => {
+      if (!cancelled) setBackendStatus("offline");
+    };
+    window.addEventListener("online", markOnline);
+    window.addEventListener("offline", markOffline);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("online", markOnline);
+      window.removeEventListener("offline", markOffline);
+      onBackendStatusChange(null);
+      onBackendHealthChange(null);
+    };
   }, []);
-  const unlock = (e?: FormEvent) => {
-    e?.preventDefault();
-    const value = tokenInput.trim();
-    if (!value) return;
-    sessionStorage.setItem(API_TOKEN_KEY, value);
-    setTokenInput("");
-    setLocked(false);
-    window.location.reload();
+  /** Block user actions while the backend is waking/offline, with a message. */
+  const requireBackend = (): boolean => {
+    if (backendStatus === "online") return true;
+    setError(
+      backendStatus === "loading"
+        ? "Backend is starting — Render's free tier sleeps when idle. Wait a moment and try again."
+        : "Backend is offline — it may be waking up or temporarily unavailable. Wait a moment and try again.",
+    );
+    return false;
   };
   const [input, setInput] = useState<InputInfo | null>(null);
   // Single default analysis mode: the backend always runs the standard
@@ -366,18 +490,29 @@ export default function App() {
   }, []);
 
   const signInWithGithub = () => {
+    if (!requireBackend()) return;
     const frontend = encodeURIComponent(window.location.origin);
     window.location.assign(`${API}/github/oauth/start?frontend=${frontend}`);
   };
 
   const logoutGithub = async () => {
-    await api("/github/logout", { method: "POST" });
+    try {
+      await api("/github/logout", { method: "POST" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not sign out of GitHub. Try again.");
+      return;
+    }
     setGithubSession({ authenticated: false, login: null });
     setRepositories([]);
   };
 
   const selectRepository = async (repository: GithubRepository) => {
     setError("");
+    if (!requireBackend()) return;
+    if (!repository.owner || !repository.name) {
+      setError("That repository entry is missing its owner or name. Try reloading the list.");
+      return;
+    }
     setGithubProjectStatus("loading");
     setGithubProgress(12);
     try {
@@ -400,7 +535,7 @@ export default function App() {
     } catch (e) {
       setGithubProjectStatus("idle");
       setGithubProgress(0);
-      setError(e instanceof Error ? e.message : "Could not select repository");
+      setError(e instanceof Error ? e.message : "Could not fetch that repository. It may be too large for the free tier — try a smaller repo or a public URL.");
     }
   };
 
@@ -438,29 +573,65 @@ export default function App() {
 
   const upload = async (files: FileList | File[]) => {
     setError("");
+    if (!requireBackend()) return;
     setGithubProjectStatus("idle");
     setGithubProgress(0);
     const all = Array.from(files);
-    if (!all.length) return;
+    if (!all.length) {
+      setError("No files selected. Drop a file, folder, or archive to analyse.");
+      return;
+    }
+    if (all.length > 5000) {
+      setError(`Too many files at once (${all.length}). The free tier handles ~5,000 files per hour — try a single ZIP/TAR archive instead.`);
+      return;
+    }
 
     try {
       let inputId: string | undefined;
+      let index = 0;
       for (const file of all) {
+        index += 1;
+        if (!file.name) {
+          throw new Error(`File #${index} has no name and was skipped. Rename it and try again.`);
+        }
+        if (file.size === 0) {
+          throw new Error(`"${file.name}" is empty. Select a non-empty file, folder, or archive.`);
+        }
         const relative =
           (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
           file.name;
-        const response = await fetch(`${API}/uploads`, {
-          method: "POST",
-          body: file,
-          headers: {
-            "Content-Type": "application/octet-stream",
-            "X-File-Name": file.name,
-            "X-Relative-Path": relative,
-            ...(inputId ? { "X-Input-Id": inputId } : {}),
-          },
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Upload failed");
+        let response: Response;
+        try {
+          response = await fetch(`${API}/uploads`, {
+            method: "POST",
+            body: file,
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/octet-stream",
+              "X-File-Name": file.name,
+              "X-Relative-Path": relative,
+              ...(inputId ? { "X-Input-Id": inputId } : {}),
+            },
+          });
+        } catch {
+          throw new Error("Upload interrupted: cannot reach the backend. It may be waking up — check the Backend status and retry.");
+        }
+        let data: any = {};
+        try {
+          data = await response.json();
+        } catch {
+          data = {};
+        }
+        if (!response.ok) {
+          const detail = typeof data?.error === "string" && data.error ? data.error : "Upload failed";
+          if (response.status === 507 || /out of memory/i.test(detail)) {
+            throw new Error("Upload stopped: the backend ran out of memory (likely Render's free tier with a large input). Try a smaller archive under 50 MB, or run ECDAT locally.");
+          }
+          if (response.status === 429) {
+            throw new Error(`${detail} (file ${index}/${all.length}). Tip: compress folders into one ZIP to use fewer requests.`);
+          }
+          throw new Error(`${detail} (file ${index}/${all.length}: "${file.name}")`);
+        }
         inputId = data.input_id;
       }
 
@@ -474,7 +645,7 @@ export default function App() {
       setResult(null);
       setJob(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not upload input");
+      setError(e instanceof Error ? e.message : "Could not upload input. Check the Backend status and try a smaller file.");
     }
   };
 
@@ -490,8 +661,17 @@ export default function App() {
   };
 
   const connectPublicRepo = async () => {
-    if (!githubUrl.trim()) return;
+    const trimmed = githubUrl.trim();
+    if (!trimmed) {
+      setError("Paste a public GitHub repository URL first (e.g. https://github.com/owner/repo).");
+      return;
+    }
+    if (!/^https?:\/\/github\.com\/[^/]+\/[^/]+/.test(trimmed)) {
+      setError("That doesn't look like a public GitHub URL. Expected format: https://github.com/owner/repo.");
+      return;
+    }
     setError("");
+    if (!requireBackend()) return;
     setGithubProjectStatus("loading");
     setGithubProgress(18);
     try {
@@ -511,7 +691,7 @@ export default function App() {
     } catch (e) {
       setGithubProjectStatus("idle");
       setGithubProgress(0);
-      setError(e instanceof Error ? e.message : "Could not clone repository");
+      setError(e instanceof Error ? e.message : "Could not fetch that repository. It may be too large for the free tier — try a smaller repo or upload a ZIP under 50 MB.");
     }
   };
   const useInput = (selectedInput: InputInfo) => {
@@ -521,8 +701,12 @@ export default function App() {
   };
 
   const useDemo = async () => {
-    if (!demoId) return;
+    if (!demoId) {
+      setError("Choose a demo file first.");
+      return;
+    }
     setError("");
+    if (!requireBackend()) return;
     setDemoBusy(true);
     try {
       const selectedInput = await api("/demos/select", {
@@ -577,17 +761,29 @@ export default function App() {
   };
 
   const analyse = async () => {
-    if (!input) return;
+    if (!input) {
+      setError("Select a project first — upload files, pick a demo, or connect a GitHub repository.");
+      return;
+    }
     setError("");
+    if (!requireBackend()) return;
     try {
       const started = (await api("/scan-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(scanBody()),
       })) as Job;
+      if (!started?.job_id) {
+        throw new Error("Backend didn't return an analysis job. It may be waking up — try again in a moment.");
+      }
       setJob(started);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to start analysis");
+      const message = e instanceof Error ? e.message : "Unable to start analysis";
+      if (/out of memory/i.test(message)) {
+        setError("Analysis couldn't start: the backend is out of memory (likely Render's free tier with a large input). Try a smaller repository or run ECDAT locally.");
+      } else {
+        setError(message);
+      }
     }
   };
 
@@ -595,9 +791,13 @@ export default function App() {
     if (!job || ["completed", "failed"].includes(job.status)) return;
     const timer = window.setInterval(async () => {
       try {
-        setJob(await api(`/jobs/${job.job_id}`));
+        const next = (await api(`/jobs/${job.job_id}`)) as Job;
+        setJob(next);
+        if (next.status === "failed" && next.error) {
+          setError(next.error);
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Status unavailable");
+        setError(e instanceof Error ? e.message : "Analysis status is unavailable. The backend may be waking up — it will retry automatically.");
       }
     }, 700);
     return () => window.clearInterval(timer);
@@ -607,7 +807,7 @@ export default function App() {
     if (job?.status !== "completed" || !job.scan_id) return;
     void api(`/results/${job.scan_id}`)
       .then(setResult)
-      .catch((e: Error) => setError(e.message));
+      .catch((e: Error) => setError(e.message || "Results are no longer available. Re-run the analysis."));
   }, [job?.status, job?.scan_id]);
 
   const cards = useMemo(
@@ -641,57 +841,53 @@ export default function App() {
 
   const download = async (format: string) => {
     if (!result) return;
+    if (!requireBackend()) return;
     try {
-      // Authenticated fetch (window.open can't send the Bearer token),
-      // then open the blob. Works locally too (no token = no header).
-      const token = getApiToken();
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      // Fetch then open the blob (window.open can't carry cookies reliably).
       const response = await fetch(
         `${API}/results/${result.scan_id}/report/${format}`,
-        { headers, credentials: "include" },
+        { credentials: "include" },
       );
-      if (!response.ok) throw new Error("Report download failed");
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        let detail = "Report download failed";
+        try {
+          if (contentType.includes("application/json")) {
+            const data = await response.json();
+            if (typeof data?.error === "string" && data.error) detail = data.error;
+          } else {
+            const text = await response.text();
+            if (text) detail = text;
+          }
+        } catch {
+          /* keep generic message */
+        }
+        if (response.status === 507 || /out of memory/i.test(detail)) {
+          throw new Error("Report is too large for the free-tier backend to render. Try JSON or CSV, a smaller input, or run ECDAT locally.");
+        }
+        throw new Error(detail);
+      }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Report download failed");
+      setError(e instanceof Error ? e.message : "Report download failed. Check the Backend status and try again.");
     }
   };
 
-  if (locked) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#ebe8e1] text-[#181a19]">
-        <form
-          onSubmit={unlock}
-          className="w-[min(24rem,calc(100%-2rem))] rounded-xl border border-[#d4d0c8] bg-white p-8 shadow-sm"
-        >
-          <p className="text-xl font-semibold tracking-[.42em]">ECDAT</p>
-          <p className="mt-2 text-sm text-[#686761]">
-            This deployment is protected. Enter the API token to continue.
-          </p>
-          <input
-            type="password"
-            value={tokenInput}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setTokenInput(e.target.value)
-            }
-            placeholder="API token"
-            autoFocus
-            className="mt-4 w-full rounded-md border border-[#d4d0c8] bg-[#f6f4ef] px-3 py-2 text-sm outline-none"
-          />
-          <button
-            type="submit"
-            className="mt-3 w-full rounded-md bg-[#181a19] px-3 py-2 text-sm font-medium text-white"
-          >
-            Unlock
-          </button>
-        </form>
-      </main>
-    );
-  }
+  const backendDot =
+    backendStatus === "online"
+      ? "bg-[#4a7c59]"
+      : backendStatus === "loading"
+        ? "bg-[#c58a43]"
+        : "bg-[#b8424d]";
+  const backendLabel =
+    backendStatus === "online"
+      ? "Online"
+      : backendStatus === "loading"
+        ? "Loading"
+        : "Offline";
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#ebe8e1] text-[#181a19]">
@@ -701,11 +897,39 @@ export default function App() {
         aria-hidden="true"
         className="pointer-events-none absolute right-[-12vw] top-0 z-0 w-[min(112rem,112vw)] max-w-none object-contain opacity-50 sm:right-[-8vw] sm:opacity-70"
       />
-      <nav className="relative z-10 mx-auto flex w-[min(1440px,calc(100%-2rem))] items-center py-6 sm:py-8">
+      <nav className="relative z-10 mx-auto flex w-[min(1440px,calc(100%-2rem))] flex-col items-start py-6 sm:py-8">
         <a className="text-xl font-semibold tracking-[.42em]" href="#top">
           ECDAT
         </a>
+        <p
+          className="mt-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-[#5e5d58]"
+          role="status"
+          aria-live="polite"
+          title={
+            backendStatus === "online"
+              ? "Backend is reachable"
+              : backendStatus === "loading"
+                ? "Backend is starting up (free hosting sleeps when idle)"
+                : "Backend is unreachable — it may be waking up"
+          }
+        >
+          Backend
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d4d0c8] bg-white/60 px-2.5 py-1 normal-case tracking-normal">
+            <i className={`h-2 w-2 rounded-full ${backendDot}`} aria-hidden="true" />
+            [{backendLabel}]
+          </span>
+        </p>
       </nav>
+      {(backendNotice || backendStatus !== "online") && (
+        <div className="relative z-10 mx-auto w-[min(1440px,calc(100%-2rem))]">
+          <p className="rounded-md border border-[#c58a43] bg-[#faf3e6] px-4 py-2 text-sm text-[#7a5a1e]">
+            {backendNotice ||
+              (backendStatus === "loading"
+                ? "Backend is starting — Render's free tier sleeps when idle. This can take up to a minute."
+                : "Backend is offline — analysis, uploads, and GitHub imports are paused until it reconnects.")}
+          </p>
+        </div>
+      )}
 
       <section
         id="top"
@@ -737,6 +961,9 @@ export default function App() {
               );
             })}
           </div>
+          <p className="mt-6 max-w-3xl text-xs leading-5 text-[#686761]">
+            ECDAT runs on Render&apos;s free tier, so very large repositories may time out, analyse partially, or need a smaller upload, try a single archive under 50&nbsp;MB or run ECDAT locally for full-size scans.
+          </p>
         </div>
       </section>
 

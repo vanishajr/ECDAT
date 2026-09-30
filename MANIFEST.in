@@ -1,0 +1,8 @@
+# Runtime data that must ship inside the installed ecdat package
+# (pip install . only includes *.py by default). Without these, an
+# installed deployment (e.g. Render) crashes at scan time with
+# FileNotFoundError while a repo checkout works fine.
+recursive-include ecdat *.json
+recursive-include ecdat/web/demos *
+global-exclude __pycache__
+global-exclude *.py[cod]

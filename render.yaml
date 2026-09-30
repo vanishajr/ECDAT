@@ -18,8 +18,6 @@ services:
       - key: ECDAT_MAX_UPLOAD_MB
         value: 50
       # Set in the Render dashboard (sync: false = manual entry, not in git):
-      - key: ECDAT_API_TOKEN
-        sync: false
       - key: ECDAT_FRONTEND_URL
         sync: false
       # GitHub OAuth (already owned env vars) - set in dashboard too:
