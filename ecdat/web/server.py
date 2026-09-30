@@ -730,7 +730,7 @@ class Handler(BaseHTTPRequestHandler):
         if not _check_rate_limit(STATE, path, _client_ip(self)):
             rule = _RATE_LIMITS.get(path)
             limit = rule[0] if rule else "?"
-            self._json(429, {"error": f"rate limit exceeded ({limit} requests/hour for this action): wait a while and try again. Large uploads send one request per file, so big repositories consume this budget quickly."})
+            self._json(429, {"error": f"rate limit exceeded ({limit} requests/hour for this action): this input is too large for the free hosted backend. Large uploads send one request per file, so big repositories consume this budget quickly — try a smaller upload, a single archive under 50 MB, or run ECDAT locally."})
             return
         try:
             if path == "/api/uploads":

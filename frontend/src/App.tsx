@@ -137,10 +137,10 @@ const friendlyApiError = (status: number, body: any, url: string): Error => {
     return new Error("Request blocked: please use the ECDAT web app to analyse (direct API access is restricted).");
   }
   if (status === 429) {
+    // Rate limits trip on very large inputs (uploads send one request per
+    // file), so point at size — not at the backend being down.
     return new Error(
-      typeof raw === "string" && raw.length > 10
-        ? raw
-        : "Too many requests: ECDAT is rate-limited on the free tier. Wait a few minutes and try again.",
+      "This input is too large for the free hosted backend (rate limit hit). Try a smaller upload, a single archive under 50 MB, or run ECDAT locally for full-size scans.",
     );
   }
   if (status === 507 || /out of memory|ran out of resources/i.test(String(raw))) {
@@ -218,7 +218,7 @@ const api = async (url: string, init?: RequestInit) => {
 export const checkBackendHealth = async (): Promise<BackendStatus> => {
   try {
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 10000);
+    const timer = window.setTimeout(() => controller.abort(), 15000);
     try {
       const response = await fetch(`${API}/health`, {
         signal: controller.signal,
@@ -342,10 +342,12 @@ export default function App() {
   // /api/health on load + interval and show Online/Loading/Offline.
   const [backendStatus, setBackendStatus] =
     useState<BackendStatus>("loading");
+  const cancelledRef = useRef(false);
   // Free-tier cold starts: human-readable status while api() retries.
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
+    cancelledRef.current = false;
     onBackendStatusChange((message) => {
       if (!cancelled) {
         setBackendNotice(message);
@@ -357,7 +359,8 @@ export default function App() {
     });
     const probe = async () => {
       if (cancelled) return;
-      setBackendStatus("loading");
+      // No optimistic "loading": under free-tier load a slow probe must not
+      // flicker the indicator or cause actions to be wrongly blocked.
       const status = await checkBackendHealth();
       if (!cancelled) {
         setBackendStatus(status);
@@ -379,6 +382,7 @@ export default function App() {
     window.addEventListener("offline", markOffline);
     return () => {
       cancelled = true;
+      cancelledRef.current = true;
       window.clearInterval(timer);
       window.removeEventListener("online", markOnline);
       window.removeEventListener("offline", markOffline);
@@ -386,13 +390,25 @@ export default function App() {
       onBackendHealthChange(null);
     };
   }, []);
-  /** Block user actions while the backend is waking/offline, with a message. */
-  const requireBackend = (): boolean => {
+  /**
+   * Guard user actions while the backend is waking/offline.
+   * The cached status can go stale (a health probe timing out under
+   * free-tier load looks identical to a sleeping backend), so a non-online
+   * cache triggers one live re-probe before blocking. This keeps a real
+   * 429/507/413 error from being masked by a wrong "backend starting"
+   * message on large repositories.
+   */
+  const requireBackend = async (): Promise<boolean> => {
     if (backendStatus === "online") return true;
+    setBackendStatus("loading");
+    const live = await checkBackendHealth();
+    if (!cancelledRef.current) {
+      setBackendStatus(live);
+      if (live === "online") setBackendNotice(null);
+    }
+    if (live === "online") return true;
     setError(
-      backendStatus === "loading"
-        ? "Backend is starting — Render's free tier sleeps when idle. Wait a moment and try again."
-        : "Backend is offline — it may be waking up or temporarily unavailable. Wait a moment and try again.",
+      "Backend is starting — Render's free tier sleeps when idle. Wait a moment and try again. (If you were uploading a very large repository, it may instead be too big for the free tier — try a single archive under 50 MB or run ECDAT locally.)",
     );
     return false;
   };
@@ -489,8 +505,8 @@ export default function App() {
       .catch(() => undefined);
   }, []);
 
-  const signInWithGithub = () => {
-    if (!requireBackend()) return;
+  const signInWithGithub = async () => {
+    if (!(await requireBackend())) return;
     const frontend = encodeURIComponent(window.location.origin);
     window.location.assign(`${API}/github/oauth/start?frontend=${frontend}`);
   };
@@ -508,7 +524,7 @@ export default function App() {
 
   const selectRepository = async (repository: GithubRepository) => {
     setError("");
-    if (!requireBackend()) return;
+    if (!(await requireBackend())) return;
     if (!repository.owner || !repository.name) {
       setError("That repository entry is missing its owner or name. Try reloading the list.");
       return;
@@ -573,7 +589,7 @@ export default function App() {
 
   const upload = async (files: FileList | File[]) => {
     setError("");
-    if (!requireBackend()) return;
+    if (!(await requireBackend())) return;
     setGithubProjectStatus("idle");
     setGithubProgress(0);
     const all = Array.from(files);
@@ -628,7 +644,7 @@ export default function App() {
             throw new Error("Upload stopped: the backend ran out of memory (likely Render's free tier with a large input). Try a smaller archive under 50 MB, or run ECDAT locally.");
           }
           if (response.status === 429) {
-            throw new Error(`${detail} (file ${index}/${all.length}). Tip: compress folders into one ZIP to use fewer requests.`);
+            throw new Error(`File too large to analyse here (rate limit hit at file ${index}/${all.length}). Compress folders into one archive under 50 MB, or run ECDAT locally for full-size repositories like OpenSSL.`);
           }
           throw new Error(`${detail} (file ${index}/${all.length}: "${file.name}")`);
         }
@@ -671,7 +687,7 @@ export default function App() {
       return;
     }
     setError("");
-    if (!requireBackend()) return;
+    if (!(await requireBackend())) return;
     setGithubProjectStatus("loading");
     setGithubProgress(18);
     try {
@@ -706,7 +722,7 @@ export default function App() {
       return;
     }
     setError("");
-    if (!requireBackend()) return;
+    if (!(await requireBackend())) return;
     setDemoBusy(true);
     try {
       const selectedInput = await api("/demos/select", {
@@ -766,7 +782,7 @@ export default function App() {
       return;
     }
     setError("");
-    if (!requireBackend()) return;
+    if (!(await requireBackend())) return;
     try {
       const started = (await api("/scan-jobs", {
         method: "POST",
@@ -841,7 +857,7 @@ export default function App() {
 
   const download = async (format: string) => {
     if (!result) return;
-    if (!requireBackend()) return;
+    if (!(await requireBackend())) return;
     try {
       // Fetch then open the blob (window.open can't carry cookies reliably).
       const response = await fetch(
@@ -1084,7 +1100,7 @@ export default function App() {
             ) : (
               <>
                 {!githubSession.authenticated ? (
-                  <Button className="mt-6" onClick={signInWithGithub}>
+                  <Button className="mt-6" onClick={() => void signInWithGithub()}>
                     <GitFork size={17} /> Sign in with GitHub{" "}
                     <ArrowRight size={16} />
                   </Button>
@@ -1797,9 +1813,13 @@ function Overview({
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {cards.map(([label, value, Icon]) => (
             <div key={label}>
-              <Icon size={19} />
-              <b className="mt-2 block text-xl">{value}</b>
-              <span className="text-xs text-[#74716a]">{label}</span>
+              <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.14em] text-[#74716a]">
+                <Icon size={15} />
+                {label}
+              </span>
+              <b className="mt-1 block text-4xl font-light tracking-tight">
+                {value}
+              </b>
             </div>
           ))}
         </div>
@@ -1840,7 +1860,7 @@ function Overview({
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
               <b
-                className={`block text-2xl ${riskAccent(risk.level).split(" ")[1]}`}
+                className={`block text-3xl font-light ${riskAccent(risk.level).split(" ")[1]}`}
               >
                 {percent}%
               </b>
