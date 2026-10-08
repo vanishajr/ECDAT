@@ -6,7 +6,7 @@ import argparse
 import sys
 
 from ecdat.commands import ERROR
-from ecdat.web.server import LOOPBACK_HOSTS, make_server
+from ecdat.web.server import LOOPBACK_HOSTS, _is_public, make_server
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8734
@@ -15,10 +15,10 @@ DEFAULT_PORT = 8734
 def run(args: argparse.Namespace) -> int:
     host = str(args.host)
     port = int(args.port)
-    if host not in LOOPBACK_HOSTS:
+    if host not in LOOPBACK_HOSTS and not _is_public():
         print(
             "error: refusing non-loopback GUI host "
-            f"{host!r}: bind to 127.0.0.1 only",
+            f"{host!r}: bind to 127.0.0.1 only (or set ECDAT_PUBLIC=1)",
             file=sys.stderr,
         )
         return ERROR

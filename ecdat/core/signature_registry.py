@@ -25,8 +25,14 @@ def load_registry() -> dict[str, Any]:
         if _REGISTRY is not None:
             return _REGISTRY
 
-        with open(_REGISTRY_PATH) as f:
-            _REGISTRY = json.load(f)
+        # Installed deployments once shipped without this file (see
+        # MANIFEST.in): degrade to an empty registry instead of failing
+        # the whole discovery. Every consumer uses .get() with defaults.
+        try:
+            with open(_REGISTRY_PATH) as f:
+                _REGISTRY = json.load(f)
+        except (OSError, ValueError):
+            _REGISTRY = {}
         return _REGISTRY
 
 

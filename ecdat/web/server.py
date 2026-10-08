@@ -17,8 +17,10 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 import uuid
 import zipfile
+from collections import deque
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -40,6 +42,108 @@ from ecdat.scanners.path_policy import iter_project_files
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 MAX_UPLOAD_BYTES = 250 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 20_000
+
+
+def _is_public() -> bool:
+    """Public-internet mode (Render/Netlify deploy). Opt-in only.
+
+    Local default stays loopback-only; setting ``ECDAT_PUBLIC=1`` allows
+    non-loopback binds. There is no API token — the API is open and
+    protected only by CORS, a loose Origin/Referer check, and per-IP
+    rate limits (see _RATE_LIMITS).
+    """
+    return os.getenv("ECDAT_PUBLIC", "").strip() == "1"
+
+
+def _max_upload_bytes() -> int:
+    try:
+        mb = float(os.getenv("ECDAT_MAX_UPLOAD_MB", "") or 0)
+        if mb > 0:
+            return int(mb * 1024 * 1024)
+    except (TypeError, ValueError):
+        pass
+    return MAX_UPLOAD_BYTES
+
+
+# Paths never subjected to the loose Origin/Referer check: Render health
+# checks, CORS preflights, and top-level GitHub OAuth browser navigations.
+_ORIGIN_CHECK_EXEMPT = (
+    "/api/health",
+    "/api/github/oauth/start",
+    "/api/github/oauth/callback",
+)
+
+
+def _origin_from_headers(headers: Any) -> str:
+    """Prefer Origin, fall back to Referer. Empty when neither is sent."""
+    try:
+        origin = str(headers.get("Origin", "") or "").strip()
+        if origin:
+            return origin
+        return str(headers.get("Referer", "") or "").strip()
+    except Exception:
+        return ""
+
+
+def _session_cookie_attrs(*, max_age: int) -> str:
+    # Cross-site frontend (Netlify) -> API (Render) needs SameSite=None;
+    # Secure (Render terminates HTTPS). Local loopback keeps Lax.
+    if _is_public():
+        return f"; HttpOnly; SameSite=None; Secure; Path=/; Max-Age={max_age}"
+    return f"; HttpOnly; SameSite=Lax; Path=/; Max-Age={max_age}"
+
+
+# Abuse guard for the open (token-less) public deployment: per-IP
+# sliding-window caps on the expensive mutating endpoints.
+# (limit, window_seconds) per path.
+#
+# NOTE on large repos: the frontend uploads one POST per file, so a single
+# OpenSSL-size analysis (~2-5k files) needs thousands of /api/uploads calls
+# within minutes. Caps below are sized for that (per-IP, per-hour), while
+# Render's free-tier RAM (512MB), 50MB upload cap, and request timeouts
+# remain the real ceiling for very large repos.
+_RATE_LIMITS: dict[str, tuple[int, int]] = {
+    "/api/scan-jobs": (100, 3600),
+    "/api/uploads": (5000, 3600),
+    "/api/scan-plan": (200, 3600),
+    "/api/inputs/inspect": (500, 3600),
+    "/api/github/repos/select": (60, 3600),
+    "/api/github/public": (60, 3600),
+    "/api/demos/select": (200, 3600),
+}
+
+
+def _client_ip(handler: Any) -> str:
+    try:
+        forwarded = handler.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip() or "unknown"
+    except Exception:
+        pass
+    try:
+        return handler.client_address[0]
+    except Exception:
+        return "unknown"
+
+
+def _check_rate_limit(state: Any, path: str, ip: str) -> bool:
+    """True when the request is within its per-IP budget."""
+    rule = _RATE_LIMITS.get(path)
+    if rule is None:
+        return True
+    limit, window = rule
+    now = time.monotonic()
+    key = (ip, path)
+    with state.lock:
+        hits = state.rate_hits.get(key)
+        if hits is None:
+            hits = state.rate_hits[key] = deque()
+        while hits and hits[0] <= now - window:
+            hits.popleft()
+        if len(hits) >= limit:
+            return False
+        hits.append(now)
+        return True
 SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
 GITHUB_API = "https://api.github.com"
 GITHUB_TOKEN_COOKIE = "ecdat_github_session"
@@ -178,6 +282,7 @@ class AppState:
         self.results: dict[str, dict[str, Any]] = {}
         self.oauth_states: dict[str, dict[str, Any]] = {}
         self.github_sessions: dict[str, dict[str, Any]] = {}
+        self.rate_hits: dict[tuple[str, str], deque] = {}
         # Phase 11: durable scan model shared with CLI/CI. Same default
         # DB file as the CLI so GUI and CLI histories unify; override
         # with --db / ECDAT_DB (tests use a temp file).
@@ -431,9 +536,19 @@ def _run_job(job_id: str) -> None:
         with STATE.lock:
             STATE.results[canonical["scan_id"]] = payload
             job.update({"status": "completed", "progress": 100, "stage": "Analysis complete", "scan_id": canonical["scan_id"], "persisted": persisted})
-    except Exception as exc:  # surfaced to user; never hide scan failure
+    except MemoryError:
         with STATE.lock:
-            job.update({"status": "failed", "progress": 100, "stage": "Analysis failed", "error": str(exc)})
+            job.update({"status": "failed", "progress": 100, "stage": "Analysis failed",
+                        "error": "Backend ran out of memory during analysis (common on Render's free tier with large repositories). Try a smaller input, fewer scanners, or run ECDAT locally."})
+    except Exception as exc:  # surfaced to user; never hide scan failure
+        message = str(exc) or "unknown error"
+        lowered = message.lower()
+        if isinstance(exc, RealScanError) and ("memory" in lowered or "killed" in lowered or "oom" in lowered):
+            message = "Analysis was stopped because the backend ran out of memory (likely Render's free tier with a large repository). Try a smaller input or run ECDAT locally."
+        elif "memory" in lowered or "cannot allocate" in lowered:
+            message = f"{message}. This often means the free-tier backend ran out of memory on a large input — try a smaller repository or run ECDAT locally."
+        with STATE.lock:
+            job.update({"status": "failed", "progress": 100, "stage": "Analysis failed", "error": message})
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -468,6 +583,28 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:
         self._headers(HTTPStatus.NO_CONTENT)
+
+    def _origin_allowed(self, path: str) -> bool:
+        """Loose frontend-only check for mutating requests.
+
+        Browsers always send Origin (or Referer); requests without either
+        (health checks, Render, OAuth redirects, same-origin proxy fetches
+        without Origin) are allowed. When an origin IS present it must
+        match the configured frontend URL. This deters casual direct API
+        abuse but is spoofable and is not a security boundary.
+        """
+        if path in _ORIGIN_CHECK_EXEMPT:
+            return True
+        origin = _origin_from_headers(self.headers)
+        if not origin:
+            return True
+        return self._frontend_allowed(origin)
+
+    def _check_origin(self, path: str) -> bool:
+        if self._origin_allowed(path):
+            return True
+        self._json(403, {"error": "origin not allowed: this API only serves the ECDAT frontend"})
+        return False
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
@@ -588,6 +725,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if not self._check_origin(path):
+            return
+        if not _check_rate_limit(STATE, path, _client_ip(self)):
+            rule = _RATE_LIMITS.get(path)
+            limit = rule[0] if rule else "?"
+            self._json(429, {"error": f"rate limit exceeded ({limit} requests/hour for this action): this input is too large for the free hosted backend. Large uploads send one request per file, so big repositories consume this budget quickly — try a smaller upload, a single archive under 50 MB, or run ECDAT locally."})
+            return
         try:
             if path == "/api/uploads":
                 self._upload()
@@ -606,24 +750,46 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/github/logout":
                 self._github_logout()
             else:
-                self._json(404, {"error": "not found"})
+                self._json(404, {"error": "not found: unknown API endpoint"})
         except (ValueError, KeyError) as exc:
-            self._json(400, {"error": str(exc)})
+            self._json(400, {"error": str(exc) or "invalid request"})
+        except MemoryError:
+            self._json(507, {"error": "backend ran out of memory handling this request (likely on Render's free tier with a large repository). Try a smaller input, a single archive under 50 MB, or run ECDAT locally."})
+        except (OSError, IOError) as exc:
+            self._json(500, {"error": f"storage error: {exc}. The free-tier disk is ephemeral and small — try a smaller input."})
         except Exception as exc:
-            self._json(500, {"error": f"server error: {exc}"})
+            message = str(exc) or "unknown error"
+            if "memory" in message.lower() or "cannot allocate" in message.lower():
+                self._json(507, {"error": "backend ran out of resources (likely Render free-tier memory). Try a smaller input or run ECDAT locally."})
+            else:
+                self._json(500, {"error": f"server error: {message}"})
 
     def do_DELETE(self) -> None:
         path = urlparse(self.path).path
-        if path.startswith("/api/inputs/"):
-            STATE.remove_input(path.rsplit("/", 1)[-1])
-            self._json(200, {"ok": True})
+        if not self._check_origin(path):
             return
-        self._json(404, {"error": "not found"})
+        try:
+            if path.startswith("/api/inputs/"):
+                STATE.remove_input(path.rsplit("/", 1)[-1])
+                self._json(200, {"ok": True})
+                return
+            self._json(404, {"error": "not found: unknown API endpoint"})
+        except MemoryError:
+            self._json(507, {"error": "backend ran out of memory. Try again, or run ECDAT locally for large inputs."})
+        except Exception as exc:
+            self._json(500, {"error": f"server error: {exc}"})
 
     def _upload(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0 or length > MAX_UPLOAD_BYTES:
-            raise ValueError("upload must be between 1 byte and 250 MB")
+        cap = _max_upload_bytes()
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except (TypeError, ValueError):
+            raise ValueError("upload is missing a valid Content-Length header")
+        if length <= 0:
+            raise ValueError("upload is empty: select a file, folder, or archive to analyse")
+        if length > cap:
+            cap_mb = round(cap / 1024 / 1024)
+            raise ValueError(f"file too large ({length / 1024 / 1024:.1f} MB): limit is {cap_mb} MB on this deployment. On Render's free tier try a smaller archive, or run ECDAT locally for the full 250 MB limit")
         input_id = self.headers.get("X-Input-Id")
         input_data = STATE.input_for(input_id) if input_id else STATE.new_input()
         name = self.headers.get("X-File-Name", "upload")
@@ -800,7 +966,25 @@ class Handler(BaseHTTPRequestHandler):
         return bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))
 
     def _frontend_url(self) -> str:
-        return os.getenv("GITHUB_FRONTEND_URL", "http://127.0.0.1:5173").rstrip("/")
+        return (os.getenv("ECDAT_FRONTEND_URL")
+                or os.getenv("GITHUB_FRONTEND_URL", "http://127.0.0.1:5173")).rstrip("/")
+
+    def _frontend_allowed(self, candidate: str) -> bool:
+        """Accept loopback http(s) origins plus the configured frontend origin.
+
+        Local behavior is unchanged (loopback only unless configured);
+        public mode additionally accepts the exact configured Netlify URL.
+        """
+        try:
+            parts = urlparse(candidate)
+            if parts.scheme == "http" and parts.hostname in LOOPBACK_HOSTS:
+                return True
+            configured = urlparse(self._frontend_url())
+            return bool(configured.netloc) and (
+                (parts.scheme, parts.hostname, parts.port)
+                == (configured.scheme, configured.hostname, configured.port))
+        except Exception:
+            return False
 
     def _cookie_session(self) -> tuple[str, dict[str, Any]] | None:
         raw = self.headers.get("Cookie", "")
@@ -833,8 +1017,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         state = uuid.uuid4().hex
         requested_frontend = parse_qs(urlparse(self.path).query).get("frontend", [self._frontend_url()])[0]
-        frontend_parts = urlparse(requested_frontend)
-        if frontend_parts.scheme != "http" or frontend_parts.hostname not in LOOPBACK_HOSTS:
+        if not self._frontend_allowed(requested_frontend):
             requested_frontend = self._frontend_url()
         with STATE.lock:
             STATE.oauth_states[state] = {
@@ -890,7 +1073,7 @@ class Handler(BaseHTTPRequestHandler):
             STATE.github_sessions[session_id] = {"token": access_token, "login": user.get("login", "GitHub user")}
         self.send_response(302)
         self.send_header("Location", f"{state_data['frontend']}?github=connected")
-        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}={session_id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=3600")
+        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}={session_id}{_session_cookie_attrs(max_age=3600)}")
         self.end_headers()
 
     def _github_session(self) -> None:
@@ -936,7 +1119,7 @@ class Handler(BaseHTTPRequestHandler):
                 total = 0
                 while chunk := response.read(1024 * 1024):
                     total += len(chunk)
-                    if total > MAX_UPLOAD_BYTES:
+                    if total > _max_upload_bytes():
                         raise ValueError("repository archive exceeds the 250 MB limit")
                     output.write(chunk)
             target.mkdir(parents=True, exist_ok=True)
@@ -955,7 +1138,7 @@ class Handler(BaseHTTPRequestHandler):
         if current:
             STATE.remove_github_session(current[0])
         self.send_response(200)
-        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
+        self.send_header("Set-Cookie", f"{GITHUB_TOKEN_COOKIE}={_session_cookie_attrs(max_age=0)}")
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", self._frontend_url())
         self.send_header("Access-Control-Allow-Credentials", "true")
@@ -965,8 +1148,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def make_server(host: str = "127.0.0.1", port: int = 8765,
                 db_path: str | Path | None = None) -> ThreadingHTTPServer:
-    if host not in LOOPBACK_HOSTS:
-        raise ValueError("ECDAT web API is localhost-only")
+    if host not in LOOPBACK_HOSTS and not _is_public():
+        raise ValueError("ECDAT web API is localhost-only (set ECDAT_PUBLIC=1 to bind publicly)")
     if db_path is not None:
         STATE.db_path = str(db_path)
     return ThreadingHTTPServer((host, port), Handler)
