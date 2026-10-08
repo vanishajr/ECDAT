@@ -1,195 +1,151 @@
 # ECDAT
 
-Integrated product: discovery + intelligence + platform. One production
-pipeline serves both interfaces:
+**Cryptographic Discovery, Inventory, Analysis & Migration-Readiness Platform.**
 
-GUI → `ecdat/web/server.py` → `ScanRequest` → `ScanOrchestrator.scan()`
-CLI → `ecdat/commands/_real_scan.py` → `RealCoreClient` → `ScanRequest` →
-`ScanOrchestrator.scan()`
+Point ECDAT at any codebase, binary, container, or cloud account and it finds every cryptographic asset (algorithms, keys, certificates, TLS configs, KMS usage), scores its quantum/classical risk, and tells you exactly what to migrate first for a post-quantum world. One real analysis pipeline powers a local dashboard, a full CLI, and CI gates — no mock data, no silent fallbacks.
 
-There is no mock mode: every scan runs single-pass real analysis —
-`DiscoveryEngine` scans once → CIR v0.1 validation → fusion/operations/
-graph/risk/recommendations → canonical v1 + CIR sidecar → SQLite
-(`scans` + `scan_meta` plan/diagnostics) → CLI/GUI/reports/exports/CI.
-Failures are loud errors, never silent mock fallbacks.
+## How it works (30 seconds)
 
-ECDAT is a comprehensive cryptographic scanning and analysis platform that discovers, inventories, and analyzes cryptographic assets across source code, dependencies, binaries, containers, configurations, certificates, runtime endpoints, and cloud environments.
+```
+Any target ─▶ DiscoveryEngine (single pass, 8 scanners) ─▶ CIR validation
+   ─▶ fusion / operations / graph / risk / recommendations
+   ─▶ canonical v1 + CIR sidecar ─▶ SQLite ─▶ dashboard · CLI · reports · CI
+```
 
-## Features
+- **CLI** → `ecdat/commands/_real_scan.py` → `RealCoreClient` → `ScanOrchestrator.scan()`
+- **Dashboard** → `ecdat/web/server.py` → `ScanRequest` → `ScanOrchestrator.scan()`
 
-- **Multi-surface scanning**: Source code, dependencies, binaries, containers, configurations, certificates, runtime endpoints, and cloud (AWS)
-- **CIR (Cryptographic Inventory Representation)**: Standardized JSON output format for cryptographic findings
-- **Risk assessment**: Mosca-style quantum/classical risk scoring with migration recommendations
-- **Report generation**: Markdown, HTML, PDF, JSON, CSV, SARIF, and CycloneDX CBOM formats
-- **CLI and Web API**: Command-line interface and local web API for integration
-- **Deterministic results**: Reproducible asset IDs and scan results
+Same backend, same results, every time. Finding IDs are deterministic (`scan:<32hex>`) for identical inputs.
 
-## Installation
+## Run it locally in ~5 minutes
+
+Prerequisites: **Python ≥ 3.10**, **Node ≥ 18**. Optional: Docker/`syft` (container scans), AWS credentials (cloud scans) — everything else works without them.
 
 ```bash
+git clone https://github.com/vanishajr/ECDAT.git
+cd ECDAT
+
+# Backend
 pip install -e .
+
+# Scan something (SQLite DB is created automatically)
+python -m ecdat.cli scan ./ecdat --db .ecdat.db
+
+# Dashboard (terminal 1) — API at http://127.0.0.1:8734
+python -m ecdat.cli gui --port 8734 --db .ecdat.db
+
+# Dashboard UI (terminal 2) — opens at http://localhost:5173
+cd frontend && npm install && npm run dev
 ```
 
-Or install with development dependencies:
+Paste a public GitHub URL, upload an archive, or pick a demo input in the UI — then walk through **Inventory → Risk → Knowledge Graph → Migration Planner → Reports**. Press Ctrl-C to stop either server.
+
+> The CLI and dashboard share the `--db` file: scan once in either, inspect in both. Both default to `~/.ecdat/ecdat.db`.
+
+<details>
+<summary><strong>CLI command reference (exact commands)</strong></summary>
+
+### Scan targets
 
 ```bash
-pip install -e .[dev]
-```
-
-## Quick Start
-
-### Local Directory Scan
-
-```bash
-ecdat-discover scan /path/to/project
-```
-
-### Scan with Specific Scanners
-
-```bash
-ecdat-discover scan /path/to/project --scanners source,dependency,config
-```
-
-## One-command local dashboard (React API + UI)
-
-```bash
-python -m ecdat.cli gui --port 8734
-```
-
-Serves the local API at `http://127.0.0.1:8734` (loopback only;
-`--port 0` for an ephemeral port, `--db PATH` to share a database with
-the CLI). Start the React interface with `cd frontend && npm run dev`.
-Press Ctrl-C to stop.
-
-### Cloud Scanning (AWS)
-
-```bash
-ecdat-discover scan-cloud aws --allow-cloud --profile default --services kms,acm
-```
-
-### CI Integration
-
-```bash
-# Source tree (production pipeline)
+# Local directory / file (most common)
 python -m ecdat.cli scan ./repo --db .ecdat.db
-python -m ecdat.cli scan ./repo --cir-out cir.json --output canonical.json --db .ecdat.db
 
-# GitHub repository (same downloader + pipeline as the dashboard)
+# Only specific scanners
+python -m ecdat.cli scan ./repo --scanners source,config,certificate --db .ecdat.db
+
+# Public GitHub repo (same downloader the dashboard uses)
 python -m ecdat.cli scan --repo https://github.com/openssl/openssl --db .ecdat.db
 
-# Binary / container tar / rootfs / image ref
+# Binary, container tar / rootfs / image ref
 python -m ecdat.cli scan-binary ./bin/app --db .ecdat.db
 python -m ecdat.cli scan-container ./image.tar --db .ecdat.db
 python -m ecdat.cli scan-container nginx:1.25 --allow-container --db .ecdat.db
 
-# Cloud (label target, no local path required)
+# AWS cloud (opt-in; creds via env vars only, never stored)
 python -m ecdat.cli scan-cloud aws --profile readonly --services kms,acm,elb --db .ecdat.db
 
-# Explicit scanner subset + opt-ins
-python -m ecdat.cli scan ./repo --scanners source,config,certificate --db .ecdat.db
-python -m ecdat.cli scan ./repo --allow-container --allow-cloud --allow-runtime --db .ecdat.db
+# Save machine-readable outputs alongside the DB write
+python -m ecdat.cli scan ./repo --cir-out cir.json --output canonical.json --db .ecdat.db
+```
 
-# CI gate on real findings (P1 risk posture, severity policy)
+### Inspect results
+
+```bash
+python -m ecdat.cli list --db .ecdat.db            # all stored scans
+python -m ecdat.cli show <scan-id> --db .ecdat.db  # findings + evidence
+python -m ecdat.cli risk <scan-id> --db .ecdat.db       # Mosca risk posture
+python -m ecdat.cli recommend <scan-id> --db .ecdat.db  # PQC migration steps
+```
+
+### Reports & exports
+
+```bash
+# Reports: markdown | console | html | pdf
+python -m ecdat.cli report <scan-id> --format html --output report.html --db .ecdat.db
+
+# Exports: json | csv | cbom-json | cbom-xml | sarif
+python -m ecdat.cli export <scan-id> --format sarif --output findings.sarif --db .ecdat.db
+```
+
+### CI gate
+
+```bash
+# Fails the build when findings meet the severity threshold
 python -m ecdat.cli ci ./repo --fail-on high --summary --db .ecdat.db
+python -m ecdat.cli ci ./repo --fail-on medium --sarif results.sarif --db .ecdat.db
+```
+
+After `pip install -e .`, `ecdat-discover` works as a shorthand for `python -m ecdat.cli`.
+
+</details>
+
+## What it scans (8 surfaces)
+
+| Surface | Examples |
+|---|---|
+| Source | Python, C/C++, Java, Go, JS/TS — calls, imports, custom crypto |
+| Dependencies | requirements.txt, package.json, Cargo.toml, go.mod, pom.xml, SBOMs |
+| Binaries | ELF/PE/Mach-O — constants, OIDs, strings, symbols |
+| Containers | Docker/OCI layers, rootfs, Dockerfiles |
+| Config | nginx, Apache, Kubernetes, Terraform, Envoy, openssl.cnf |
+| Certificates | PEM, DER, JKS, PKCS12, SSH keys |
+| Runtime | Live TLS handshakes, SSH banners (opt-in only) |
+| Cloud | AWS KMS, ACM, ELB/ALB (opt-in only) |
+
+Findings normalize into **CIR** (Cryptographic Inventory Representation, `ecdat/core/cir.schema.json`), then get **Mosca-style risk scores** (quantum + classical) and **concrete PQC migration recommendations** with a knowledge-graph view of how assets connect.
+
+## Why trust the results
+
+- **Measured, not claimed**: 46/46 synthetic benchmark fixtures pass — algorithm precision 0.87, recall 1.0 (`benchmarks/reports/benchmark_test_suite.json`). Full methodology in `docs/BENCHMARKS.md`.
+- **690+ automated tests** across `tests/` and `ecdat/tests/`, plus consumer contracts in `tests/contract/`.
+- **Honest about limits**: unavailable tools are reported, never zero-filled; runtime/cloud scans are explicit opt-ins; asset-only findings are preserved rather than dropped.
+
+## Project layout
 
 ```
 ecdat/
-├── cli.py              # Command-line interface
-├── core/               # Core models, orchestrator, CIR, validation
-├── scanners/           # Scanner implementations
-│   ├── source/         # Source code scanner (Python, C, Go, JS, Java, etc.)
-│   ├── dependency/     # Dependency scanner (requirements.txt, package.json, etc.)
-│   ├── binary/         # Binary scanner (ELF, PE, Mach-O)
-│   ├── container/      # Container scanner (Docker, OCI, rootfs)
-│   ├── config/         # Config scanner (nginx, Apache, Kubernetes, etc.)
-│   ├── certificate/    # Certificate/key scanner (PEM, DER, JKS, PKCS12)
-│   ├── runtime/        # Runtime scanner (TLS, SSH)
-│   └── cloud/          # Cloud scanner (AWS KMS, ACM, ELB/ALB)
-├── reports/            # Report generators (markdown, HTML, PDF, etc.)
-├── exports/            # Export formats (SARIF, CBOM, CSV)
-├── store/              # SQLite persistence layer
-├── web/                # Local web API server
-├── commands/           # CLI command implementations
-└── tests/              # Test suite
+├── cli.py            # CLI dispatch (scan, gui, ci, report, export, …)
+├── core/             # Orchestrator, CIR models, fusion, graph, risk, recommend
+├── scanners/         # source · dependency · binary · container · config ·
+│                     # certificate · runtime · cloud
+├── store/            # SQLite persistence (scans + scan_meta diagnostics)
+├── reports/          # markdown / console / html / pdf
+├── exports/          # json / csv / CycloneDX CBOM / SARIF
+├── web/              # Loopback-only local API serving the React dashboard
+└── commands/         # One persist path shared by CLI, GUI and CI
+frontend/src/         # React + Vite dashboard (inventory, risk, graph, planner)
+tests/ + ecdat/tests/ # Unit, regression, contract & end-to-end tests
+ECDAT_Benchmark_Suite/ # Accuracy harness: 46 synthetic + real-repo invariants
+docs/                 # ARCHITECTURE.md · BENCHMARKS.md · solution-architecture PDF
 ```
 
-## Security
+## Security & privacy
 
-- All secrets (AWS keys, GitHub tokens) are read from environment variables only
-- No credentials are logged, stored in reports, or exposed in API responses
-- Archive extraction is protected against path traversal (zip-slip/tar-slip)
-- Runtime probing is opt-in only
-- Cloud scanning is opt-in only
+- Secrets (AWS keys, GitHub tokens) come from environment variables only — see `.env.example`. Never committed, never logged, never embedded in reports.
+- The dashboard binds loopback-only by design; archive extraction is zip-slip/tar-slip hardened; runtime and cloud probing require explicit opt-in flags.
 
-## License
+## Docs & troubleshooting
 
-Real findings reach inventory, finding detail (usage state, evidence,
-confidence, locations, redacted snippets), risk dashboard (P1 Mosca
-posture), graph view (CIR projection), migration planner (P1
-recommendations), reports/exports (canonical v1), and CI gates.
-
-## Dashboard workflow
-
-1. **Repository input** — paste a public GitHub URL, upload a file/archive,
-   or pick a demo input.
-2. **Scan plan + monitor** — read-only plan; scans run through the shared
-   orchestrator with staged progress.
-3. **Inventory/findings** — click rows for finding detail (usage state,
-   evidence, confidence, redacted snippets).
-4. **Risk dashboard** — P1 Mosca risk posture over stored wire risks.
-5. **Asset inventory** — flat CBOM-derived assets.
-6. **Knowledge graph** — real CIR projection.
-7. **Migration planner** — P1 recommendations; no persistent migration
-   state.
-8. **Reports** — view/download HTML, PDF, CSV, JSON, SARIF, CBOM, CIR.
-
-## CLI commands
-
-All scan commands run the shared production backend
-(`ScanOrchestrator`); there is no mock mode. `scan [path] [--repo URL]`,
-`scan-binary`, `scan-container`, `scan-cloud` (with `--scanners`,
-`--allow-container/--allow-cloud/--allow-runtime/--allow-pull/--allow-build`,
-`--profile` (scan depth, except `scan-cloud` where `--profile` is the AWS
-profile), `--region`, `--cir-out`, context/Mosca options; `scan-cloud`
-additionally accepts `--aws-access-key-id/--aws-secret-access-key/
---aws-session-token/--aws-profile`), `list`, `show`, `risk`, `recommend`,
-`export` (json/csv/cbom-json/cbom-xml/sarif),
-`report` (markdown/console/html/pdf),
-`ci` (`--fail-on`/`--json`/`--summary`/`--sarif`, plus scan options),
-`gui` (local React API).
-
-## Generated artifacts
-
-Reports: Markdown, console, HTML, PDF. Exports: JSON, CSV,
-CBOM JSON/XML, SARIF 2.1.0, CIR JSON. Dashboard serves HTML/PDF/CSV/JSON/
-SARIF/CBOM/CIR downloads. Scans persist the enriched CIR sidecar
-(`scans.cir_json`, schema v3) alongside canonical v1 plus plan/diagnostics
-(`scan_meta`).
-
-## Production boundaries (honest limits)
-
-- P1 Mosca risk + recommendation engine; deterministic `scan:<32hex>` IDs
-  for identical inputs; RFC3339 timestamps; asset-only findings preserved;
-  unavailable tools reported, never zero-filled. Measured detector quality
-  on committed fixtures is modest — do not claim fixed precision/recall
-  targets until independently reproduced on corrected ground truth.
-- Product is intentionally incomplete: persistent migration state,
-  owners/effort/timelines/sequencing, full Azure/GCP, guaranteed Docker
-  environments, external baseline comparisons, full runtime probing,
-  and production auth/remote deployment remain out of scope or
-  versioned-contract extensions.
-
-Contracts are pinned in `tests/contract/` and `docs/P1_P2_INTEGRATION_CONTRACT.md`.
-
-## Troubleshooting
-
-- Port busy: `gui --port 0`. Non-loopback `--host`:
-  refused by design.
-- Stale DB confusion: point CLI and GUI at the same `--db` file to share
-  scan history (both default to `~/.ecdat/ecdat.db`).
-- `pytest` failures: run `python -m pytest -q`; GUI tests bind 127.0.0.1
-  ephemeral ports only.
-- Real scan missing deps: install real-scan group above; the error names
-  the missing package.
-- `pip install -e .` used to fail (setuptools discovered `referenceDocs`
-  as a package); fixed via `[tool.setuptools.packages.find]` include/exclude.
+- Architecture deep-dive: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · Benchmark methodology: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)
+- Port busy? `gui --port 0` picks a free one. Seeing stale results? Make sure CLI and GUI point at the same `--db` file. Test failures? `python -m pytest -q` (GUI tests bind 127.0.0.1 ephemeral ports only).

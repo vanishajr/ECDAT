@@ -10,6 +10,7 @@ node_modules/
 
 # Virtual environments
 .venv/
+.venv-p1/
 venv/
 env/
 

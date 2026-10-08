@@ -146,7 +146,7 @@ report are ~12 ms combined. Cache hits skip discovery entirely (5–15 ms total)
 - `synthetic_pass=46, synthetic_fail=0, false_positives=5, false_negatives=0`
 - `algorithm{precision=0.8718, recall=1.0, f1=0.9315}`,
   `operation{precision=0.8718, recall=1.0, f1=0.9315}`
-- Baseline before optimisation (per `docs/benchmark_optimisation_report.md`):
+- Baseline before optimisation:
   38/46, prec 0.7714 / rec 0.7941 / F1 0.7826, 8 FN, ~82 s → after: 46/46,
   prec 0.8718 / rec 1.0 / F1 0.9315, 0 FN, ~42 s (−49%), mem flat.
   Root causes fixed: S011 EVP_rc4 table, S017 JCA `initialize(1024)`, S021
