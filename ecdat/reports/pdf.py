@@ -267,15 +267,22 @@ def _title_block(r: dict) -> list:
     story.append(Spacer(1, 6))
     story.append(HRFlowable(width="100%", thickness=0.5, color=LIGHT_LINE,
                             spaceBefore=2, spaceAfter=8))
-    stats = [[_px(S["body"], f"<b><font size=16>{v}</font></b><br/><font color=\"#666677\" size=8>{k}</font>")
-              for k, v in [(f"{assets}", "CRYPTOGRAPHIC ASSETS"),
-                           (f"{ops}", "OPERATIONS")]],
-             [_px(S["body"], f"<b><font size=16>{v}</font></b><br/><font color=\"#666677\" size=8>{k}</font>")
-              for k, v in [(f"{findings}", "FINDINGS"),
-                           (f"{high}", "HIGH RISK")]]]
+    num_style = ParagraphStyle("stat_num", parent=S["body"],
+                                   fontName="Helvetica-Bold", fontSize=20,
+                                   leading=24, textColor=PRIMARY, spaceAfter=0)
+    lab_style = ParagraphStyle("stat_lab", parent=S["body"], fontSize=8,
+                               leading=10, textColor=MUTED, spaceBefore=0)
+    def _stat(value: str, label: str) -> list:
+        return [Paragraph(f"<b>{value}</b>", num_style),
+                Paragraph(label, lab_style)]
+    stats = [[_stat(f"{assets}", "CRYPTOGRAPHIC ASSETS"),
+              _stat(f"{ops}", "OPERATIONS")],
+             [_stat(f"{findings}", "FINDINGS"),
+              _stat(f"{high}", "HIGH RISK")]]
     story.append(Table(stats, colWidths=[(PAGE_W - 2 * MARGIN) / 2] * 2,
-                       style=TableStyle([("GRID", (0, 0), (-1, -1), 0.4, LIGHT_LINE),
-                                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                       style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                         ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                         ("RIGHTPADDING", (0, 0), (-1, -1), 12),
                                          ("TOPPADDING", (0, 0), (-1, -1), 6),
                                          ("BOTTOMPADDING", (0, 0), (-1, -1), 6)])))
     story.append(Spacer(1, 6))
